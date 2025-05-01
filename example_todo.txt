@@ -2,7 +2,7 @@
 # PROJECTS #
 ############
 * [ ] PROJECT - Mountain trip planning
-* [ ] PROJECT - Outdoor activities 
+* [ ] PROJECT - Outdoor activities
 * [ ] PROJECT - Vacation planning
 * [ ] PROJECT - Family event
 * [ ] PROJECT - Health appointment scheduling
@@ -23,7 +23,7 @@
 * [ ] HOME - Garden maintenance
 * [ ] HOME - Lawn care
 * [ ] HOME - Outdoor cleanup
-* [ ] HOME - 
+* [ ] HOME - Misc
 
 #######
 # WIP #
@@ -39,7 +39,7 @@
 * [x] WORK - Website maintenance
 * [x] HOME - Research cleaning service
 * [x] HOBBY - Connect about equipment
-* [x] HOBBY - Confirm event attendance 
+* [x] HOBBY - Confirm event attendance
 * [x] WORK - Update vendor payment info
 * [x] HOBBY - Register for local festival
 * [x] FAMILY - Confirm activity schedule

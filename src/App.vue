@@ -39,6 +39,7 @@
       :categories="categories"
       @move-item="handleMoveItem"
       @add-item="handleAddItem"
+      @reorder-items="handleReorderItems"
     />
     
     <ArchiveView 
@@ -70,7 +71,7 @@ import { ref, onMounted, reactive } from 'vue';
 import axios from 'axios';
 import KanbanBoard from './components/KanbanBoard.vue';
 import ArchiveView from './components/ArchiveView.vue';
-import { parseTodoFile, updateItemStatus, addNewItem } from './utils/TodoParser';
+import { parseTodoFile, updateItemStatus, addNewItem, reorderItems } from './utils/TodoParser';
 
 // Base URL for the API
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -121,15 +122,19 @@ export default {
     
     // Save todo data to the server
     const saveTodoData = async (content) => {
+      console.log('Saving todo data to server...');
       try {
+        console.log('Sending content to server, length:', content.length);
         await axios.post(`${API_BASE_URL}/todos`, { content });
-        await loadTodoData(); // Reload data after saving
+        console.log('Content saved successfully');
+        // Don't reload data - assume the UI is already correct
+        // This avoids resetting the UI after drag and drop
       } catch (error) {
         console.error('Error saving todo file:', error);
       }
     };
     
-    // Handle moving items between columns
+    // Handle moving items between columns or categories
     const handleMoveItem = async (item, targetStatus) => {
       let statusChar = ' ';
       
@@ -139,11 +144,45 @@ export default {
         statusChar = 'x';
       }
       
-      // Update the item status in the file content
-      const updatedContent = updateItemStatus(todoText.value, item, statusChar);
+      console.log('Moving item:', { 
+        id: item.id, 
+        text: item.text, 
+        from: item.originalStatusChar || item.statusChar, 
+        to: statusChar,
+        category: item.category
+      });
       
-      // Save the updated content
-      await saveTodoData(updatedContent);
+      // Update local data immediately
+      // Remove item from current list based on original status
+      const originalStatusChar = item.originalStatusChar || item.statusChar;
+      const sourceList = originalStatusChar === ' ' ? todos.value :
+                         originalStatusChar === '~' ? inProgress.value :
+                         doneItems.value;
+      
+      const itemIndex = sourceList.findIndex(i => i.id === item.id);
+      if (itemIndex !== -1) {
+        sourceList.splice(itemIndex, 1);
+      } else {
+        console.warn(`Could not find item with id ${item.id} in source list`);
+      }
+      
+      // Update item status if needed
+      if (statusChar !== item.statusChar) {
+        item.statusChar = statusChar;
+        item.status = `* [${statusChar}]`;
+      }
+      
+      // Add to new list
+      const targetList = targetStatus === 'todo' ? todos.value :
+                         targetStatus === 'wip' ? inProgress.value :
+                         doneItems.value;
+      
+      targetList.push(item);
+      
+      // Update the file content and persist in the background
+      // This will handle both status and category changes
+      const updatedContent = updateItemStatus(todoText.value, item, statusChar);
+      saveTodoData(updatedContent);
     };
     
     // Handle adding a new item
@@ -161,6 +200,44 @@ export default {
       
       // Save the updated content
       await saveTodoData(updatedContent);
+    };
+    
+    // Handle reordering items within a column
+    const handleReorderItems = async (items, category, status) => {
+      console.log('==== HANDLING REORDER EVENT ====');
+      console.log('Reorder params:', { itemCount: items.length, category, status });
+      
+      if (!items || items.length === 0) {
+        console.error('No items provided for reordering');
+        return;
+      }
+      
+      console.log('Items to reorder:');
+      items.forEach((item, idx) => {
+        console.log(`Item ${idx}:`, {
+          id: item.id,
+          text: item.text,
+          status: item.status,
+          category: item.category
+        });
+      });
+      
+      // Don't need to update local state - Vue draggable already did that
+      // Just persist the changes to the server
+      
+      try {
+        // Create a new function for reordering in TodoParser
+        const updatedContent = reorderItems(todoText.value, items, category, status);
+        
+        console.log('Content updated for reordering, saving to server...');
+        
+        // Save the updated content without reloading
+        saveTodoData(updatedContent);
+        
+        console.log('Reordering saved successfully');
+      } catch (error) {
+        console.error('Error reordering items:', error);
+      }
     };
     
     // Add a new category
@@ -198,6 +275,7 @@ export default {
       newCategoryName,
       handleMoveItem,
       handleAddItem,
+      handleReorderItems,
       addCategory
     };
   }
