@@ -1,0 +1,205 @@
+############
+# PROJECTS #
+############
+* [ ] PROJECT - Mountain trip planning
+* [ ] PROJECT - Outdoor activities 
+* [ ] PROJECT - Vacation planning
+* [ ] PROJECT - Family event
+* [ ] PROJECT - Health appointment scheduling
+
+########
+# TODO #
+########
+* [ ] WORK - Follow up with client
+
+#########
+# HOBBY #
+#########
+* [~] HOBBY - RSVP for local event
+
+##########
+# HELPER #
+##########
+* [ ] HOME - Garden maintenance
+* [ ] HOME - Lawn care
+* [ ] HOME - Outdoor cleanup
+* [ ] HOME - 
+
+#######
+# WIP #
+#######
+* [~] BILLS - Phone bill (Jan 14, follow up about refund)
+* [~] WORK - Follow up with colleague after meeting
+* [~] SOCIAL - Event coordination for friends
+* [ ] TECH - Fix laptop
+* [ ] PROPERTY - Research local zoning regulations
+
+### CURRENT WEEK (Week of May 1)
+* [x] WORK - Client follow up
+* [x] WORK - Website maintenance
+* [x] HOME - Research cleaning service
+* [x] HOBBY - Connect about equipment
+* [x] HOBBY - Confirm event attendance 
+* [x] WORK - Update vendor payment info
+* [x] HOBBY - Register for local festival
+* [x] FAMILY - Confirm activity schedule
+* [ ] WORK - Fix test configuration issue
+* [ ] HOBBY - Discuss project collaboration
+* [ ] FAMILY - Plan weekend activities
+* [ ] TECH - Schedule service appointment
+
+### CURRENT DAY (Thursday May 1)
+* [x] VEHICLE - Send photos to buyer
+* [~] WORK - Update software subscriptions
+* [ ] HOBBY - Prepare for upcoming event
+* [ ] FAMILY - Coordinate summer schedule
+* [ ] VEHICLE - Complete registration renewal
+
+#########
+# LOW-P #
+#########
+* [ ] SHOPPING - Bookstore visit
+* [ ] GEAR - Purchase accessories
+* [ ] HEALTH - Research classes
+
+########
+# BACK #
+########
+* [ ] HEALTH - Schedule appointment
+* [ ] WORK - Contact potential partner
+
+#########
+# NOTES #
+#########
+* RESEARCH: Online course about productivity
+* BUSINESS: Investigate LLC formation resources
+* SERVICE:
+ - Standard cleaning package $330 ($160 weekly, $190 biweekly, $240 monthly)
+ - Team of 2, estimated time 3 hours initially, 1.5-2.5 hours afterward
+ - Insurance and reliability information
+
+###########
+# ARCHIVE #
+###########
+
+MAY
+### MAY Week 4
+* [x] HOBBY - Event promotion
+* [x] WORK - File business documents
+* [x] WORK - Set up business account
+* [x] WORK - Send client invoice
+* [x] SHOPPING - Return and replace items
+### MAY Week 3
+* [x] SHOPPING - Purchase footwear
+* [x] FINANCE - Complete tax filing
+* [x] HOBBY - Event follow-ups
+### MAY Week 2
+* [x] FINANCE - Deposit checks
+* [x] TECH - Purchase monitor
+* [x] NETWORKING - Professional meetup
+### MAY Week 1
+* [x] HOBBY - Confirm event attendance
+* [x] SOCIAL - Discuss travel plans
+* [x] TRAVEL - Make decision on trip
+* [x] WORK - Complete training
+* [x] WORK - Submit invoice
+
+APR
+### APRIL Week 3
+* [x] WORK - Review contract details
+* [x] LEGAL - Review terms of use
+## APRIL Week 2
+* [x] TECH - Configure child device settings
+* [x] FAMILY - Help with project
+* [x] SOCIAL - Connect with friend
+* [x] HOME - Purchase new mattress
+* [x] HOME - Purchase supplies
+* [x] TRAVEL - Book rental car
+
+* [x] BILLS - Resolve account charges
+* [x] HOBBY - Research poses
+* [x] SOCIAL - Weekend plans
+* [x] TRAVEL - Book return flights
+* [x] VEHICLE - Complete registration ($156)
+* [x] TRAVEL - Trip planning (transportation and accommodations)
+* [x] FAMILY - Plan visit
+
+MAR
+* [x] VEHICLE - Maintenance service [Jan 13]
+* [x] HEALTH - Pay medical bill
+* [x] VEHICLE - Renew registration
+* [x] FAMILY - Manage device storage
+
+
+### WINTER ACTIVITY ###
+* [x] RECREATION - Purchase season passes
+* [-] RECREATION - Plan weekend with friend
+* [x] RECREATION - Book accommodation Feb 14-17
+* [x] RECREATION - Coordinate weekend plans
+* [x] RECREATION - Arrange lodging Feb 17/18
+
+### TRAVEL PLANNING ###
+* [x] TRAVEL - Complete registration
+* [x] TRAVEL - RSVP to event
+* [x] TRAVEL - Book international flights
+* [x] TRAVEL - Book domestic flights
+* [~] TRAVEL - Research phone options
+* [x] TRAVEL - Verify passport status
+
+FEB
+* [x] TRAVEL - Shop: accessories, clothing, supplies
+* [x] TRAVEL - Research destination
+* [~] TRAVEL - Apply for visa
+* [x] SHOPPING - Return shoes (Jan 7)
+
+
+
+
+
+
+######################
+######## ICE #########
+######################
+### BACKLOG ###
+* [ ] SHOPPING - Purchase container
+* [ ] WORK - Follow up with contact
+* [ ] FINANCE - Research insurance options
+* [ ] FINANCE - Evaluate subscription cost savings
+* [ ] FINANCE - Submit reimbursement documentation
+* [ ] COMMUNITY - Update online information
+* [ ] FAMILY - Computer repair
+* [ ] FAMILY - Set up account
+* [ ] FAMILY - Research concert tickets
+* [ ] FINANCE - Settle shared expenses
+* [ ] HOBBY - Record music project
+* [ ] HOME - Build outdoor structure
+* [ ] HOME - Organize and sell unused items
+* [ ] FAMILY - Organize memorabilia
+* [ ] HOME - Organize storage area
+
+
+
+### FINANCE ###
+* [ ] FINANCE - Recover digital wallet
+* [ ] VEHICLE - Review insurance policy
+
+### VEHICLE ###
+* [ ] VEHICLE - Repair window mechanism
+* [ ] VEHICLE - Fix door locks
+
+### HOME ###
+* [~] HOME - Purchase appliance
+* [~] HOME - Install window treatments
+* [ ] HOME - Complete window coverings
+* [ ] HOME - Install sink
+* [ ] HOME - Stock kitchen supplies
+* [ ] HOME - Install outdoor shower
+* [ ] HOME - Install composting system
+* [ ] HOME - Install perimeter fencing
+* [ ] HOME - Repair covering
+* [x] HOME - Purchase kettle
+
+### SELL ###
+* [ ] SELL - List children's item
+* [~] SELL - List furniture
+* [-] SELL - List bicycle
