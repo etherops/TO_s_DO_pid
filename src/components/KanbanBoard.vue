@@ -16,7 +16,7 @@
             :data-category="encodeURIComponent(category)"
             data-status="todo"
             @start="drag = true"
-            @end="handleDragEnd($event, 'todo', category)"
+            @end="handleDragEnd($event)"
           >
             <template #item="{element}">
               <div class="task-card draggable" :data-id="element.id">
@@ -45,7 +45,7 @@
             :data-category="encodeURIComponent(category)"
             data-status="wip"
             @start="drag = true"
-            @end="handleDragEnd($event, 'wip', category)"
+            @end="handleDragEnd($event)"
           >
             <template #item="{element}">
               <div class="task-card draggable" :data-id="element.id">
@@ -74,7 +74,7 @@
             :data-category="encodeURIComponent(category)"
             data-status="done"
             @start="drag = true"
-            @end="handleDragEnd($event, 'done', category)"
+            @end="handleDragEnd($event)"
           >
             <template #item="{element}">
               <div class="task-card draggable" :data-id="element.id">
@@ -203,20 +203,22 @@ export default {
     }
 
     // Handle drag end to track destination and emit update
-    const handleDragEnd = (evt, targetColumn, targetCategory) => {
+    const handleDragEnd = (evt) => {
       console.log('==== DRAG END EVENT ====');
       console.log('Event details:', {
-        targetColumn, 
-        targetCategory,
         from: evt.from,
         to: evt.to,
         oldIndex: evt.oldIndex,
         newIndex: evt.newIndex
       });
-      // column/category parsing
-      targetCategory = decodeURIComponent(targetCategory)
+      
+      // Get source info from the 'from' element
       const sourceColumn = evt.from.getAttribute('data-status');
       const sourceCategory = decodeURIComponent(evt.from.getAttribute('data-category'));
+      
+      // Get target info from the 'to' element
+      const targetColumn = evt.to.getAttribute('data-status');
+      const targetCategory = decodeURIComponent(evt.to.getAttribute('data-category'));
       console.log('Source info:', { sourceColumn, sourceCategory });
       console.log('Target info:', { targetColumn, targetCategory });
 
@@ -247,78 +249,42 @@ export default {
       };
       
       // Get the moved item
-      let movedItem;
-      
-      // First, try to find the moved item by its ID in the DOM
-      if (evt.item && evt.item.getAttribute) {
-        const itemId = evt.item.getAttribute('data-id');
-        if (itemId) {
-          // Look in the source list first
-          const sourceList = getListForColumnAndCategory(sourceColumn, sourceCategory);
-          movedItem = sourceList.find(item => item.id === itemId);
-        }
+      const movedItem = evt.item.__draggable_context.element;
+      console.log('Successfully identified moved item:', movedItem);
+
+      // Update the category if it changed
+      if (isCategoryChange) {
+        console.log('Category change detected:', {from: movedItem.category, to: targetCategory});
+        movedItem.category = targetCategory;
+        movedItem.section = targetCategory;
       }
-      
-      // If we couldn't find it that way, try the draggable_context
-      if (!movedItem && evt.item && evt.item.__draggable_context && evt.item.__draggable_context.element) {
-        movedItem = evt.item.__draggable_context.element;
-        console.log('Found item via draggable_context:', movedItem);
-      } 
-      
-      // If still not found, try to find in the target list by new index
-      if (!movedItem) {
-        const targetList = getListForColumnAndCategory(targetColumn, targetCategory);
-        if (targetList && targetList.length > evt.newIndex) {
-          movedItem = targetList[evt.newIndex];
-          console.log('Found item in target list:', movedItem);
-        }
-      }
-      
-      if (movedItem) {
-        console.log('Successfully identified moved item:', movedItem);
-        
-        // Update the category if it changed
-        if (isCategoryChange) {
-          console.log('Category change detected:', { 
-            from: movedItem.category, 
-            to: targetCategory 
-          });
-          movedItem.category = targetCategory;
-        }
-        
-        // Handle status changes
-        if (isStatusChange) {
-          // For status changes, we need to update the status character
-          const targetStatusChar = getStatusChar(targetColumn);
-          console.log('Status change:', { 
-            from: movedItem.statusChar, 
-            to: targetStatusChar 
-          });
-          
-          // Include both old and new status for proper handling
-          emit('move-item', {
-            ...movedItem,
-            originalStatusChar: movedItem.statusChar,
-            targetStatusChar
-          }, targetColumn);
-        } else if (isCategoryChange) {
-          // If only the category changed but not the status
-          console.log('Category change only');
-          emit('move-item', {
-            ...movedItem,
-            originalStatusChar: movedItem.statusChar,
-            targetStatusChar: movedItem.statusChar
-          }, targetColumn);
-        } else {
-          // For reordering within the same column/category
-          console.log('Reordering within same column/category');
-          const currentList = getListForColumnAndCategory(targetColumn, targetCategory);
-          console.log('Current list after reordering:', currentList);
-          
-          emit('reorder-items', currentList, targetCategory, targetColumn);
-        }
+
+      // Handle status changes
+      if (isStatusChange) {
+        const targetStatusChar = getStatusChar(targetColumn);
+        console.log('Status change:', {from: movedItem.statusChar, to: targetStatusChar});
+
+        // Include both old and new status for proper handling
+        emit('move-item', {
+          ...movedItem,
+          originalStatusChar: movedItem.statusChar,
+          targetStatusChar
+        }, targetColumn);
+      } else if (isCategoryChange) {
+        // If only the category changed but not the status
+        console.log('Category change only');
+        emit('move-item', {
+          ...movedItem,
+          originalStatusChar: movedItem.statusChar,
+          targetStatusChar: movedItem.statusChar
+        }, targetColumn);
       } else {
-        console.error('Could not identify the moved item!', evt);
+        // For reordering within the same column/category
+        console.log('Reordering within same column/category');
+        const currentList = getListForColumnAndCategory(targetColumn, targetCategory);
+        console.log('Current list after reordering:', currentList);
+
+        emit('reorder-items', currentList, targetCategory, targetColumn);
       }
       
       drag.value = false;
