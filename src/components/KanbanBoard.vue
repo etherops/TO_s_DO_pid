@@ -223,7 +223,16 @@ export default {
       // Determine if this is a status change or category change
       const isStatusChange = sourceColumn !== targetColumn;
       const isCategoryChange = sourceCategory !== targetCategory;
-      console.log('Change type:', { isStatusChange, isCategoryChange });
+      const isPositionChange = evt.oldIndex !== evt.newIndex;
+      
+      // Early return if nothing changed (same column, same category, same position)
+      if (!isStatusChange && !isCategoryChange && !isPositionChange) {
+        console.log('No changes detected - skipping update');
+        drag.value = false;
+        return;
+      }
+      
+      console.log('Change type:', { isStatusChange, isCategoryChange, isPositionChange });
       
       // helper to get list of column/category grouping
       const getListForColumnAndCategory = (column, category) => {
