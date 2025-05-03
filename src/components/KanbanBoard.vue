@@ -213,48 +213,19 @@ export default {
         oldIndex: evt.oldIndex,
         newIndex: evt.newIndex
       });
-      
-      if (!evt.from || !evt.to || evt.oldIndex === undefined || evt.newIndex === undefined) {
-        console.error('Missing essential drag event data:', evt);
-        return;
-      }
-      
-      // Get the source column and category
+      // column/category parsing
+      targetCategory = decodeURIComponent(targetCategory)
       const sourceColumn = evt.from.getAttribute('data-status');
-      let sourceCategory = evt.from.getAttribute('data-category');
-      
-      // Get the target category from the to element
-      let decodedTargetCategory = targetCategory;
-      let targetCategoryFromElement = evt.to.getAttribute('data-category');
-      
-      // If the category is URL encoded (contains special chars), decode it
-      try {
-        if (sourceCategory && sourceCategory.includes('%')) {
-          sourceCategory = decodeURIComponent(sourceCategory);
-        }
-        if (targetCategoryFromElement && targetCategoryFromElement.includes('%')) {
-          decodedTargetCategory = decodeURIComponent(targetCategoryFromElement);
-        }
-      } catch (error) {
-        console.error('Error decoding category:', error);
-        // Keep the original values if decoding fails
-      }
-      
-      // Use the category from the target element if available
-      if (decodedTargetCategory !== targetCategory && decodedTargetCategory) {
-        targetCategory = decodedTargetCategory;
-      }
-      
+      const sourceCategory = decodeURIComponent(evt.from.getAttribute('data-category'));
       console.log('Source info:', { sourceColumn, sourceCategory });
       console.log('Target info:', { targetColumn, targetCategory });
-      
+
       // Determine if this is a status change or category change
       const isStatusChange = sourceColumn !== targetColumn;
       const isCategoryChange = sourceCategory !== targetCategory;
-      
       console.log('Change type:', { isStatusChange, isCategoryChange });
       
-      // Get the appropriate lists based on columns and categories
+      // helper to get list of column/category grouping
       const getListForColumnAndCategory = (column, category) => {
         if (column === 'todo' && groupedTodos[category]) {
           return groupedTodos[category];
