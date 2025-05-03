@@ -309,6 +309,31 @@ export function reorderItems(fileContent, items, category, status) {
   console.log('Category:', category);
   console.log('Status:', status);
   
+  // Check if any items have a different category than the passed category parameter
+  // This indicates the items have been moved to a new category
+  const itemCategories = new Set(items.map(item => item.category));
+  console.log('Item categories:', Array.from(itemCategories));
+  
+  // Check for category change using either originalCategory or item.category
+  const hasCategoryChangeWithOriginal = items.length > 0 && 
+                                      items.some(item => item.originalCategory && 
+                                                item.originalCategory !== category);
+                                                
+  const hasCategoryChangeInItem = items.length > 0 && itemCategories.size === 1 && 
+                               items[0].category !== category && items[0].category !== undefined;
+  
+  const hasCategoryChange = hasCategoryChangeWithOriginal || hasCategoryChangeInItem;
+  
+  if (hasCategoryChange) {
+    // Use the category from the items instead
+    const newCategory = hasCategoryChangeWithOriginal ? 
+                     items[0].category : 
+                     items[0].category;
+    
+    console.log(`Category change detected: from ${category} to ${newCategory}`);
+    category = newCategory;
+  }
+  
   const lines = fileContent.split('\n');
   console.log('Total lines in file:', lines.length);
   
@@ -507,23 +532,46 @@ export function reorderItems(fileContent, items, category, status) {
   console.log('Item indices:', categoryItemIndices);
   
   if (categoryItems.length === 0 || categoryItemIndices.length === 0) {
-    console.error('No matching items found in category');
-    
-    // Debug which items we're looking for
-    console.log('Items we are looking for:');
-    items.forEach((item, idx) => {
-      console.log(`Item ${idx}:`, item.text);
-    });
-    
-    // Show the category contents for debugging
-    console.log('Category content:');
-    let nextCategoryIndex = lines.findIndex((line, idx) => 
-      idx > contentStartIndex && (line.trim().match(/^#+\s*[A-Z]/) || line.trim().match(/^#+$/)));
-    
-    if (nextCategoryIndex === -1) nextCategoryIndex = lines.length;
-    
-    console.log(lines.slice(contentStartIndex, nextCategoryIndex).join('\n'));
-    return fileContent;
+    // If this is a category change, we might need to add items to the new category
+    if (hasCategoryChange) {
+      console.log('Category change detected but no matching items found in new category.');
+      console.log('Will add the items to the new category.');
+      
+      // Create a new array of lines for this section
+      const newLines = [...lines];
+      
+      // Log what we're adding
+      console.log('Adding items to new category:');
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const newLine = `* [${statusChar}] ${item.text}`;
+        // Insert at the proper position after content start index
+        const insertPosition = contentStartIndex + i;
+        console.log(`Adding at position ${insertPosition}: "${newLine}"`);
+        newLines.splice(insertPosition, 0, newLine);
+      }
+      
+      console.log('Category change complete');
+      return newLines.join('\n');
+    } else {
+      console.error('No matching items found in category');
+      
+      // Debug which items we're looking for
+      console.log('Items we are looking for:');
+      items.forEach((item, idx) => {
+        console.log(`Item ${idx}:`, item.text);
+      });
+      
+      // Show the category contents for debugging
+      console.log('Category content:');
+      let nextCategoryIndex = lines.findIndex((line, idx) => 
+        idx > contentStartIndex && (line.trim().match(/^#+\s*[A-Z]/) || line.trim().match(/^#+$/)));
+      
+      if (nextCategoryIndex === -1) nextCategoryIndex = lines.length;
+      
+      console.log(lines.slice(contentStartIndex, nextCategoryIndex).join('\n'));
+      return fileContent;
+    }
   }
   
   // Create a new array of lines for this section

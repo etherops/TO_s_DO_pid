@@ -203,9 +203,14 @@ export default {
     };
     
     // Handle reordering items within a column
-    const handleReorderItems = async (items, category, status) => {
+    const handleReorderItems = async (items, category, status, sourceCategory) => {
       console.log('==== HANDLING REORDER EVENT ====');
-      console.log('Reorder params:', { itemCount: items.length, category, status });
+      console.log('Reorder params:', { 
+        itemCount: items.length, 
+        category, 
+        status,
+        sourceCategory: sourceCategory || category // If sourceCategory is provided, use it
+      });
       
       if (!items || items.length === 0) {
         console.error('No items provided for reordering');
@@ -214,11 +219,17 @@ export default {
       
       console.log('Items to reorder:');
       items.forEach((item, idx) => {
+        // Add originalCategory property if category has changed and sourceCategory is provided
+        if (sourceCategory && sourceCategory !== category && !item.originalCategory) {
+          item.originalCategory = sourceCategory;
+        }
+        
         console.log(`Item ${idx}:`, {
           id: item.id,
           text: item.text,
           status: item.status,
-          category: item.category
+          category: item.category,
+          originalCategory: item.originalCategory
         });
       });
       
