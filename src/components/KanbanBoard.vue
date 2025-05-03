@@ -17,7 +17,6 @@
             data-status="todo"
             @start="drag = true"
             @end="handleDragEnd($event, 'todo', category)"
-            @change="handleDragChange($event, 'todo', category)"
           >
             <template #item="{element}">
               <div class="task-card draggable" :data-id="element.id">
@@ -47,7 +46,6 @@
             data-status="wip"
             @start="drag = true"
             @end="handleDragEnd($event, 'wip', category)"
-            @change="handleDragChange($event, 'wip', category)"
           >
             <template #item="{element}">
               <div class="task-card draggable" :data-id="element.id">
@@ -77,7 +75,6 @@
             data-status="done"
             @start="drag = true"
             @end="handleDragEnd($event, 'done', category)"
-            @change="handleDragChange($event, 'done', category)"
           >
             <template #item="{element}">
               <div class="task-card draggable" :data-id="element.id">
@@ -205,68 +202,6 @@ export default {
       return ' ';
     }
 
-    // Handle changes during drag (added, removed, moved)
-    const handleDragChange = (evt, column, category) => {
-      console.log('==== DRAG CHANGE EVENT ====', evt);
-      
-      // Handle added elements (this happens when dragging to a new list)
-      if (evt.added) {
-        console.log('Item added to', column, category);
-        const addedItem = evt.added.element;
-        
-        if (addedItem) {
-          console.log('Added item:', addedItem);
-          
-          // If this is a different category than the item's current category
-          if (addedItem.category !== category) {
-            console.log('Category change detected!', { from: addedItem.category, to: category });
-            
-            // Update the category on the item
-            addedItem.category = category;
-            
-            // Determine if we also had a status change
-            const sourceStatus = dragSourceColumn.value;
-            if (sourceStatus && sourceStatus !== column) {
-              console.log('Status change detected!', { from: sourceStatus, to: column });
-              
-              // Get the target status character
-              const targetStatusChar = getStatusChar(column);
-              
-              // Emit move event with both changes
-              emit('move-item', {
-                ...addedItem,
-                originalStatusChar: addedItem.statusChar,
-                targetStatusChar
-              }, column);
-            } else {
-              // Only category changed, status remained the same
-              emit('move-item', {
-                ...addedItem,
-                originalStatusChar: addedItem.statusChar,
-                targetStatusChar: addedItem.statusChar
-              }, column);
-            }
-          }
-        }
-      }
-      
-      // Handle removed elements (this happens when dragging from a list)
-      if (evt.removed) {
-        console.log('Item removed from', column, category);
-        
-        // Store info about what's being dragged
-        draggedItem.value = evt.removed.element;
-        dragSourceColumn.value = column;
-        dragSourceCategory.value = category;
-        
-        console.log('Stored dragged item:', {
-          item: draggedItem.value,
-          sourceColumn: dragSourceColumn.value,
-          sourceCategory: dragSourceCategory.value
-        });
-      }
-    };
-    
     // Handle drag end to track destination and emit update
     const handleDragEnd = (evt, targetColumn, targetCategory) => {
       console.log('==== DRAG END EVENT ====');
@@ -415,7 +350,6 @@ export default {
       groupedDone,
       drag,
       handleDragEnd,
-      handleDragChange,
       draggedItem,
       dragSourceColumn,
       dragSourceCategory
