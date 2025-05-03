@@ -111,13 +111,11 @@ export function parseTodoFile(fileContent) {
       const statusMatch = trimmedLine.match(/\* \[([ x~-])\]/);
       
       if (statusMatch) {
-        const status = statusMatch[0];
-        const statusChar = statusMatch[1];
-        const todoText = trimmedLine.substring(statusMatch[0].length).trim();
-        
-        const todoItem = {
-          id: itemId++,
-          status,
+    const statusChar = statusMatch[1];
+    const todoText = trimmedLine.substring(statusMatch[0].length).trim();
+    
+    const todoItem = {
+      id: itemId++,
           statusChar,
           text: todoText,
           originalText: trimmedLine,
@@ -168,11 +166,11 @@ export function updateItemStatus(fileContent, item, newStatusChar) {
   
   // Find the line that contains the item
   console.log('Looking for text:', item.text);
-  console.log('Looking for status:', item.status);
+  console.log('Looking for status char:', item.statusChar);
   
   // Try to find the exact line
   const lineToUpdate = lines.findIndex(line => 
-    line.includes(item.text) && line.includes(item.status));
+    line.includes(item.text) && line.includes(`* [${item.statusChar}]`));
   
   console.log('Found line index:', lineToUpdate);
   
@@ -180,15 +178,13 @@ export function updateItemStatus(fileContent, item, newStatusChar) {
     console.log('Original line:', lines[lineToUpdate]);
     
     // Replace the status character with the new one
-    const newStatus = item.status.replace(
-      `[${item.statusChar}]`,
-      `[${newStatusChar}]`
-    );
+    const oldStatusPattern = `* [${item.statusChar}]`;
+    const newStatusPattern = `* [${newStatusChar}]`;
     
-    console.log('Old status:', item.status);
-    console.log('New status:', newStatus);
+    console.log('Old status pattern:', oldStatusPattern);
+    console.log('New status pattern:', newStatusPattern);
     
-    lines[lineToUpdate] = lines[lineToUpdate].replace(item.status, newStatus);
+    lines[lineToUpdate] = lines[lineToUpdate].replace(oldStatusPattern, newStatusPattern);
     console.log('Updated line:', lines[lineToUpdate]);
   } else {
     console.error('Could not find the line to update!');

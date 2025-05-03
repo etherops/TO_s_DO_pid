@@ -7,7 +7,7 @@
         <h3 class="archive-group-title">{{ category }}</h3>
         <div v-for="item in group" :key="item.id" class="archive-item">
           <span class="status" :class="getStatusClass(item)">
-            {{ item.status }}
+            * [{{ item.statusChar }}]
           </span>
           <span class="archive-item-text">{{ item.text }}</span>
         </div>
@@ -43,11 +43,11 @@ export default {
       return grouped;
     });
 
-    // Determine CSS class based on item status
+    // Determine CSS class based on item statusChar
     const getStatusClass = (item) => {
-      if (item.status === '[x]') return 'done';
-      if (item.status === '[~]') return 'in-progress';
-      if (item.status === '[ ]') return 'todo';
+      if (item.statusChar === 'x') return 'done';
+      if (item.statusChar === '~') return 'in-progress';
+      if (item.statusChar === ' ') return 'todo';
       return '';
     };
 

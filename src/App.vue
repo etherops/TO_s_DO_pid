@@ -169,7 +169,6 @@ export default {
       // Update item status if needed
       if (statusChar !== item.statusChar) {
         item.statusChar = statusChar;
-        item.status = `* [${statusChar}]`;
       }
       
       // Add to new list
