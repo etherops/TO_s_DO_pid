@@ -57,12 +57,6 @@ export function parseTodoFile(fileContent) {
       // Extract the category name from the header, handling formats with parentheses
       let sectionName = trimmedLine.replace(/#/g, '').trim();
       
-      // If there's a parenthesis, keep the whole string as the section name
-      if (sectionName.includes('(')) {
-        // Just clean up extra spaces
-        sectionName = sectionName.replace(/\s+/g, ' ').trim();
-      }
-      
       currentSection = sectionName;
       result.categories.add(currentSection);
       continue;
@@ -79,11 +73,10 @@ export function parseTodoFile(fileContent) {
       const statusMatch = trimmedLine.match(/\* \[([ x~-])\]/);
       
       if (statusMatch) {
-    const statusChar = statusMatch[1];
-    const todoText = trimmedLine.substring(statusMatch[0].length).trim();
-    
-    const todoItem = {
-      id: itemId++,
+        const statusChar = statusMatch[1];
+        const todoText = trimmedLine.substring(statusMatch[0].length).trim();
+        const todoItem = {
+          id: itemId++,
           statusChar,
           text: todoText,
           originalText: trimmedLine,
@@ -91,7 +84,7 @@ export function parseTodoFile(fileContent) {
           section: currentSection,
           lineIndex: i
         };
-        
+
         if (inArchive) {
           result.archive.push(todoItem);
         } else {
