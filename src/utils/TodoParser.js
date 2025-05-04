@@ -22,11 +22,12 @@ export function parseTodoFile(fileContent) {
   const sectionsMap = new Map();
   
   // Create a section with the given name, column, and style
-  const createSection = (name, column, headerStyle) => {
+  const createSection = (name, column, headerStyle, archivable) => {
     return {
       name,
       column, // Which column this section belongs to (TODO, WIP, DONE)
       headerStyle, // Style of the section header: "LARGE" or "SMALL"
+      archivable, // Whether this section can be archived
       items: [] // All items in the section
     };
   };
@@ -36,9 +37,9 @@ export function parseTodoFile(fileContent) {
   let foundArchiveSection = false;
 
   // Helper to get or create a section
-  const getOrCreateSection = (name, column, headerStyle) => {
+  const getOrCreateSection = (name, column, headerStyle, archivable) => {
     if (!sectionsMap.has(name)) {
-      const newSection = createSection(name, column, headerStyle);
+      const newSection = createSection(name, column, headerStyle, archivable);
       sectionsMap.set(name, newSection);
       sections.push(newSection);
     }
@@ -68,6 +69,7 @@ export function parseTodoFile(fileContent) {
     if (line.startsWith('#')) {
       let sectionName
       let sectionHeaderStyle
+      let archivable = false
       if (isSectionDivider(line)) {
         // Section with LARGE header
         if (i + 1 >= lines.length) {
@@ -102,6 +104,7 @@ export function parseTodoFile(fileContent) {
       } else if (sectionName.toUpperCase().startsWith('CURRENT')) {
         // Sections that start with "CURRENT" (case insensitive) go to WIP column
         sectionColumn = 'WIP';
+        archivable = true
       } else if (foundWipSection && !foundArchiveSection) {
         // After WIP but before ARCHIVE
         sectionColumn = 'TODO';
