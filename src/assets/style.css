@@ -7,6 +7,39 @@
   overflow-x: auto;
 }
 
+.section-list {
+  width: 100%;
+}
+
+.archivable-section {
+  cursor: grab;
+  border: 1px dashed #aaa;
+}
+
+.archivable-section:active {
+  cursor: grabbing;
+}
+
+.archive-badge {
+  font-size: 0.7rem;
+  background-color: #f0f0f0;
+  color: #666;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+
+.archive-badge.archived {
+  background-color: #e0f0e0;
+  color: #4caf50;
+}
+
+.ghost-section {
+  opacity: 0.5;
+  background-color: #e0f7fa;
+  border: 1px dashed #26c6da;
+}
+
 .kanban-column {
   flex: 1;
   min-width: 300px;

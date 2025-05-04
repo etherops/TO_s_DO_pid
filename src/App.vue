@@ -13,47 +13,59 @@
       <div class="kanban-column todo-column">
         <div class="column-header">TODO</div>
         <div class="column-content">
-          <div 
-            v-for="section in todoSections" 
-            :key="section.name" 
-            class="section"
+          <draggable
+            v-model="todoSections"
+            :group="{ name: 'sections', pull: false, put: false }"
+            item-key="name"
+            class="section-list"
+            ghost-class="ghost-section"
+            :sort="false"
+            :move="checkSectionMove"
+            @end="onSectionDragEnd"
           >
-            <div 
-              :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
-            >
-              {{ section.name }}
-            </div>
-            <div class="section-items">
-              <draggable
-                v-model="section.items"
-                :group="{ name: 'tasks', pull: true, put: true }"
-                item-key="id"
-                class="task-list"
-                ghost-class="ghost-card"
-                handle=".task-card"
-                @end="onDragEnd"
+            <template #item="{ element: section }">
+              <div 
+                :class="['section', { 'archivable-section': section.archivable }]"
               >
-                <template #item="{ element: item }">
-                  <div class="task-card">
-                    <div class="checkbox-wrapper">
-                      <div 
-                        :class="['custom-checkbox', {
-                          'unchecked': item.statusChar === ' ',
-                          'in-progress': item.statusChar === '~',
-                          'checked': item.statusChar === 'x'
-                        }]"
-                        @click="toggleTaskStatus(item)"
-                      ></div>
-                    </div>
-                    <span class="task-title">{{ item.text }}</span>
+                <div 
+                  :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
+                >
+                  {{ section.name }}
+                  <span v-if="section.archivable" class="archive-badge">Archivable</span>
+                </div>
+                <div class="section-items">
+                  <draggable
+                    v-model="section.items"
+                    :group="{ name: 'tasks', pull: true, put: true }"
+                    item-key="id"
+                    class="task-list"
+                    ghost-class="ghost-card"
+                    handle=".task-card"
+                    @end="onDragEnd"
+                  >
+                    <template #item="{ element: item }">
+                      <div class="task-card">
+                        <div class="checkbox-wrapper">
+                          <div
+                            :class="['custom-checkbox', {
+                              'unchecked': item.statusChar === ' ',
+                              'in-progress': item.statusChar === '~',
+                              'checked': item.statusChar === 'x'
+                            }]"
+                            @click="toggleTaskStatus(item)"
+                          ></div>
+                        </div>
+                        <span class="task-title">{{ item.text }}</span>
+                      </div>
+                    </template>
+                  </draggable>
+                  <div v-if="section.items.length === 0" class="empty-section">
+                    No items
                   </div>
-                </template>
-              </draggable>
-              <div v-if="section.items.length === 0" class="empty-section">
-                No items
+                </div>
               </div>
-            </div>
-          </div>
+            </template>
+          </draggable>
         </div>
       </div>
 
@@ -61,47 +73,59 @@
       <div class="kanban-column wip-column">
         <div class="column-header">WIP</div>
         <div class="column-content">
-          <div 
-            v-for="section in wipSections" 
-            :key="section.name" 
-            class="section"
+          <draggable
+            v-model="wipSections"
+            :group="{ name: 'sections', pull: true, put: false }"
+            item-key="name"
+            class="section-list"
+            ghost-class="ghost-section"
+            :sort="false"
+            :move="checkSectionMove"
+            @end="onSectionDragEnd"
           >
-            <div 
-              :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
-            >
-              {{ section.name }}
-            </div>
-            <div class="section-items">
-              <draggable
-                v-model="section.items"
-                :group="{ name: 'tasks', pull: true, put: true }"
-                item-key="id"
-                class="task-list"
-                ghost-class="ghost-card"
-                handle=".task-card"
-                @end="onDragEnd"
+            <template #item="{ element: section }">
+              <div 
+                :class="['section', { 'archivable-section': section.archivable }]"
               >
-                <template #item="{ element: item }">
-                  <div class="task-card">
-                    <div class="checkbox-wrapper">
-                      <div 
-                        :class="['custom-checkbox', {
-                          'unchecked': item.statusChar === ' ',
-                          'in-progress': item.statusChar === '~',
-                          'checked': item.statusChar === 'x'
-                        }]"
-                        @click="toggleTaskStatus(item)"
-                      ></div>
-                    </div>
-                    <span class="task-title">{{ item.text }}</span>
+                <div 
+                  :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
+                >
+                  {{ section.name }}
+                  <span v-if="section.archivable" class="archive-badge">Archivable</span>
+                </div>
+                <div class="section-items">
+                  <draggable
+                    v-model="section.items"
+                    :group="{ name: 'tasks', pull: true, put: true }"
+                    item-key="id"
+                    class="task-list"
+                    ghost-class="ghost-card"
+                    handle=".task-card"
+                    @end="onDragEnd"
+                  >
+                    <template #item="{ element: item }">
+                      <div class="task-card">
+                        <div class="checkbox-wrapper">
+                          <div
+                            :class="['custom-checkbox', {
+                              'unchecked': item.statusChar === ' ',
+                              'in-progress': item.statusChar === '~',
+                              'checked': item.statusChar === 'x'
+                            }]"
+                            @click="toggleTaskStatus(item)"
+                          ></div>
+                        </div>
+                        <span class="task-title">{{ item.text }}</span>
+                      </div>
+                    </template>
+                  </draggable>
+                  <div v-if="section.items.length === 0" class="empty-section">
+                    No items
                   </div>
-                </template>
-              </draggable>
-              <div v-if="section.items.length === 0" class="empty-section">
-                No items
+                </div>
               </div>
-            </div>
-          </div>
+            </template>
+          </draggable>
         </div>
       </div>
 
@@ -109,47 +133,56 @@
       <div class="kanban-column done-column">
         <div class="column-header">DONE</div>
         <div class="column-content">
-          <div 
-            v-for="section in doneSections" 
-            :key="section.name" 
-            class="section"
+          <draggable
+            v-model="doneSections"
+            :group="{ name: 'sections', pull: false, put: true }"
+            item-key="name"
+            class="section-list"
+            ghost-class="ghost-section"
+            :sort="false"
+            @add="onSectionAdded"
           >
-            <div 
-              :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
-            >
-              {{ section.name }}
-            </div>
-            <div class="section-items">
-              <draggable
-                v-model="section.items"
-                :group="{ name: 'tasks', pull: true, put: true }"
-                item-key="id"
-                class="task-list"
-                ghost-class="ghost-card"
-                handle=".task-card"
-                @end="onDragEnd"
-              >
-                <template #item="{ element: item }">
-                  <div class="task-card">
-                    <div class="checkbox-wrapper">
-                      <div 
-                        :class="['custom-checkbox', {
-                          'unchecked': item.statusChar === ' ',
-                          'in-progress': item.statusChar === '~',
-                          'checked': item.statusChar === 'x'
-                        }]"
-                        @click="toggleTaskStatus(item)"
-                      ></div>
-                    </div>
-                    <span class="task-title">{{ item.text }}</span>
+            <template #item="{ element: section }">
+              <div class="section">
+                <div 
+                  :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
+                >
+                  {{ section.name }}
+                  <span v-if="section.archivable" class="archive-badge archived">Archived</span>
+                </div>
+                <div class="section-items">
+                  <draggable
+                    v-model="section.items"
+                    :group="{ name: 'tasks', pull: true, put: true }"
+                    item-key="id"
+                    class="task-list"
+                    ghost-class="ghost-card"
+                    handle=".task-card"
+                    @end="onDragEnd"
+                  >
+                    <template #item="{ element: item }">
+                      <div class="task-card">
+                        <div class="checkbox-wrapper">
+                          <div
+                            :class="['custom-checkbox', {
+                              'unchecked': item.statusChar === ' ',
+                              'in-progress': item.statusChar === '~',
+                              'checked': item.statusChar === 'x'
+                            }]"
+                            @click="toggleTaskStatus(item)"
+                          ></div>
+                        </div>
+                        <span class="task-title">{{ item.text }}</span>
+                      </div>
+                    </template>
+                  </draggable>
+                  <div v-if="section.items.length === 0" class="empty-section">
+                    No items
                   </div>
-                </template>
-              </draggable>
-              <div v-if="section.items.length === 0" class="empty-section">
-                No items
+                </div>
               </div>
-            </div>
-          </div>
+            </template>
+          </draggable>
         </div>
       </div>
     </div>
@@ -249,6 +282,75 @@ export default {
       persistTodoData();
     };
     
+    // Function to check if a section can be moved
+    const checkSectionMove = (evt) => {
+      const draggedSection = evt.draggedContext.element;
+      const targetList = evt.to;
+
+      // Only allow archivable sections to be dragged
+      if (!draggedSection.archivable) {
+        return false;
+      }
+
+      if (!targetList || !targetList.closest('.done-column')) {
+        return false;
+      }
+
+      return true;
+    };
+
+    // Handle section drag end
+    const onSectionDragEnd = (event) => {
+      console.log('Section drag ended', event);
+      // // Update section column values based on which computed array they're in
+      // sections.value.forEach(section => {
+      //   if (todoSections.value.includes(section)) {
+      //     section.column = 'TODO';
+      //   } else if (wipSections.value.includes(section)) {
+      //     section.column = 'WIP';
+      //   } else if (doneSections.value.includes(section)) {
+      //     section.column = 'DONE';
+      //   }
+      // });
+      //
+      // persistTodoData();
+    };
+
+    // Find the ARCHIVE section index in the main sections array
+    const findArchiveSectionIndex = () => {
+      return sections.value.findIndex(section => section.name === 'ARCHIVE');
+    };
+
+    // Handle section added to DONE column
+    const onSectionAdded = (event) => {
+      console.log('Section added to DONE column', event);
+      
+      // Get the moved section from the event
+      const movedSection = event.item.__draggable_context.element;
+      console.log('Moved section:', movedSection.name);
+      
+      // Find the ARCHIVE section
+      const archiveSectionIndex = findArchiveSectionIndex();
+      
+      if (archiveSectionIndex !== -1) {
+        // Find the current position of the moved section in the main sections array
+        const currentIndex = sections.value.findIndex(s => s.name === movedSection.name);
+        
+        if (currentIndex !== -1) {
+          // Remove the section from its current position
+          const [removed] = sections.value.splice(currentIndex, 1);
+          
+          // Insert it right after the ARCHIVE section
+          sections.value.splice(archiveSectionIndex + 1, 0, removed);
+          
+          // Update its column property
+          removed.column = 'DONE';
+          
+          persistTodoData();
+        }
+      }
+    };
+    
     onMounted(async () => {
       await loadTodoData();
     });
@@ -260,7 +362,10 @@ export default {
       doneSections,
       loading,
       toggleTaskStatus,
-      onDragEnd
+      onDragEnd,
+      checkSectionMove,
+      onSectionDragEnd,
+      onSectionAdded
     };
   }
 }

@@ -117,7 +117,7 @@ export function parseTodoFile(fileContent) {
       }
 
       // Create or get the section with the determined column and LARGE style
-      currentSection = getOrCreateSection(sectionName, sectionColumn, sectionHeaderStyle);
+      currentSection = getOrCreateSection(sectionName, sectionColumn, sectionHeaderStyle, archivable);
       continue;
     }
     
