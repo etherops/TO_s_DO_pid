@@ -21,7 +21,6 @@
             ghost-class="ghost-section"
             :sort="false"
             :move="checkSectionMove"
-            @end="onSectionDragEnd"
           >
             <template #item="{ element: section }">
               <div 
@@ -81,7 +80,6 @@
             ghost-class="ghost-section"
             :sort="false"
             :move="checkSectionMove"
-            @end="onSectionDragEnd"
           >
             <template #item="{ element: section }">
               <div 
@@ -301,22 +299,6 @@ export default {
       return true;
     };
 
-    // Handle section drag end
-    const onSectionDragEnd = (event) => {
-      console.log('Section drag ended', event);
-      // // Update section column values based on which computed array they're in
-      // sections.value.forEach(section => {
-      //   if (todoSections.value.includes(section)) {
-      //     section.column = 'TODO';
-      //   } else if (wipSections.value.includes(section)) {
-      //     section.column = 'WIP';
-      //   } else if (doneSections.value.includes(section)) {
-      //     section.column = 'DONE';
-      //   }
-      // });
-      //
-      // persistTodoData();
-    };
 
     // Helper to find the ARCHIVE section index
     const getArchiveSectionIndex = () => {
@@ -367,7 +349,6 @@ export default {
       toggleTaskStatus,
       onDragEnd,
       checkSectionMove,
-      onSectionDragEnd,
       onSectionAdded
     };
   }
