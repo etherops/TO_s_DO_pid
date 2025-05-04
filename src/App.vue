@@ -21,6 +21,7 @@
             ghost-class="ghost-section"
             :sort="false"
             :move="checkSectionMove"
+            :disabled="true"
           >
             <template #item="{ element: section }">
               <div 
@@ -80,6 +81,8 @@
             ghost-class="ghost-section"
             :sort="false"
             :move="checkSectionMove"
+            @start="onSectionDragStart"
+            @end="onSectionDragEnd"
           >
             <template #item="{ element: section }">
               <div 
@@ -138,7 +141,11 @@
             class="section-list"
             ghost-class="ghost-section"
             :sort="false"
+            :animation="150"
+            drag-class="is-dragging"
             @add="onSectionAdded"
+            @dragover="onDoneColumnDragOver"
+            @dragleave="onDoneColumnDragLeave"
           >
             <template #item="{ element: section }">
               <div class="section">
@@ -305,6 +312,47 @@ export default {
       return sections.value.findIndex(section => section.name === 'ARCHIVE');
     };
 
+    // Track dragging state
+    const isDragging = ref(false);
+    const draggedSection = ref(null);
+    
+    // Start dragging a section
+    const onSectionDragStart = (event) => {
+      console.log('Section drag started', event);
+      isDragging.value = true;
+      draggedSection.value = event.item.__draggable_context.element;
+      
+      // If the dragged section is archivable, add a special class to the done column
+      if (draggedSection.value.archivable) {
+        document.querySelector('.done-column')?.classList.add('potential-target');
+      }
+    };
+    
+    // End dragging a section
+    const onSectionDragEnd = (event) => {
+      console.log('Section drag ended', event);
+      isDragging.value = false;
+      draggedSection.value = null;
+      
+      // Remove classes from the done column
+      document.querySelector('.done-column')?.classList.remove('potential-target', 'drag-target');
+    };
+    
+    // When dragging over the DONE column
+    const onDoneColumnDragOver = () => {
+      // Only highlight if we're dragging an archivable section
+      if (isDragging.value && draggedSection.value?.archivable) {
+        console.log('Dragging over DONE column', draggedSection.value.name);
+        document.querySelector('.done-column')?.classList.add('drag-target');
+      }
+    };
+    
+    // When leaving the DONE column during drag
+    const onDoneColumnDragLeave = () => {
+      console.log('Leaving DONE column');
+      document.querySelector('.done-column')?.classList.remove('drag-target');
+    };
+    
     // Handle section added to DONE column
     const onSectionAdded = (event) => {
       console.log('Section added to DONE column', event);
@@ -346,9 +394,15 @@ export default {
       wipSections,
       doneSections,
       loading,
+      isDragging,
+      draggedSection,
       toggleTaskStatus,
       onDragEnd,
       checkSectionMove,
+      onSectionDragStart,
+      onSectionDragEnd,
+      onDoneColumnDragOver,
+      onDoneColumnDragLeave,
       onSectionAdded
     };
   }
@@ -560,11 +614,58 @@ export default {
   border: 1px dashed #97d6ef;
 }
 
+.ghost-section {
+  opacity: 0.6;
+  background: #e0f7fa;
+  border: 2px dashed #26c6da;
+}
+
 .task-card {
   cursor: grab;
 }
 
 .task-card:active {
   cursor: grabbing;
+}
+
+/* Section dragging styles */
+.is-dragging {
+  opacity: 0.4;
+}
+
+.archivable-section {
+  cursor: grab;
+  border: 1px dashed #aaa;
+  position: relative;
+}
+
+.archivable-section:hover::before {
+  content: "Drag to Archive";
+  position: absolute;
+  top: -10px;
+  right: 5px;
+  font-size: 10px;
+  background: rgba(0,0,0,0.1);
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: #666;
+  opacity: 0.7;
+}
+
+/* DONE column highlight when dragging */
+.done-column.potential-target .column-content {
+  transition: all 0.3s ease;
+  border: 2px dashed transparent;
+}
+
+.done-column.drag-target .column-content {
+  background-color: rgba(76, 175, 80, 0.1);
+  border: 2px dashed #4caf50;
+  border-radius: 8px;
+}
+
+.done-column .section-list {
+  min-height: 100px;
+  transition: all 0.3s ease;
 }
 </style>
