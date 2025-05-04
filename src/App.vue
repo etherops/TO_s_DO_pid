@@ -29,7 +29,13 @@
                 :key="item.id" 
                 class="task-card"
               >
-                <span class="status todo">[ ]</span>
+                <div class="checkbox-wrapper">
+                  <div :class="['custom-checkbox', {
+                    'unchecked': item.statusChar === ' ',
+                    'in-progress': item.statusChar === '~',
+                    'checked': item.statusChar === 'x'
+                  }]"></div>
+                </div>
                 <span class="task-title">{{ item.text }}</span>
               </div>
               <div v-if="section.items.length === 0" class="empty-section">
@@ -60,7 +66,13 @@
                 :key="item.id" 
                 class="task-card"
               >
-                <span class="status in-progress">[~]</span>
+                <div class="checkbox-wrapper">
+                  <div :class="['custom-checkbox', {
+                    'unchecked': item.statusChar === ' ',
+                    'in-progress': item.statusChar === '~',
+                    'checked': item.statusChar === 'x'
+                  }]"></div>
+                </div>
                 <span class="task-title">{{ item.text }}</span>
               </div>
               <div v-if="section.items.length === 0" class="empty-section">
@@ -91,7 +103,13 @@
                 :key="item.id" 
                 class="task-card"
               >
-                <span class="status done">[x]</span>
+                <div class="checkbox-wrapper">
+                  <div :class="['custom-checkbox', {
+                    'unchecked': item.statusChar === ' ',
+                    'in-progress': item.statusChar === '~',
+                    'checked': item.statusChar === 'x'
+                  }]"></div>
+                </div>
                 <span class="task-title">{{ item.text }}</span>
               </div>
               <div v-if="section.items.length === 0" class="empty-section">
@@ -307,25 +325,66 @@ export default {
 }
 
 .task-title {
-  margin-left: 8px;
+  margin-left: 12px;
   flex: 1;
 }
 
-.status {
-  font-family: monospace;
-  font-size: 14px;
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
 }
 
-.status.todo {
-  color: #f44336;
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #aaa;
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.status.in-progress {
-  color: #ff9800;
+.custom-checkbox.unchecked {
+  background-color: white;
+  border-color: #f44336;
 }
 
-.status.done {
-  color: #4caf50;
+.custom-checkbox.in-progress {
+  background-color: #fff8e1;
+  border-color: #ff9800;
+  position: relative;
+}
+
+.custom-checkbox.in-progress:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  right: 3px;
+  height: 2px;
+  background-color: #ff9800;
+  transform: translateY(-50%);
+}
+
+.custom-checkbox.checked {
+  background-color: #e8f5e9;
+  border-color: #4caf50;
+  position: relative;
+}
+
+.custom-checkbox.checked:after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  width: 5px;
+  height: 10px;
+  border: solid #4caf50;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .empty-section {
