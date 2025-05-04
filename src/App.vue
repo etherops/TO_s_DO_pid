@@ -209,16 +209,34 @@ export default {
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
-      return sections.value.filter(section => section.column === 'TODO');
+      return sections.value.filter(section => section.column === 'TODO' && !section.hidden);
     });
     
     const wipSections = computed(() => {
-      return sections.value.filter(section => section.column === 'WIP');
+      return sections.value.filter(section => section.column === 'WIP' && !section.hidden);
     });
     
     const doneSections = computed(() => {
-      return sections.value.filter(section => section.column === 'DONE');
+      // Filter out any hidden sections (like ARCHIVE) for display
+      return sections.value.filter(section => section.column === 'DONE' && !section.hidden);
     });
+
+    // Load todo data from the server
+    const loadTodoData = async () => {
+      try {
+        loading.value = true;
+        const response = await axios.get(`${API_BASE_URL}/todos`);
+
+        // Parse the todo text into sections
+        sections.value = parseTodoFile(response.data.content);
+        console.log('Loaded sections:', sections.value);
+
+        loading.value = false;
+      } catch (error) {
+        console.error('Error loading todo file:', error);
+        loading.value = false;
+      }
+    };
 
     // Save todo data to the server
     const persistTodoData = async () => {
@@ -242,23 +260,7 @@ export default {
         return false;
       }
     };
-    
-    // Load todo data from the server
-    const loadTodoData = async () => {
-      try {
-        loading.value = true;
-        const response = await axios.get(`${API_BASE_URL}/todos`);
-        
-        // Parse the todo text into sections
-        sections.value = parseTodoFile(response.data.content);
-        console.log('Loaded sections:', sections.value);
-        
-        loading.value = false;
-      } catch (error) {
-        console.error('Error loading todo file:', error);
-        loading.value = false;
-      }
-    };
+
 
     // Function to toggle task status
     const toggleTaskStatus = (item) => {
@@ -316,8 +318,8 @@ export default {
       // persistTodoData();
     };
 
-    // Find the ARCHIVE section index in the main sections array
-    const findArchiveSectionIndex = () => {
+    // Helper to find the ARCHIVE section index
+    const getArchiveSectionIndex = () => {
       return sections.value.findIndex(section => section.name === 'ARCHIVE');
     };
 
@@ -327,28 +329,29 @@ export default {
       
       // Get the moved section from the event
       const movedSection = event.item.__draggable_context.element;
-      console.log('Moved section:', movedSection.name);
+      console.log('Moving section:', movedSection.name);
       
       // Find the ARCHIVE section
-      const archiveSectionIndex = findArchiveSectionIndex();
-      
-      if (archiveSectionIndex !== -1) {
-        // Find the current position of the moved section in the main sections array
-        const currentIndex = sections.value.findIndex(s => s.name === movedSection.name);
-        
-        if (currentIndex !== -1) {
-          // Remove the section from its current position
-          const [removed] = sections.value.splice(currentIndex, 1);
-          
-          // Insert it right after the ARCHIVE section
-          sections.value.splice(archiveSectionIndex + 1, 0, removed);
-          
-          // Update its column property
-          removed.column = 'DONE';
-          
-          persistTodoData();
-        }
+      const archiveSectionIndex = getArchiveSectionIndex();
+      if (archiveSectionIndex == -1) {
+        return false
       }
+
+      // Find the current position of the moved section in the main sections array
+      const currentIndex = sections.value.findIndex(s => s.name === movedSection.name);
+      if (currentIndex == -1) {
+        return false
+      }
+
+      // Remove the section from its current position
+      const [removed] = sections.value.splice(currentIndex, 1);
+      // Insert it right after the ARCHIVE section (at the same position, not +1)
+      sections.value.splice(archiveSectionIndex, 0, removed);
+
+      // Update its column property
+      removed.column = 'DONE';
+
+      persistTodoData();
     };
     
     onMounted(async () => {
