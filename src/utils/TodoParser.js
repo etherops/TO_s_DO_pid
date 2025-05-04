@@ -99,6 +99,9 @@ export function parseTodoFile(fileContent) {
       } else if (sectionName === 'ARCHIVE') {
         sectionColumn = 'DONE';
         foundArchiveSection = true;
+      } else if (sectionName.toUpperCase().startsWith('CURRENT')) {
+        // Sections that start with "CURRENT" (case insensitive) go to WIP column
+        sectionColumn = 'WIP';
       } else if (foundWipSection && !foundArchiveSection) {
         // After WIP but before ARCHIVE
         sectionColumn = 'TODO';
