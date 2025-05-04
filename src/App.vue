@@ -70,7 +70,7 @@ import { ref, onMounted, reactive } from 'vue';
 import axios from 'axios';
 import KanbanBoard from './components/KanbanBoard.vue';
 import ArchiveView from './components/ArchiveView.vue';
-import { parseTodoFile, updateItemStatus, addNewItem, reorderItems } from './utils/TodoParser';
+import { parseTodoFile } from './utils/TodoParser';
 
 // Base URL for the API
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -174,28 +174,6 @@ export default {
                          doneItems.value;
       
       targetList.push(item);
-      
-      // Update the file content and persist in the background
-      // This will handle both status and category changes
-      const updatedContent = updateItemStatus(todoText.value, item, statusChar);
-      saveTodoData(updatedContent);
-    };
-    
-    // Handle adding a new item
-    const handleAddItem = async (text, status, category) => {
-      let statusChar = ' ';
-      
-      if (status === 'wip') {
-        statusChar = '~';
-      } else if (status === 'done') {
-        statusChar = 'x';
-      }
-      
-      // Add the new item to the file content
-      const updatedContent = addNewItem(todoText.value, text, statusChar, category);
-      
-      // Save the updated content
-      await saveTodoData(updatedContent);
     };
     
     // Handle reordering items within a column
@@ -228,41 +206,6 @@ export default {
           originalCategory: item.originalCategory
         });
       });
-      
-      // Don't need to update local state - Vue draggable already did that
-      // Just persist the changes to the server
-      
-      try {
-        // Create a new function for reordering in TodoParser
-        const updatedContent = reorderItems(todoText.value, items, category, status);
-        
-        console.log('Content updated for reordering, saving to server...');
-        
-        // Save the updated content without reloading
-        saveTodoData(updatedContent);
-        
-        console.log('Reordering saved successfully');
-      } catch (error) {
-        console.error('Error reordering items:', error);
-      }
-    };
-    
-    // Add a new category
-    const addCategory = async () => {
-      if (!newCategoryName.value) return;
-      
-      try {
-        await axios.post(`${API_BASE_URL}/todos/add-category`, { 
-          name: newCategoryName.value 
-        });
-        
-        // Reset modal state and reload data
-        showAddCategoryModal.value = false;
-        newCategoryName.value = '';
-        await loadTodoData();
-      } catch (error) {
-        console.error('Error adding new category:', error);
-      }
     };
 
     onMounted(() => {
@@ -280,9 +223,7 @@ export default {
       showAddCategoryModal,
       newCategoryName,
       handleMoveItem,
-      handleAddItem,
       handleReorderItems,
-      addCategory
     };
   }
 }
