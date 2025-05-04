@@ -14,7 +14,6 @@ export function parseTodoFile(fileContent) {
       inProgress: [],
       done: [],
       archive: [],
-      notes: '',
       categories: [],
       raw: ''
     };
@@ -28,7 +27,6 @@ export function parseTodoFile(fileContent) {
     inProgress: [],
     done: [],
     archive: [],
-    notes: '',
     categories: new Set(),
     raw: fileContent
   };
@@ -36,8 +34,6 @@ export function parseTodoFile(fileContent) {
   let currentSection = '';
   let currentCategory = '';
   let inArchive = false;
-  let inNotes = false;
-  let notesContent = [];
   let itemId = 1;
 
   for (let i = 0; i < lines.length; i++) {
@@ -47,37 +43,9 @@ export function parseTodoFile(fileContent) {
     // Check if we're in the archive section
     if (trimmedLine.includes('ARCHIVE')) {
       inArchive = true;
-      inNotes = false;
       continue;
     }
-    
-    // Check if we're in the notes section
-    if (trimmedLine.match(/#+\s*NOTES\s*#+/) || (trimmedLine.startsWith('#') && trimmedLine.includes('NOTES'))) {
-      inNotes = true;
-      inArchive = false;
-      
-      // Collect all lines until we hit another section or the archive
-      let j = i + 1;
-      while (j < lines.length) {
-        const nextLine = lines[j].trim();
-        
-        // Stop if we've reached the archive or another section header
-        // More flexible pattern matching for headers
-        if ((nextLine.startsWith('#') && !nextLine.match(/^#+$/)) || nextLine.includes('ARCHIVE')) {
-          break;
-        }
-        
-        if (nextLine !== '') {
-          notesContent.push(lines[j]);
-        }
-        
-        j++;
-      }
-      
-      // Skip the lines we've already processed
-      i = j - 1;
-      continue;
-    }
+
     
     // Skip section dividers and empty lines
     if (trimmedLine.match(/^#+$/) || trimmedLine === '') {
@@ -139,9 +107,6 @@ export function parseTodoFile(fileContent) {
       }
     }
   }
-  
-  // Join notes content
-  result.notes = notesContent.join('\n');
   
   // Convert categories to array
   result.categories = Array.from(result.categories);
@@ -262,11 +227,11 @@ export function addNewItem(fileContent, text, statusChar, category) {
     // Insert the new item after the category header (and decoration if present)
     lines.splice(insertIndex, 0, newItem);
   } else {
-    // If category doesn't exist, add it before the notes section
-    const notesIndex = lines.findIndex(line => 
-      line.match(/#+\s*NOTES\s*#+/) || (line.startsWith('#') && line.includes('NOTES')));
-    
-    if (notesIndex !== -1) {
+    // If category doesn't exist, add it before the archive section
+    const archiveIndex = lines.findIndex(line =>
+      line.match(/#+\s*ARCHIVE\s*#+/) || (line.startsWith('#') && line.includes('ARCHIVE')));
+
+    if (archiveIndex !== -1) {
       const newCategory = [
         '',
         `#########`,
@@ -274,10 +239,10 @@ export function addNewItem(fileContent, text, statusChar, category) {
         `#########`,
         newItem
       ];
-      
-      lines.splice(notesIndex, 0, ...newCategory);
+
+      lines.splice(archiveIndex, 0, ...newCategory);
     } else {
-      // If no notes section, add to the end
+      // If no archive section, add to the end
       lines.push(
         '',
         `#########`,
@@ -287,7 +252,7 @@ export function addNewItem(fileContent, text, statusChar, category) {
       );
     }
   }
-  
+
   return lines.join('\n');
 }
 

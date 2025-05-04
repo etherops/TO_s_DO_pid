@@ -4,7 +4,7 @@ A stupidly simple Kanban board application built with Vue 3 that uses a plain te
 
 ## Features
 
-- Shows todo items in a Kanban board with 4 columns: TODO, WIP, DONE, and NOTES
+- Shows todo items in a Kanban board with 3 columns: TODO, WIP, and DONE
 - Separate Archive view for completed items
 - Parses items with different statuses:
   - `[ ]` for todo items

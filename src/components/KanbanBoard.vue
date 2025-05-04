@@ -86,14 +86,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Notes Column -->
-    <div class="kanban-column notes-column">
-      <div class="column-header">NOTES</div>
-      <div class="column-content">
-        <div class="notes-container">{{ notesContent }}</div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -118,10 +110,6 @@ export default {
     doneItems: {
       type: Array,
       required: true
-    },
-    notesContent: {
-      type: String,
-      default: ''
     },
     categories: {
       type: Array,

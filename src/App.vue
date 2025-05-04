@@ -35,7 +35,6 @@
       :todoItems="todos"
       :inProgressItems="inProgress" 
       :doneItems="doneItems"
-      :notesContent="notes"
       :categories="categories"
       @move-item="handleMoveItem"
       @add-item="handleAddItem"
@@ -88,7 +87,6 @@ export default {
     const inProgress = ref([]);
     const doneItems = ref([]);
     const archiveItems = ref([]);
-    const notes = ref('');
     const categories = ref([]);
     const activeTab = ref('kanban');
     const loading = ref(true);
@@ -110,7 +108,6 @@ export default {
         inProgress.value = parsedData.inProgress;
         doneItems.value = parsedData.done;
         archiveItems.value = parsedData.archive;
-        notes.value = parsedData.notes;
         categories.value = parsedData.categories;
         
         loading.value = false;
@@ -277,7 +274,6 @@ export default {
       inProgress,
       doneItems,
       archiveItems,
-      notes,
       categories,
       activeTab,
       loading,
