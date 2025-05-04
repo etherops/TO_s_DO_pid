@@ -30,11 +30,14 @@
                 class="task-card"
               >
                 <div class="checkbox-wrapper">
-                  <div :class="['custom-checkbox', {
-                    'unchecked': item.statusChar === ' ',
-                    'in-progress': item.statusChar === '~',
-                    'checked': item.statusChar === 'x'
-                  }]"></div>
+                  <div 
+                    :class="['custom-checkbox', {
+                      'unchecked': item.statusChar === ' ',
+                      'in-progress': item.statusChar === '~',
+                      'checked': item.statusChar === 'x'
+                    }]"
+                    @click="toggleTaskStatus(item)"
+                  ></div>
                 </div>
                 <span class="task-title">{{ item.text }}</span>
               </div>
@@ -67,11 +70,14 @@
                 class="task-card"
               >
                 <div class="checkbox-wrapper">
-                  <div :class="['custom-checkbox', {
-                    'unchecked': item.statusChar === ' ',
-                    'in-progress': item.statusChar === '~',
-                    'checked': item.statusChar === 'x'
-                  }]"></div>
+                  <div 
+                    :class="['custom-checkbox', {
+                      'unchecked': item.statusChar === ' ',
+                      'in-progress': item.statusChar === '~',
+                      'checked': item.statusChar === 'x'
+                    }]"
+                    @click="toggleTaskStatus(item)"
+                  ></div>
                 </div>
                 <span class="task-title">{{ item.text }}</span>
               </div>
@@ -104,11 +110,14 @@
                 class="task-card"
               >
                 <div class="checkbox-wrapper">
-                  <div :class="['custom-checkbox', {
-                    'unchecked': item.statusChar === ' ',
-                    'in-progress': item.statusChar === '~',
-                    'checked': item.statusChar === 'x'
-                  }]"></div>
+                  <div 
+                    :class="['custom-checkbox', {
+                      'unchecked': item.statusChar === ' ',
+                      'in-progress': item.statusChar === '~',
+                      'checked': item.statusChar === 'x'
+                    }]"
+                    @click="toggleTaskStatus(item)"
+                  ></div>
                 </div>
                 <span class="task-title">{{ item.text }}</span>
               </div>
@@ -190,17 +199,32 @@ export default {
       }
     };
 
-    onMounted(async () => {
-      await loadTodoData();
+    // Function to toggle task status
+    const toggleTaskStatus = (item) => {
+      // Cycle through the states: ' ' (unchecked) -> '~' (in-progress) -> 'x' (done) -> ' ' (unchecked)
+      if (item.statusChar === ' ') {
+        item.statusChar = '~';
+      } else if (item.statusChar === '~') {
+        item.statusChar = 'x';
+      } else {
+        item.statusChar = ' ';
+      }
+    
+      // Persist changes to file
       persistTodoData();
+    };
+    
+    onMounted(() => {
+      loadTodoData();
     });
-
+    
     return {
       sections,
       todoSections,
       wipSections,
       doneSections,
-      loading
+      loading,
+      toggleTaskStatus
     };
   }
 }
@@ -345,6 +369,12 @@ export default {
   position: relative;
   cursor: pointer;
   transition: all 0.2s;
+  user-select: none;
+}
+
+.custom-checkbox:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
 }
 
 .custom-checkbox.unchecked {
