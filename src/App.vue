@@ -108,7 +108,7 @@
 <script>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
-import { parseTodoFile } from './utils/TodoParser';
+import { parseTodoFile, renderTodoFile } from './utils/TodoParser';
 
 // Base URL for the API
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -132,6 +132,29 @@ export default {
       return sections.value.filter(section => section.column === 'DONE');
     });
 
+    // Save todo data to the server
+    const persistTodoData = async () => {
+      try {
+        console.log('Persisting todo data to server...');
+        
+        // Render the sections into text content
+        const content = renderTodoFile(sections.value);
+        
+        if (!content) {
+          console.error('No content generated for saving');
+          return false;
+        }
+        
+        // Send the content to the server
+        const response = await axios.post(`${API_BASE_URL}/todos`, { content });
+        console.log('Todo data saved successfully', response.data);
+        return true;
+      } catch (error) {
+        console.error('Error saving todo data:', error);
+        return false;
+      }
+    };
+    
     // Load todo data from the server
     const loadTodoData = async () => {
       try {
@@ -149,8 +172,9 @@ export default {
       }
     };
 
-    onMounted(() => {
-      loadTodoData();
+    onMounted(async () => {
+      await loadTodoData();
+      persistTodoData();
     });
 
     return {

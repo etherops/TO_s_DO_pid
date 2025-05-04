@@ -133,7 +133,6 @@ export function parseTodoFile(fileContent) {
           id: itemId++,
           statusChar,
           text: todoText,
-          originalText: line,
           lineIndex: i
         };
         
@@ -155,4 +154,52 @@ export function parseTodoFile(fileContent) {
   }
   
   return sections;
+}
+
+/**
+ * Renders sections and items back into todo file format
+ * @param {Array} sections - Array of section objects with items
+ * @returns {string} The formatted text content of the todo file
+ */
+export function renderTodoFile(sections) {
+  console.log('==== RENDERING TODO FILE ====');
+  console.log('Sections count:', sections.length);
+  
+  if (!sections || !sections.length) {
+    console.error('No sections provided to render');
+    return '';
+  }
+  
+  let outputContent = '';
+  
+  // Render each section in the original array order
+  sections.forEach((section, index) => {
+    // Add a space between sections
+    if (index > 0) {
+      outputContent += '\n';
+    }
+    
+    // Render section header based on style
+    if (section.headerStyle === 'LARGE') {
+      // Create a divider line of # characters matching the section name length
+      const dividerLine = '#'.repeat(section.name.length + 4); // +4 to account for "# " on each side
+      
+      outputContent += `${dividerLine}\n`;
+      outputContent += `# ${section.name} #\n`;
+      outputContent += `${dividerLine}\n`;
+    } else {
+      // Small header style
+      outputContent += `### ${section.name}\n`;
+    }
+    
+    // Render items in this section
+    if (section.items && section.items.length > 0) {
+      section.items.forEach(item => {
+        outputContent += `* [${item.statusChar}] ${item.text}\n`;
+      });
+    }
+  });
+  
+  console.log('Generated content length:', outputContent.length);
+  return outputContent;
 }
