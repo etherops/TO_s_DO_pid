@@ -21,20 +21,19 @@ export function parseTodoFile(fileContent) {
   // Map to track sections by name
   const sectionsMap = new Map();
   
-  // Default sections
-  const createSection = (name, isArchive = false) => {
+  // Create a section with the given name
+  const createSection = (name) => {
     return {
       name,
-      isArchive,
       items: [], // All items in this section
       categories: [] // Categories in this section
     };
   };
   
   // Helper to get or create a section
-  const getOrCreateSection = (name, isArchive = false) => {
+  const getOrCreateSection = (name) => {
     if (!sectionsMap.has(name)) {
-      const newSection = createSection(name, isArchive);
+      const newSection = createSection(name);
       sectionsMap.set(name, newSection);
       sections.push(newSection);
     }
@@ -54,44 +53,30 @@ export function parseTodoFile(fileContent) {
     return category;
   };
   
-  // Create default sections for organization
-  const mainSection = getOrCreateSection('Main');
-  const archiveSection = getOrCreateSection('Archive', true);
-  
-  let currentSection = mainSection;
+  let currentSection = null;
   let currentCategory = '';
-  let inArchive = false;
   let itemId = 1;
+  
+  // Create a default unnamed section for items before any section header
+  const defaultSection = getOrCreateSection('Uncategorized');
+  currentSection = defaultSection;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmedLine = line.trim();
-    
-    // Check if we're in the archive section
-    if (trimmedLine.includes('ARCHIVE')) {
-      inArchive = true;
-      currentSection = archiveSection;
-      continue;
-    }
     
     // Skip section dividers and empty lines
     if (trimmedLine.match(/^#+$/) || trimmedLine === '') {
       continue;
     }
     
-    // Parse category headers - more flexible to handle variations like "### CURRENT DAY (Thursday)"
+    // Parse section headers (lines with # at the beginning)
     if (trimmedLine.startsWith('#')) {
       // Extract the section name from the header, handling formats with parentheses
       let sectionName = trimmedLine.replace(/#/g, '').trim();
       
-      // If we're in archive, create sections for archive months/weeks
-      if (inArchive) {
-        currentSection = getOrCreateSection(sectionName, true);
-      } else {
-        // If not in archive, just update the current section
-        currentSection = getOrCreateSection(sectionName);
-      }
-      
+      // Create or get the section
+      currentSection = getOrCreateSection(sectionName);
       continue;
     }
     
@@ -127,6 +112,14 @@ export function parseTodoFile(fileContent) {
         const category = getOrCreateCategory(currentSection, categoryName);
         category.items.push(todoItem);
       }
+    }
+  }
+  
+  // If the default section has no items, remove it from the result
+  if (defaultSection.items.length === 0) {
+    const index = sections.indexOf(defaultSection);
+    if (index > -1) {
+      sections.splice(index, 1);
     }
   }
   
