@@ -746,7 +746,7 @@ export default {
 
 .custom-checkbox.unchecked {
   background-color: white;
-  border-color: #f44336;
+  border-color: #aaaaaa;
 }
 
 .custom-checkbox.in-progress {
