@@ -1,7 +1,7 @@
 <template>
   <div class="todo-app">
     <div class="app-header">
-      <h1>Simple Todo Kanban</h1>
+      <h1>TO_s_DO_pid</h1>
     </div>
     
     <div v-if="loading" class="loading">
