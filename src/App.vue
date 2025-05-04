@@ -62,7 +62,7 @@
                             @click="toggleTaskStatus(item)"
                           ></div>
                         </div>
-                        <span class="task-title">{{ item.text }}</span>
+                        <span class="task-title" :title="item.text">{{ item.text }}</span>
                       </div>
                     </template>
                   </draggable>
@@ -123,7 +123,7 @@
                             @click="toggleTaskStatus(item)"
                           ></div>
                         </div>
-                        <span class="task-title">{{ item.text }}</span>
+                        <span class="task-title" :title="item.text">{{ item.text }}</span>
                       </div>
                     </template>
                   </draggable>
@@ -184,7 +184,7 @@
                             @click="toggleTaskStatus(item)"
                           ></div>
                         </div>
-                        <span class="task-title">{{ item.text }}</span>
+                        <span class="task-title" :title="item.text">{{ item.text }}</span>
                       </div>
                     </template>
                   </draggable>
