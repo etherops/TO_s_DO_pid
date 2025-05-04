@@ -104,7 +104,8 @@ export function parseTodoFile(fileContent) {
         sectionColumn = 'DONE';
         foundArchiveSection = true;
         hidden = true
-      } else if (sectionName.toUpperCase().startsWith('CURRENT')) {
+      } else if (foundWipSection && !foundArchiveSection && sectionHeaderStyle == 'SMALL') {
+      // } else if (sectionName.toUpperCase().startsWith('CURRENT')) {
         // Sections that start with "CURRENT" (case insensitive) go to WIP column
         sectionColumn = 'WIP';
         archivable = true
