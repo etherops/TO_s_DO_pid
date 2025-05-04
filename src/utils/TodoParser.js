@@ -21,13 +21,13 @@ export function parseTodoFile(fileContent) {
   // Map to track sections by name
   const sectionsMap = new Map();
   
-  // Create a section with the given name and column
-  const createSection = (name, column) => {
+  // Create a section with the given name, column, and style
+  const createSection = (name, column, headerStyle) => {
     return {
       name,
       column, // Which column this section belongs to (TODO, WIP, DONE)
-      items: [], // All items directly in the section (not in categories)
-      categories: [] // Categories within this section
+      headerStyle, // Style of the section header: "LARGE" or "SMALL"
+      items: [] // All items in the section
     };
   };
   
@@ -36,32 +36,18 @@ export function parseTodoFile(fileContent) {
   let foundArchiveSection = false;
 
   // Helper to get or create a section
-  const getOrCreateSection = (name, column) => {
+  const getOrCreateSection = (name, column, headerStyle) => {
     if (!sectionsMap.has(name)) {
-      const newSection = createSection(name, column);
+      const newSection = createSection(name, column, headerStyle);
       sectionsMap.set(name, newSection);
       sections.push(newSection);
     }
     return sectionsMap.get(name);
   };
   
-  // Helper to get or create a category within a section
-  const getOrCreateCategory = (section, categoryName) => {
-    let category = section.categories.find(cat => cat.name === categoryName);
-    if (!category) {
-      category = {
-        name: categoryName,
-        items: []
-      };
-      section.categories.push(category);
-    }
-    return category;
-  };
-  
-  // Create a default uncategorized section with TODO column
-  const defaultSection = getOrCreateSection('Uncategorized', 'TODO');
+  // Create a default uncategorized section with TODO column and SMALL style
+  const defaultSection = getOrCreateSection('Uncategorized', 'TODO', 'SMALL');
   let currentSection = defaultSection;
-  let currentCategory = null;
   let itemId = 1;
   
   // Check if line is a section divider (a line of #)
@@ -79,52 +65,53 @@ export function parseTodoFile(fileContent) {
     }
     
     // Process section headers (format: ### surrounded by divider lines)
-    if (isSectionDivider(line)) {
-      // Check if next line is a section title (starts with # and has text)
-      if (i + 1 < lines.length) {
+    if (line.startsWith('#')) {
+      let sectionName
+      let sectionHeaderStyle
+      if (isSectionDivider(line)) {
+        // Section with LARGE header
+        if (i + 1 >= lines.length) {
+          continue;
+        }
         const nextLine = lines[i + 1].trim();
         if (nextLine.startsWith('# ') && nextLine.length > 2) {
           // Check if line after title is a divider too
           if (i + 2 < lines.length && isSectionDivider(lines[i + 2])) {
             // Extract section name, removing the "# " prefix and any trailing "#"
-            let sectionName = nextLine.substring(2).trim(); // Remove "# " prefix
+            sectionName = nextLine.substring(2).trim(); // Remove "# " prefix
             // Remove any trailing "#" characters and trim
             sectionName = sectionName.replace(/#*$/, '').trim();
-
-            // Determine which column this section belongs to
-            let sectionColumn = 'TODO'; // Default column
-
-            if (sectionName === 'WIP') {
-              sectionColumn = 'WIP';
-              foundWipSection = true;
-            } else if (sectionName === 'ARCHIVE') {
-              sectionColumn = 'DONE';
-              foundArchiveSection = true;
-            } else if (foundWipSection && !foundArchiveSection) {
-              // After WIP but before ARCHIVE
-              sectionColumn = 'TODO';
-            } else if (foundArchiveSection) {
-              // After ARCHIVE
-              sectionColumn = 'DONE';
-            } else {
-              // Before WIP
-              sectionColumn = 'TODO';
-            }
-
-            // Create or get the section with the determined column
-            currentSection = getOrCreateSection(sectionName, sectionColumn);
-            currentCategory = null; // Reset category when entering a new section
-            i += 2; // Skip the section title and the closing divider
-            continue;
+            sectionHeaderStyle = 'LARGE'
           }
         }
+        i += 2; // Skip the section title and the closing divider
+      } else {
+        // Section with SMALL header
+        sectionName = line.substring(3).trim();
+        sectionHeaderStyle = 'SMALL'
       }
-    }
-    
-    // Process category headers (format: ### Category Name)
-    if (line.startsWith('###')) {
-      const categoryName = line.substring(3).trim();
-      currentCategory = getOrCreateCategory(currentSection, categoryName);
+      // Determine which column this section belongs to
+      let sectionColumn = 'TODO'; // Default column
+
+      if (sectionName === 'WIP') {
+        sectionColumn = 'WIP';
+        foundWipSection = true;
+      } else if (sectionName === 'ARCHIVE') {
+        sectionColumn = 'DONE';
+        foundArchiveSection = true;
+      } else if (foundWipSection && !foundArchiveSection) {
+        // After WIP but before ARCHIVE
+        sectionColumn = 'TODO';
+      } else if (foundArchiveSection) {
+        // After ARCHIVE
+        sectionColumn = 'DONE';
+      } else {
+        // Before WIP
+        sectionColumn = 'TODO';
+      }
+
+      // Create or get the section with the determined column and LARGE style
+      currentSection = getOrCreateSection(sectionName, sectionColumn, sectionHeaderStyle);
       continue;
     }
     
@@ -150,19 +137,17 @@ export function parseTodoFile(fileContent) {
           lineIndex: i
         };
         
-        // Add to the section's items if no category is active
-        if (!currentCategory) {
-          currentSection.items.push(todoItem);
-        } else {
-          // Add to the current category
-          currentCategory.items.push(todoItem);
-        }
+        // Store section name with the item
+        todoItem.section = currentSection.name;
+        
+        // Add item to the current section
+        currentSection.items.push(todoItem);
       }
     }
   }
   
-  // If the default section has no items and no categories, remove it
-  if (defaultSection.items.length === 0 && defaultSection.categories.length === 0) {
+  // If the default section has no items, remove it
+  if (defaultSection.items.length === 0) {
     const index = sections.indexOf(defaultSection);
     if (index > -1) {
       sections.splice(index, 1);
