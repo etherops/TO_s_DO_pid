@@ -242,8 +242,15 @@ export default {
         availableFiles.value = response.data.files;
         console.log('Available files:', availableFiles.value);
         
-        // Set the selected file if none selected yet
-        if (!selectedFile.value && availableFiles.value.length > 0) {
+        // Check for saved file in localStorage
+        const savedFile = localStorage.getItem('selectedTodoFile');
+        
+        // Set the selected file - first try localStorage, then first file in list
+        if (savedFile && availableFiles.value.some(file => file.name === savedFile)) {
+          // If we have a saved file and it still exists in the file list
+          selectedFile.value = savedFile;
+        } else if (!selectedFile.value && availableFiles.value.length > 0) {
+          // Otherwise default to first file
           selectedFile.value = availableFiles.value[0].name;
         }
       } catch (error) {
@@ -300,6 +307,8 @@ export default {
     // Handle file selection change
     const handleFileChange = async () => {
       console.log('File changed to:', selectedFile.value);
+      // Save selected file to localStorage
+      localStorage.setItem('selectedTodoFile', selectedFile.value);
       await loadTodoData();
     };
 
