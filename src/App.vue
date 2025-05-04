@@ -51,9 +51,14 @@
                   <template v-else>
                     {{ section.name }}
                     <span v-if="section.archivable" class="archive-badge">Archivable</span>
-                    <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
-                      <span class="edit-icon">✎</span>
-                    </button>
+                    <div class="section-header-actions">
+                      <button class="add-task-btn" @click="createNewTask(section)">
+                        <span class="add-icon">+</span> Add Task
+                      </button>
+                      <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
+                        <span class="edit-icon">✎</span>
+                      </button>
+                    </div>
                   </template>
                 </div>
                 <div class="section-items">
@@ -148,9 +153,14 @@
                   <template v-else>
                     {{ section.name }}
                     <span v-if="section.archivable" class="archive-badge">Archivable</span>
-                    <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
-                      <span class="edit-icon">✎</span>
-                    </button>
+                    <div class="section-header-actions">
+                      <button class="add-task-btn" @click="createNewTask(section)">
+                        <span class="add-icon">+</span> Add Task
+                      </button>
+                      <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
+                        <span class="edit-icon">✎</span>
+                      </button>
+                    </div>
                   </template>
                 </div>
                 <div class="section-items">
@@ -245,9 +255,14 @@
                   <template v-else>
                     {{ section.name }}
                     <span v-if="section.archivable" class="archive-badge archived">Archived</span>
-                    <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
-                      <span class="edit-icon">✎</span>
-                    </button>
+                    <div class="section-header-actions">
+                      <button class="add-task-btn" @click="createNewTask(section)">
+                        <span class="add-icon">+</span> Add Task
+                      </button>
+                      <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
+                        <span class="edit-icon">✎</span>
+                      </button>
+                    </div>
                   </template>
                 </div>
                 <div class="section-items">
@@ -273,13 +288,19 @@
                           ></div>
                         </div>
                         <template v-if="editableTaskId === item.id">
-                          <input 
-                            type="text" 
-                            class="task-text-edit" 
-                            v-model="editTaskText" 
-                            @blur="saveEditedTask"
-                            @keydown="handleTaskEditKeydown"
-                          />
+                          <div class="task-edit-container">
+                            <input 
+                              type="text" 
+                              class="task-text-edit" 
+                              v-model="editTaskText" 
+                              @blur="saveEditedTask"
+                              @keydown="handleTaskEditKeydown"
+                              placeholder="Enter task text..."
+                            />
+                            <button class="cancel-task-btn" @click="cancelEditTask">
+                              <span class="cancel-icon">×</span>
+                            </button>
+                          </div>
                         </template>
                         <template v-else>
                           <span 
@@ -337,6 +358,7 @@ export default {
     const editSectionName = ref('');
     const editableTaskId = ref(null);
     const editTaskText = ref('');
+    const nextTaskId = ref(1);
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -419,6 +441,36 @@ export default {
         console.error('Error saving todo data:', error);
         return false;
       }
+    };
+    
+    // Create a new task in the specified section
+    const createNewTask = (section) => {
+      // Calculate the next available task ID
+      let maxId = 0;
+      sections.value.forEach(section => {
+        section.items.forEach(item => {
+          if (item.id > maxId) {
+            maxId = item.id;
+          }
+        });
+      });
+      
+      // Create a new task with default values
+      const newTask = {
+        id: maxId + 1,
+        statusChar: ' ', // Default to unchecked
+        text: '', // Empty text to be filled by user
+        lineIndex: -1, // This will be assigned when saving
+        isNew: true // Flag to track newly created tasks
+      };
+      
+      // Add the task to the section
+      section.items.push(newTask);
+      
+      // Open the task for editing immediately
+      nextTick(() => {
+        startEditingTask(newTask);
+      });
     };
 
     // Handle file selection change
@@ -618,6 +670,7 @@ export default {
     
     // Save the edited task text
     const saveEditedTask = async () => {
+      // If no task ID or empty text, cancel editing (which will remove new tasks)
       if (editableTaskId.value === null || !editTaskText.value.trim()) {
         cancelEditTask();
         return;
@@ -630,14 +683,19 @@ export default {
       for (const section of sections.value) {
         const taskIndex = section.items.findIndex(item => item.id === editableTaskId.value);
         if (taskIndex !== -1) {
+          // Remove the isNew flag if it exists
+          if (section.items[taskIndex].isNew) {
+            delete section.items[taskIndex].isNew;
+          }
+          
           // Update the task text
           if (editTaskText.value.trim() !== section.items[taskIndex].text) {
             section.items[taskIndex].text = editTaskText.value.trim();
             taskFound = true;
-            
-            // Persist the change
-            await persistTodoData();
           }
+          
+          // Persist the change
+          await persistTodoData();
           break;
         }
       }
@@ -649,6 +707,22 @@ export default {
     
     // Cancel editing task without saving
     const cancelEditTask = () => {
+      // Find the task being edited
+      if (editableTaskId.value !== null) {
+        // Look through all sections to find the task
+        for (const section of sections.value) {
+          const taskIndex = section.items.findIndex(item => item.id === editableTaskId.value);
+          if (taskIndex !== -1) {
+            // If this is a new task being canceled, remove it
+            if (section.items[taskIndex].isNew || section.items[taskIndex].text === '') {
+              section.items.splice(taskIndex, 1);
+            }
+            break;
+          }
+        }
+      }
+      
+      // Reset edit state
       editableTaskId.value = null;
       editTaskText.value = '';
     };
@@ -701,7 +775,8 @@ export default {
       startEditingTask,
       saveEditedTask,
       cancelEditTask,
-      handleTaskEditKeydown
+      handleTaskEditKeydown,
+      createNewTask
     };
   }
 }
@@ -815,6 +890,7 @@ export default {
   font-weight: bold;
   border-bottom: 1px solid #ddd;
   margin-bottom: 8px;
+  position: relative;
 }
 
 .section-header.large {
@@ -1035,16 +1111,48 @@ export default {
 }
 
 /* Task editing styles */
+.task-edit-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin-left: 8px;
+}
+
 .task-text-edit {
-  width: calc(100% - 10px);
+  width: calc(100% - 30px);
   padding: 5px;
   font-size: inherit;
   border: 1px solid #4caf50;
   border-radius: 3px;
   background-color: white;
   outline: none;
-  margin-left: 8px;
   flex: 1;
+}
+
+.cancel-task-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e53935;
+  font-size: 20px;
+  margin-left: 5px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 26px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.cancel-task-btn:hover {
+  background-color: #ffebee;
+  transform: scale(1.1);
+}
+
+.cancel-icon {
+  font-weight: bold;
 }
 
 .edit-task-btn {
@@ -1072,5 +1180,40 @@ export default {
   opacity: 1;
   color: #4caf50;
   transform: translateY(-50%) scale(1.1);
+}
+
+/* Add Task button styles */
+.section-header-actions {
+  display: flex;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.add-task-btn {
+  background-color: #f1f8e9;
+  border: 1px solid #c5e1a5;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: #558b2f;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+  margin-right: 5px;
+}
+
+.add-task-btn:hover {
+  background-color: #dcedc8;
+  border-color: #8bc34a;
+  transform: scale(1.05);
+}
+
+.add-icon {
+  font-size: 14px;
+  margin-right: 5px;
+  font-weight: bold;
 }
 </style>
