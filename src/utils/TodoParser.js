@@ -21,19 +21,24 @@ export function parseTodoFile(fileContent) {
   // Map to track sections by name
   const sectionsMap = new Map();
   
-  // Create a section with the given name
-  const createSection = (name) => {
+  // Create a section with the given name and column
+  const createSection = (name, column) => {
     return {
       name,
+      column, // Which column this section belongs to (TODO, WIP, DONE)
       items: [], // All items directly in the section (not in categories)
       categories: [] // Categories within this section
     };
   };
   
+  // Track column state
+  let foundWipSection = false;
+  let foundArchiveSection = false;
+
   // Helper to get or create a section
-  const getOrCreateSection = (name) => {
+  const getOrCreateSection = (name, column) => {
     if (!sectionsMap.has(name)) {
-      const newSection = createSection(name);
+      const newSection = createSection(name, column);
       sectionsMap.set(name, newSection);
       sections.push(newSection);
     }
@@ -53,8 +58,8 @@ export function parseTodoFile(fileContent) {
     return category;
   };
   
-  // Create a default uncategorized section
-  const defaultSection = getOrCreateSection('Uncategorized');
+  // Create a default uncategorized section with TODO column
+  const defaultSection = getOrCreateSection('Uncategorized', 'TODO');
   let currentSection = defaultSection;
   let currentCategory = null;
   let itemId = 1;
@@ -85,7 +90,29 @@ export function parseTodoFile(fileContent) {
             let sectionName = nextLine.substring(2).trim(); // Remove "# " prefix
             // Remove any trailing "#" characters and trim
             sectionName = sectionName.replace(/#*$/, '').trim();
-            currentSection = getOrCreateSection(sectionName);
+
+            // Determine which column this section belongs to
+            let sectionColumn = 'TODO'; // Default column
+
+            if (sectionName === 'WIP') {
+              sectionColumn = 'WIP';
+              foundWipSection = true;
+            } else if (sectionName === 'ARCHIVE') {
+              sectionColumn = 'DONE';
+              foundArchiveSection = true;
+            } else if (foundWipSection && !foundArchiveSection) {
+              // After WIP but before ARCHIVE
+              sectionColumn = 'TODO';
+            } else if (foundArchiveSection) {
+              // After ARCHIVE
+              sectionColumn = 'DONE';
+            } else {
+              // Before WIP
+              sectionColumn = 'TODO';
+            }
+
+            // Create or get the section with the determined column
+            currentSection = getOrCreateSection(sectionName, sectionColumn);
             currentCategory = null; // Reset category when entering a new section
             i += 2; // Skip the section title and the closing divider
             continue;
