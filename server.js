@@ -28,13 +28,52 @@ app.use(cors());
 app.use(bodyParser.json({limit: '5mb'}));
 app.use(express.static('dist'));
 
-const TODO_FILE_PATH = path.join(__dirname, 'example_todo.txt');
+// Function to get the default todo file path
+const getDefaultTodoFilePath = () => {
+  const todoFilePath = path.join(__dirname, 'todo.txt');
+  const exampleTodoFilePath = path.join(__dirname, 'example_todo.txt');
+  
+  // Check if todo.txt exists, if not fallback to example_todo.txt
+  if (fs.existsSync(todoFilePath)) {
+    logger.info('Using todo.txt as default file');
+    return todoFilePath;
+  } else {
+    logger.info('Fallback to example_todo.txt as default file');
+    return exampleTodoFilePath;
+  }
+};
+
+// Get todo file path from filename or use default
+const getTodoFilePath = (filename) => {
+  if (filename) {
+    return path.join(__dirname, filename);
+  }
+  return getDefaultTodoFilePath();
+};
+
+// Get all .txt files in the server directory
+app.get('/api/files', (req, res) => {
+  try {
+    logger.info('Listing text files in directory');
+    const files = fs.readdirSync(__dirname)
+      .filter(file => file.endsWith('.txt'))
+      .map(file => ({ name: file }));
+    
+    res.json({ files });
+  } catch (error) {
+    logger.error('Error listing text files:', error);
+    res.status(500).json({ error: 'Failed to list text files' });
+  }
+});
 
 // Get todo file content
 app.get('/api/todos', (req, res) => {
   try {
-    logger.info('Reading todo file', { path: TODO_FILE_PATH });
-    const fileContent = fs.readFileSync(TODO_FILE_PATH, 'utf8');
+    const filename = req.query.filename;
+    const filePath = getTodoFilePath(filename);
+    
+    logger.info('Reading todo file', { path: filePath });
+    const fileContent = fs.readFileSync(filePath, 'utf8');
     res.json({ content: fileContent });
   } catch (error) {
     logger.error('Error reading todo file:', error);
@@ -45,15 +84,16 @@ app.get('/api/todos', (req, res) => {
 // Update todo file content - only endpoint for writing to file
 app.post('/api/todos', (req, res) => {
   try {
-    const { content } = req.body;
+    const { content, filename } = req.body;
     
     if (!content) {
       logger.error('Missing content in request');
       return res.status(400).json({ error: 'Content is required' });
     }
     
-    logger.info('Writing todo file', { path: TODO_FILE_PATH, contentLength: content.length });
-    fs.writeFileSync(TODO_FILE_PATH, content, 'utf8');
+    const filePath = getTodoFilePath(filename);
+    logger.info('Writing todo file', { path: filePath, contentLength: content.length });
+    fs.writeFileSync(filePath, content, 'utf8');
     logger.info('Todo file successfully written');
     res.json({ success: true });
   } catch (error) {

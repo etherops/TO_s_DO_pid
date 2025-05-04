@@ -2,6 +2,13 @@
   <div class="todo-app">
     <div class="app-header">
       <h1>TO_s_DO_pid</h1>
+      <div class="file-selector">
+        <select v-model="selectedFile" @change="handleFileChange">
+          <option v-for="file in availableFiles" :key="file.name" :value="file.name">
+            {{ file.name }}
+          </option>
+        </select>
+      </div>
     </div>
     
     <div v-if="loading" class="loading">
@@ -211,6 +218,8 @@ export default {
   setup() {
     const sections = ref([]);
     const loading = ref(true);
+    const availableFiles = ref([]);
+    const selectedFile = ref('');
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -226,11 +235,28 @@ export default {
       return sections.value.filter(section => section.column === 'DONE' && !section.hidden);
     });
 
-    // Load todo data from the server
+    // Load available text files from the server
+    const loadAvailableFiles = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/files`);
+        availableFiles.value = response.data.files;
+        console.log('Available files:', availableFiles.value);
+        
+        // Set the selected file if none selected yet
+        if (!selectedFile.value && availableFiles.value.length > 0) {
+          selectedFile.value = availableFiles.value[0].name;
+        }
+      } catch (error) {
+        console.error('Error loading file list:', error);
+      }
+    };
+
+    // Load todo data from the server for the selected file
     const loadTodoData = async () => {
       try {
         loading.value = true;
-        const response = await axios.get(`${API_BASE_URL}/todos`);
+        const params = selectedFile.value ? { filename: selectedFile.value } : {};
+        const response = await axios.get(`${API_BASE_URL}/todos`, { params });
 
         // Parse the todo text into sections
         sections.value = parseTodoFile(response.data.content);
@@ -256,8 +282,13 @@ export default {
           return false;
         }
         
-        // Send the content to the server
-        const response = await axios.post(`${API_BASE_URL}/todos`, { content });
+        // Send the content to the server, including the filename
+        const payload = { 
+          content,
+          filename: selectedFile.value 
+        };
+        
+        const response = await axios.post(`${API_BASE_URL}/todos`, payload);
         console.log('Todo data saved successfully', response.data);
         return true;
       } catch (error) {
@@ -266,6 +297,11 @@ export default {
       }
     };
 
+    // Handle file selection change
+    const handleFileChange = async () => {
+      console.log('File changed to:', selectedFile.value);
+      await loadTodoData();
+    };
 
     // Function to toggle task status
     const toggleTaskStatus = (item) => {
@@ -385,6 +421,9 @@ export default {
     };
     
     onMounted(async () => {
+      // First load available files
+      await loadAvailableFiles();
+      // Then load todo data for the selected file
       await loadTodoData();
     });
     
@@ -396,6 +435,9 @@ export default {
       loading,
       isDragging,
       draggedSection,
+      availableFiles,
+      selectedFile,
+      handleFileChange,
       toggleTaskStatus,
       onDragEnd,
       checkSectionMove,
@@ -429,6 +471,26 @@ export default {
 .app-header h1 {
   margin: 0;
   font-size: 24px;
+}
+
+.file-selector {
+  margin-left: 20px;
+}
+
+.file-selector select {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: none;
+  background-color: white;
+  color: #2c3e50;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.file-selector select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
 }
 
 .loading {
