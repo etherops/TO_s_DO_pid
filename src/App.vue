@@ -78,7 +78,27 @@
                             @click="toggleTaskStatus(item)"
                           ></div>
                         </div>
-                        <span class="task-title" :title="item.text">{{ item.text }}</span>
+                        <template v-if="editableTaskId === item.id">
+                          <input 
+                            type="text" 
+                            class="task-text-edit" 
+                            v-model="editTaskText" 
+                            @blur="saveEditedTask"
+                            @keydown="handleTaskEditKeydown"
+                          />
+                        </template>
+                        <template v-else>
+                          <span 
+                            class="task-title" 
+                            :title="item.text"
+                            @dblclick="startEditingTask(item)"
+                          >
+                            {{ item.text }}
+                            <button class="edit-task-btn" @click="startEditingTask(item)">
+                              <span class="edit-icon">✎</span>
+                            </button>
+                          </span>
+                        </template>
                       </div>
                     </template>
                   </draggable>
@@ -155,7 +175,27 @@
                             @click="toggleTaskStatus(item)"
                           ></div>
                         </div>
-                        <span class="task-title" :title="item.text">{{ item.text }}</span>
+                        <template v-if="editableTaskId === item.id">
+                          <input 
+                            type="text" 
+                            class="task-text-edit" 
+                            v-model="editTaskText" 
+                            @blur="saveEditedTask"
+                            @keydown="handleTaskEditKeydown"
+                          />
+                        </template>
+                        <template v-else>
+                          <span 
+                            class="task-title" 
+                            :title="item.text"
+                            @dblclick="startEditingTask(item)"
+                          >
+                            {{ item.text }}
+                            <button class="edit-task-btn" @click="startEditingTask(item)">
+                              <span class="edit-icon">✎</span>
+                            </button>
+                          </span>
+                        </template>
                       </div>
                     </template>
                   </draggable>
@@ -232,7 +272,27 @@
                             @click="toggleTaskStatus(item)"
                           ></div>
                         </div>
-                        <span class="task-title" :title="item.text">{{ item.text }}</span>
+                        <template v-if="editableTaskId === item.id">
+                          <input 
+                            type="text" 
+                            class="task-text-edit" 
+                            v-model="editTaskText" 
+                            @blur="saveEditedTask"
+                            @keydown="handleTaskEditKeydown"
+                          />
+                        </template>
+                        <template v-else>
+                          <span 
+                            class="task-title" 
+                            :title="item.text"
+                            @dblclick="startEditingTask(item)"
+                          >
+                            {{ item.text }}
+                            <button class="edit-task-btn" @click="startEditingTask(item)">
+                              <span class="edit-icon">✎</span>
+                            </button>
+                          </span>
+                        </template>
                       </div>
                     </template>
                   </draggable>
@@ -275,6 +335,8 @@ export default {
     const selectedFile = ref('');
     const editableSectionId = ref(null);
     const editSectionName = ref('');
+    const editableTaskId = ref(null);
+    const editTaskText = ref('');
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -540,6 +602,68 @@ export default {
       }
     };
     
+    // Start editing a task
+    const startEditingTask = (item) => {
+      editableTaskId.value = item.id;
+      editTaskText.value = item.text;
+      
+      // Focus the input after the DOM updates
+      nextTick(() => {
+        const input = document.querySelector('.task-text-edit');
+        if (input) {
+          input.focus();
+        }
+      });
+    };
+    
+    // Save the edited task text
+    const saveEditedTask = async () => {
+      if (editableTaskId.value === null || !editTaskText.value.trim()) {
+        cancelEditTask();
+        return;
+      }
+      
+      // Find the task being edited
+      let taskFound = false;
+      
+      // Search in all sections
+      for (const section of sections.value) {
+        const taskIndex = section.items.findIndex(item => item.id === editableTaskId.value);
+        if (taskIndex !== -1) {
+          // Update the task text
+          if (editTaskText.value.trim() !== section.items[taskIndex].text) {
+            section.items[taskIndex].text = editTaskText.value.trim();
+            taskFound = true;
+            
+            // Persist the change
+            await persistTodoData();
+          }
+          break;
+        }
+      }
+      
+      // Reset edit state
+      editableTaskId.value = null;
+      editTaskText.value = '';
+    };
+    
+    // Cancel editing task without saving
+    const cancelEditTask = () => {
+      editableTaskId.value = null;
+      editTaskText.value = '';
+    };
+    
+    // Handle keydown events in the task edit input
+    const handleTaskEditKeydown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveEditedTask();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelEditTask();
+      }
+    };
+    
     onMounted(async () => {
       // First load available files
       await loadAvailableFiles();
@@ -559,6 +683,8 @@ export default {
       selectedFile,
       editableSectionId,
       editSectionName,
+      editableTaskId,
+      editTaskText,
       handleFileChange,
       toggleTaskStatus,
       onDragEnd,
@@ -571,7 +697,11 @@ export default {
       startEditingSection,
       saveEditedSection,
       cancelEditSection,
-      handleEditKeydown
+      handleEditKeydown,
+      startEditingTask,
+      saveEditedTask,
+      cancelEditTask,
+      handleTaskEditKeydown
     };
   }
 }
@@ -718,6 +848,11 @@ export default {
 .task-title {
   margin-left: 12px;
   flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 30px;
+  position: relative;
 }
 
 .checkbox-wrapper {
@@ -874,12 +1009,14 @@ export default {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 12px;
-  color: #666;
-  padding: 2px 5px;
+  font-size: 14px;
+  color: #333;
+  padding: 2px 6px;
   margin-left: 5px;
-  opacity: 0.7;
-  transition: opacity 0.2s;
+  opacity: 0.9;
+  transition: all 0.2s;
+  border-radius: 3px;
+  background-color: rgba(220, 220, 220, 0.3);
 }
 
 .section-header:hover .edit-section-btn {
@@ -889,9 +1026,51 @@ export default {
 .edit-section-btn:hover {
   opacity: 1;
   color: #4caf50;
+  background-color: rgba(220, 220, 220, 0.6);
 }
 
 .edit-icon {
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+/* Task editing styles */
+.task-text-edit {
+  width: calc(100% - 10px);
+  padding: 5px;
+  font-size: inherit;
+  border: 1px solid #4caf50;
+  border-radius: 3px;
+  background-color: white;
+  outline: none;
+  margin-left: 8px;
+  flex: 1;
+}
+
+.edit-task-btn {
+  visibility: hidden;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  padding: 2px 5px;
+  margin-left: 5px;
+  opacity: 0.9;
+  transition: all 0.2s;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.task-title:hover .edit-task-btn {
+  visibility: visible;
+}
+
+.edit-task-btn:hover {
+  opacity: 1;
+  color: #4caf50;
+  transform: translateY(-50%) scale(1.1);
 }
 </style>
