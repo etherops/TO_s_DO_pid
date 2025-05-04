@@ -1,7 +1,7 @@
 /**
  * Parses a todo text file into structured data
  * @param {string} fileContent - The content of the todo text file
- * @returns {Object} Structured todo data
+ * @returns {Array} Array of sections, each containing categories and items
  */
 export function parseTodoFile(fileContent) {
   console.log('==== PARSING TODO FILE ====');
@@ -9,29 +9,56 @@ export function parseTodoFile(fileContent) {
   
   if (!fileContent) {
     console.error('Empty file content provided to parser');
-    return {
-      todos: [],
-      inProgress: [],
-      done: [],
-      archive: [],
-      categories: [],
-      raw: ''
-    };
+    return [];
   }
   
   const lines = fileContent.split('\n');
   console.log('Number of lines:', lines.length);
   
-  const result = {
-    todos: [],
-    inProgress: [],
-    done: [],
-    archive: [],
-    categories: new Set(),
-    raw: fileContent
+  // Array to store all sections
+  const sections = [];
+  
+  // Map to track sections by name
+  const sectionsMap = new Map();
+  
+  // Default sections
+  const createSection = (name, isArchive = false) => {
+    return {
+      name,
+      isArchive,
+      items: [], // All items in this section
+      categories: [] // Categories in this section
+    };
   };
-
-  let currentSection = '';
+  
+  // Helper to get or create a section
+  const getOrCreateSection = (name, isArchive = false) => {
+    if (!sectionsMap.has(name)) {
+      const newSection = createSection(name, isArchive);
+      sectionsMap.set(name, newSection);
+      sections.push(newSection);
+    }
+    return sectionsMap.get(name);
+  };
+  
+  // Helper to get or create a category within a section
+  const getOrCreateCategory = (section, categoryName) => {
+    let category = section.categories.find(cat => cat.name === categoryName);
+    if (!category) {
+      category = {
+        name: categoryName,
+        items: []
+      };
+      section.categories.push(category);
+    }
+    return category;
+  };
+  
+  // Create default sections for organization
+  const mainSection = getOrCreateSection('Main');
+  const archiveSection = getOrCreateSection('Archive', true);
+  
+  let currentSection = mainSection;
   let currentCategory = '';
   let inArchive = false;
   let itemId = 1;
@@ -43,9 +70,9 @@ export function parseTodoFile(fileContent) {
     // Check if we're in the archive section
     if (trimmedLine.includes('ARCHIVE')) {
       inArchive = true;
+      currentSection = archiveSection;
       continue;
     }
-
     
     // Skip section dividers and empty lines
     if (trimmedLine.match(/^#+$/) || trimmedLine === '') {
@@ -54,11 +81,17 @@ export function parseTodoFile(fileContent) {
     
     // Parse category headers - more flexible to handle variations like "### CURRENT DAY (Thursday)"
     if (trimmedLine.startsWith('#')) {
-      // Extract the category name from the header, handling formats with parentheses
+      // Extract the section name from the header, handling formats with parentheses
       let sectionName = trimmedLine.replace(/#/g, '').trim();
       
-      currentSection = sectionName;
-      result.categories.add(currentSection);
+      // If we're in archive, create sections for archive months/weeks
+      if (inArchive) {
+        currentSection = getOrCreateSection(sectionName, true);
+      } else {
+        // If not in archive, just update the current section
+        currentSection = getOrCreateSection(sectionName);
+      }
+      
       continue;
     }
     
@@ -75,36 +108,29 @@ export function parseTodoFile(fileContent) {
       if (statusMatch) {
         const statusChar = statusMatch[1];
         const todoText = trimmedLine.substring(statusMatch[0].length).trim();
+        
         const todoItem = {
           id: itemId++,
           statusChar,
           text: todoText,
           originalText: trimmedLine,
-          category: currentCategory || currentSection,
-          section: currentSection,
+          category: currentCategory || currentSection.name,
+          section: currentSection.name,
           lineIndex: i
         };
-
-        if (inArchive) {
-          result.archive.push(todoItem);
-        } else {
-          // Determine status and add to appropriate array
-          if (statusChar === 'x') {
-            result.done.push(todoItem);
-          } else if (statusChar === '~') {
-            result.inProgress.push(todoItem);
-          } else if (statusChar === ' ') {
-            result.todos.push(todoItem);
-          }
-        }
+        
+        // Add to the current section's items
+        currentSection.items.push(todoItem);
+        
+        // Add to category within the section
+        const categoryName = currentCategory || currentSection.name;
+        const category = getOrCreateCategory(currentSection, categoryName);
+        category.items.push(todoItem);
       }
     }
   }
   
-  // Convert categories to array
-  result.categories = Array.from(result.categories);
-  
-  return result;
+  return sections;
 }
 
 /**
