@@ -135,10 +135,7 @@ export function parseTodoFile(fileContent) {
           text: todoText,
           lineIndex: i
         };
-        
-        // Store section name with the item
-        todoItem.section = currentSection.name;
-        
+
         // Add item to the current section
         currentSection.items.push(todoItem);
       }

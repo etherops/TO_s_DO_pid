@@ -25,7 +25,7 @@
 #######
 * [~] BILLS - Phone bill (Jan 14, follow up about refund)
 * [~] SOCIAL - Event coordination for friends
-* [ ] PROPERTY - Research local zoning regulations
+* [x] PROPERTY - Research local zoning regulations
 
 ### CURRENT WEEK (Week of May 1)
 * [x] WORK - Website maintenance
@@ -50,16 +50,20 @@
 ###########
 # ARCHIVE #
 ###########
+
 ### MAY Week 4
 * [x] HOBBY - Event promotion
 * [x] SHOPPING - Return and replace items
+
 ### MAY Week 3
 * [x] SHOPPING - Purchase footwear
 * [x] FINANCE - Complete tax filing
 * [x] HOBBY - Event follow-ups
+
 ### APRIL Week 3
 * [x] WORK - Review contract details
 * [x] LEGAL - Review terms of use
-## APRIL Week 2
+
+### APRIL Week 2
 * [x] HOME - Purchase supplies
 * [x] TRAVEL - Book rental car

@@ -24,23 +24,31 @@
               {{ section.name }}
             </div>
             <div class="section-items">
-              <div 
-                v-for="item in section.items" 
-                :key="item.id" 
-                class="task-card"
+              <draggable
+                v-model="section.items"
+                :group="{ name: 'tasks', pull: true, put: true }"
+                item-key="id"
+                class="task-list"
+                ghost-class="ghost-card"
+                handle=".task-card"
+                @end="onDragEnd"
               >
-                <div class="checkbox-wrapper">
-                  <div 
-                    :class="['custom-checkbox', {
-                      'unchecked': item.statusChar === ' ',
-                      'in-progress': item.statusChar === '~',
-                      'checked': item.statusChar === 'x'
-                    }]"
-                    @click="toggleTaskStatus(item)"
-                  ></div>
-                </div>
-                <span class="task-title">{{ item.text }}</span>
-              </div>
+                <template #item="{ element: item }">
+                  <div class="task-card">
+                    <div class="checkbox-wrapper">
+                      <div 
+                        :class="['custom-checkbox', {
+                          'unchecked': item.statusChar === ' ',
+                          'in-progress': item.statusChar === '~',
+                          'checked': item.statusChar === 'x'
+                        }]"
+                        @click="toggleTaskStatus(item)"
+                      ></div>
+                    </div>
+                    <span class="task-title">{{ item.text }}</span>
+                  </div>
+                </template>
+              </draggable>
               <div v-if="section.items.length === 0" class="empty-section">
                 No items
               </div>
@@ -64,23 +72,31 @@
               {{ section.name }}
             </div>
             <div class="section-items">
-              <div 
-                v-for="item in section.items" 
-                :key="item.id" 
-                class="task-card"
+              <draggable
+                v-model="section.items"
+                :group="{ name: 'tasks', pull: true, put: true }"
+                item-key="id"
+                class="task-list"
+                ghost-class="ghost-card"
+                handle=".task-card"
+                @end="onDragEnd"
               >
-                <div class="checkbox-wrapper">
-                  <div 
-                    :class="['custom-checkbox', {
-                      'unchecked': item.statusChar === ' ',
-                      'in-progress': item.statusChar === '~',
-                      'checked': item.statusChar === 'x'
-                    }]"
-                    @click="toggleTaskStatus(item)"
-                  ></div>
-                </div>
-                <span class="task-title">{{ item.text }}</span>
-              </div>
+                <template #item="{ element: item }">
+                  <div class="task-card">
+                    <div class="checkbox-wrapper">
+                      <div 
+                        :class="['custom-checkbox', {
+                          'unchecked': item.statusChar === ' ',
+                          'in-progress': item.statusChar === '~',
+                          'checked': item.statusChar === 'x'
+                        }]"
+                        @click="toggleTaskStatus(item)"
+                      ></div>
+                    </div>
+                    <span class="task-title">{{ item.text }}</span>
+                  </div>
+                </template>
+              </draggable>
               <div v-if="section.items.length === 0" class="empty-section">
                 No items
               </div>
@@ -104,23 +120,31 @@
               {{ section.name }}
             </div>
             <div class="section-items">
-              <div 
-                v-for="item in section.items" 
-                :key="item.id" 
-                class="task-card"
+              <draggable
+                v-model="section.items"
+                :group="{ name: 'tasks', pull: true, put: true }"
+                item-key="id"
+                class="task-list"
+                ghost-class="ghost-card"
+                handle=".task-card"
+                @end="onDragEnd"
               >
-                <div class="checkbox-wrapper">
-                  <div 
-                    :class="['custom-checkbox', {
-                      'unchecked': item.statusChar === ' ',
-                      'in-progress': item.statusChar === '~',
-                      'checked': item.statusChar === 'x'
-                    }]"
-                    @click="toggleTaskStatus(item)"
-                  ></div>
-                </div>
-                <span class="task-title">{{ item.text }}</span>
-              </div>
+                <template #item="{ element: item }">
+                  <div class="task-card">
+                    <div class="checkbox-wrapper">
+                      <div 
+                        :class="['custom-checkbox', {
+                          'unchecked': item.statusChar === ' ',
+                          'in-progress': item.statusChar === '~',
+                          'checked': item.statusChar === 'x'
+                        }]"
+                        @click="toggleTaskStatus(item)"
+                      ></div>
+                    </div>
+                    <span class="task-title">{{ item.text }}</span>
+                  </div>
+                </template>
+              </draggable>
               <div v-if="section.items.length === 0" class="empty-section">
                 No items
               </div>
@@ -136,12 +160,16 @@
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { parseTodoFile, renderTodoFile } from './utils/TodoParser';
+import draggable from 'vuedraggable';
 
 // Base URL for the API
 const API_BASE_URL = 'http://localhost:3001/api';
 
 export default {
   name: 'App',
+  components: {
+    draggable
+  },
   setup() {
     const sections = ref([]);
     const loading = ref(true);
@@ -213,9 +241,16 @@ export default {
       // Persist changes to file
       persistTodoData();
     };
+
+    // Handle drag end events
+    const onDragEnd = (event) => {
+      console.log('Drag ended', event);
+      // Persist changes after drag operations
+      persistTodoData();
+    };
     
-    onMounted(() => {
-      loadTodoData();
+    onMounted(async () => {
+      await loadTodoData();
     });
     
     return {
@@ -224,7 +259,8 @@ export default {
       wipSections,
       doneSections,
       loading,
-      toggleTaskStatus
+      toggleTaskStatus,
+      onDragEnd
     };
   }
 }
@@ -422,5 +458,24 @@ export default {
   color: #999;
   font-style: italic;
   text-align: center;
+}
+
+/* Drag and drop styles */
+.task-list {
+  min-height: 5px;
+}
+
+.ghost-card {
+  opacity: 0.5;
+  background: #c8ebfb;
+  border: 1px dashed #97d6ef;
+}
+
+.task-card {
+  cursor: grab;
+}
+
+.task-card:active {
+  cursor: grabbing;
 }
 </style>
