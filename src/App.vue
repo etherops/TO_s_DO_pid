@@ -36,9 +36,25 @@
               >
                 <div 
                   :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
+                  @dblclick="section.archivable && startEditingSection(section)"
                 >
-                  {{ section.name }}
-                  <span v-if="section.archivable" class="archive-badge">Archivable</span>
+                  <template v-if="editableSectionId === section.name">
+                    <input 
+                      type="text" 
+                      class="section-name-edit" 
+                      v-model="editSectionName" 
+                      @blur="saveEditedSection"
+                      @keydown="handleEditKeydown"
+                      ref="sectionNameInput"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ section.name }}
+                    <span v-if="section.archivable" class="archive-badge">Archivable</span>
+                    <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
+                      <span class="edit-icon">✎</span>
+                    </button>
+                  </template>
                 </div>
                 <div class="section-items">
                   <draggable
@@ -97,9 +113,25 @@
               >
                 <div 
                   :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
+                  @dblclick="section.archivable && startEditingSection(section)"
                 >
-                  {{ section.name }}
-                  <span v-if="section.archivable" class="archive-badge">Archivable</span>
+                  <template v-if="editableSectionId === section.name">
+                    <input 
+                      type="text" 
+                      class="section-name-edit" 
+                      v-model="editSectionName" 
+                      @blur="saveEditedSection"
+                      @keydown="handleEditKeydown"
+                      ref="sectionNameInput"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ section.name }}
+                    <span v-if="section.archivable" class="archive-badge">Archivable</span>
+                    <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
+                      <span class="edit-icon">✎</span>
+                    </button>
+                  </template>
                 </div>
                 <div class="section-items">
                   <draggable
@@ -158,9 +190,25 @@
               <div class="section">
                 <div 
                   :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
+                  @dblclick="section.archivable && startEditingSection(section)"
                 >
-                  {{ section.name }}
-                  <span v-if="section.archivable" class="archive-badge archived">Archived</span>
+                  <template v-if="editableSectionId === section.name">
+                    <input 
+                      type="text" 
+                      class="section-name-edit" 
+                      v-model="editSectionName" 
+                      @blur="saveEditedSection"
+                      @keydown="handleEditKeydown"
+                      ref="sectionNameInput"
+                    />
+                  </template>
+                  <template v-else>
+                    {{ section.name }}
+                    <span v-if="section.archivable" class="archive-badge archived">Archived</span>
+                    <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
+                      <span class="edit-icon">✎</span>
+                    </button>
+                  </template>
                 </div>
                 <div class="section-items">
                   <draggable
@@ -202,13 +250,18 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, nextTick } from 'vue';
 import axios from 'axios';
 import { parseTodoFile, renderTodoFile } from './utils/TodoParser';
 import draggable from 'vuedraggable';
 
 // Base URL for the API
 const API_BASE_URL = 'http://localhost:3001/api';
+
+// Custom directive to focus an element when it's inserted into the DOM
+const vFocus = {
+  mounted: (el) => el.focus()
+};
 
 export default {
   name: 'App',
@@ -220,6 +273,8 @@ export default {
     const loading = ref(true);
     const availableFiles = ref([]);
     const selectedFile = ref('');
+    const editableSectionId = ref(null);
+    const editSectionName = ref('');
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -429,6 +484,62 @@ export default {
       persistTodoData();
     };
     
+    // Start editing a section name
+    const startEditingSection = (section) => {
+      // Only allow editing archivable sections
+      if (section.archivable) {
+        editableSectionId.value = section.name;
+        editSectionName.value = section.name;
+        
+        // Focus the input after the DOM updates
+        nextTick(() => {
+          const input = document.querySelector('.section-name-edit');
+          if (input) {
+            input.focus();
+          }
+        });
+      }
+    };
+    
+    // Save the edited section name
+    const saveEditedSection = async () => {
+      if (!editableSectionId.value || !editSectionName.value.trim()) {
+        cancelEditSection();
+        return;
+      }
+      
+      // Find the section being edited
+      const sectionIndex = sections.value.findIndex(s => s.name === editableSectionId.value);
+      if (sectionIndex !== -1 && editSectionName.value.trim() !== sections.value[sectionIndex].name) {
+        // Update the section name
+        sections.value[sectionIndex].name = editSectionName.value.trim();
+        
+        // Persist the change
+        await persistTodoData();
+      }
+      
+      // Reset edit state
+      editableSectionId.value = null;
+      editSectionName.value = '';
+    };
+    
+    // Cancel editing without saving
+    const cancelEditSection = () => {
+      editableSectionId.value = null;
+      editSectionName.value = '';
+    };
+    
+    // Handle keydown events in the edit input
+    const handleEditKeydown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveEditedSection();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelEditSection();
+      }
+    };
+    
     onMounted(async () => {
       // First load available files
       await loadAvailableFiles();
@@ -446,6 +557,8 @@ export default {
       draggedSection,
       availableFiles,
       selectedFile,
+      editableSectionId,
+      editSectionName,
       handleFileChange,
       toggleTaskStatus,
       onDragEnd,
@@ -454,7 +567,11 @@ export default {
       onSectionDragEnd,
       onDoneColumnDragOver,
       onDoneColumnDragLeave,
-      onSectionAdded
+      onSectionAdded,
+      startEditingSection,
+      saveEditedSection,
+      cancelEditSection,
+      handleEditKeydown
     };
   }
 }
@@ -738,5 +855,43 @@ export default {
 .done-column .section-list {
   min-height: 100px;
   transition: all 0.3s ease;
+}
+
+/* Editable section name styles */
+.section-name-edit {
+  width: calc(100% - 20px);
+  padding: 5px;
+  font-size: inherit;
+  font-weight: bold;
+  border: 1px solid #4caf50;
+  border-radius: 3px;
+  background-color: white;
+  outline: none;
+}
+
+.edit-section-btn {
+  visibility: hidden;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: #666;
+  padding: 2px 5px;
+  margin-left: 5px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.section-header:hover .edit-section-btn {
+  visibility: visible;
+}
+
+.edit-section-btn:hover {
+  opacity: 1;
+  color: #4caf50;
+}
+
+.edit-icon {
+  font-size: 12px;
 }
 </style>
