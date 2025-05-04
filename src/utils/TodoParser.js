@@ -25,8 +25,8 @@ export function parseTodoFile(fileContent) {
   const createSection = (name) => {
     return {
       name,
-      items: [], // All items in this section
-      categories: [] // Categories in this section
+      items: [], // All items directly in the section (not in categories)
+      categories: [] // Categories within this section
     };
   };
   
@@ -53,70 +53,89 @@ export function parseTodoFile(fileContent) {
     return category;
   };
   
-  let currentSection = null;
-  let currentCategory = '';
+  // Create a default uncategorized section
+  const defaultSection = getOrCreateSection('Uncategorized');
+  let currentSection = defaultSection;
+  let currentCategory = null;
   let itemId = 1;
   
-  // Create a default unnamed section for items before any section header
-  const defaultSection = getOrCreateSection('Uncategorized');
-  currentSection = defaultSection;
-
+  // Check if line is a section divider (a line of #)
+  const isSectionDivider = (line) => {
+    return line.trim().match(/^#+$/) !== null;
+  };
+  
+  // Parse the lines to identify sections and categories
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmedLine = line.trim();
+    const line = lines[i].trim();
     
-    // Skip section dividers and empty lines
-    if (trimmedLine.match(/^#+$/) || trimmedLine === '') {
+    // Skip empty lines
+    if (line === '') {
       continue;
     }
     
-    // Parse section headers (lines with # at the beginning)
-    if (trimmedLine.startsWith('#')) {
-      // Extract the section name from the header, handling formats with parentheses
-      let sectionName = trimmedLine.replace(/#/g, '').trim();
-      
-      // Create or get the section
-      currentSection = getOrCreateSection(sectionName);
+    // Process section headers (format: ### surrounded by divider lines)
+    if (isSectionDivider(line)) {
+      // Check if next line is a section title (starts with # and has text)
+      if (i + 1 < lines.length) {
+        const nextLine = lines[i + 1].trim();
+        if (nextLine.startsWith('# ') && nextLine.length > 2) {
+          // Check if line after title is a divider too
+          if (i + 2 < lines.length && isSectionDivider(lines[i + 2])) {
+            // Extract section name, removing the "# " prefix and any trailing "#"
+            let sectionName = nextLine.substring(2).trim(); // Remove "# " prefix
+            // Remove any trailing "#" characters and trim
+            sectionName = sectionName.replace(/#*$/, '').trim();
+            currentSection = getOrCreateSection(sectionName);
+            currentCategory = null; // Reset category when entering a new section
+            i += 2; // Skip the section title and the closing divider
+            continue;
+          }
+        }
+      }
+    }
+    
+    // Process category headers (format: ### Category Name)
+    if (line.startsWith('###')) {
+      const categoryName = line.substring(3).trim();
+      currentCategory = getOrCreateCategory(currentSection, categoryName);
       continue;
     }
     
-    // If it's a subcategory header that doesn't start with #
-    if (trimmedLine.startsWith('* ') === false && trimmedLine !== '') {
-      currentCategory = trimmedLine;
+    // Process plain text line that could be a month or other marker (not starting with *)
+    if (!line.startsWith('*') && !line.startsWith('#')) {
+      // This is a text label, not a task - could be a month in the archive section or other marker
       continue;
     }
     
     // Parse todo items
-    if (trimmedLine.startsWith('* ')) {
-      const statusMatch = trimmedLine.match(/\* \[([ x~-])\]/);
+    if (line.startsWith('* ')) {
+      const statusMatch = line.match(/\* \[([ x~-])\]/);
       
       if (statusMatch) {
         const statusChar = statusMatch[1];
-        const todoText = trimmedLine.substring(statusMatch[0].length).trim();
+        const todoText = line.substring(statusMatch[0].length).trim();
         
         const todoItem = {
           id: itemId++,
           statusChar,
           text: todoText,
-          originalText: trimmedLine,
-          category: currentCategory || currentSection.name,
-          section: currentSection.name,
+          originalText: line,
           lineIndex: i
         };
         
-        // Add to the current section's items
-        currentSection.items.push(todoItem);
-        
-        // Add to category within the section
-        const categoryName = currentCategory || currentSection.name;
-        const category = getOrCreateCategory(currentSection, categoryName);
-        category.items.push(todoItem);
+        // Add to the section's items if no category is active
+        if (!currentCategory) {
+          currentSection.items.push(todoItem);
+        } else {
+          // Add to the current category
+          currentCategory.items.push(todoItem);
+        }
       }
     }
   }
   
-  // If the default section has no items, remove it from the result
-  if (defaultSection.items.length === 0) {
+  // If the default section has no items and no categories, remove it
+  if (defaultSection.items.length === 0 && defaultSection.categories.length === 0) {
     const index = sections.indexOf(defaultSection);
     if (index > -1) {
       sections.splice(index, 1);

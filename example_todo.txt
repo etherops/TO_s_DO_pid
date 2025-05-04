@@ -50,7 +50,6 @@
 ###########
 # ARCHIVE #
 ###########
-MAY
 ### MAY Week 4
 * [x] HOBBY - Event promotion
 * [x] SHOPPING - Return and replace items
@@ -58,8 +57,6 @@ MAY
 * [x] SHOPPING - Purchase footwear
 * [x] FINANCE - Complete tax filing
 * [x] HOBBY - Event follow-ups
-
-APR
 ### APRIL Week 3
 * [x] WORK - Review contract details
 * [x] LEGAL - Review terms of use
