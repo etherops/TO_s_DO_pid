@@ -32,7 +32,7 @@
           >
             <template #item="{ element: section }">
               <div 
-                :class="['section', { 'archivable-section': section.archivable }]"
+                :class="['section', { 'archivable-section': section.archivable, 'on-ice-section': section.on_ice }]"
               >
                 <div 
                   :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
@@ -59,6 +59,7 @@
                   <template v-else>
                     {{ section.name }}
                     <span v-if="section.archivable" class="archive-badge">Archivable</span>
+                    <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
                     <div class="section-header-actions">
                       <button class="add-task-btn" @click="createNewTask(section)">
                         <span class="add-icon">+</span> Add Task
@@ -163,7 +164,7 @@
           >
             <template #item="{ element: section }">
               <div 
-                :class="['section', { 'archivable-section': section.archivable }]"
+                :class="['section', { 'archivable-section': section.archivable, 'on-ice-section': section.on_ice }]"
               >
                 <div 
                   :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
@@ -190,6 +191,7 @@
                   <template v-else>
                     {{ section.name }}
                     <span v-if="section.archivable" class="archive-badge">Archivable</span>
+                    <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
                     <div class="section-header-actions">
                       <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
                         <span class="edit-icon">✎</span>
@@ -295,7 +297,7 @@
             @dragleave="onDoneColumnDragLeave"
           >
             <template #item="{ element: section }">
-              <div class="section">
+              <div :class="['section', { 'on-ice-section': section.on_ice }]">
                 <div 
                   :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
                   @dblclick="section.archivable && startEditingSection(section)"
@@ -321,6 +323,7 @@
                   <template v-else>
                     {{ section.name }}
                     <span v-if="section.archivable" class="archive-badge archived">Archived</span>
+                    <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
                     <div class="section-header-actions">
                       <button class="add-task-btn" @click="createNewTask(section)">
                         <span class="add-icon">+</span> Add Task
@@ -566,6 +569,17 @@ export default {
 
     // Function to toggle task status
     const toggleTaskStatus = (item) => {
+      // Find the section that contains this item
+      const section = sections.value.find(section => 
+        section.items.some(i => i.id === item.id)
+      );
+
+      // If the item is in an "on_ice" section, don't allow toggling
+      if (section && section.on_ice) {
+        console.log('Cannot toggle status of items in "on_ice" sections');
+        return;
+      }
+
       // Cycle through the states: ' ' (unchecked) -> '~' (in-progress) -> 'x' (done) -> ' ' (unchecked)
       if (item.statusChar === ' ') {
         item.statusChar = '~';
@@ -1167,6 +1181,35 @@ export default {
   border-radius: 3px;
   color: #666;
   opacity: 0.7;
+}
+
+/* On Ice section styles */
+.on-ice-section {
+  background-color: rgba(173, 216, 230, 0.3); /* Light blue transparent background */
+  border: 1px solid rgba(173, 216, 230, 0.5);
+  position: relative;
+}
+
+.on-ice-label {
+  background-color: rgba(173, 216, 230, 0.5);
+  border: 1px solid rgba(100, 149, 237, 0.7);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: bold;
+  color: #4a6d8c;
+  display: inline-block;
+  margin-left: 8px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  vertical-align: middle;
+}
+
+.on-ice-label:hover {
+  background-color: rgba(173, 216, 230, 0.7);
+  transform: scale(1.05);
 }
 
 /* DONE column highlight when dragging */
