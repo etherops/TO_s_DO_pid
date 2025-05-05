@@ -27,7 +27,7 @@
         <div 
           v-for="file in availableFiles" 
           :key="file.name" 
-          :class="['file-tab', { active: selectedFile === file.name }]"
+          :class="['file-tab', 'server-tab', { active: selectedFile === file.name }]"
           @click="selectedFile = file.name; handleFileChange()"
           :title="file.name"
         >
@@ -36,7 +36,7 @@
         <div 
           v-for="file in customFiles" 
           :key="file.path" 
-          :class="['file-tab', { active: selectedFile === file.path }]"
+          :class="['file-tab', 'custom-tab', { active: selectedFile === file.path }]"
           @click="selectedFile = file.path; handleFileChange()"
           :title="file.path"
         >
@@ -1204,23 +1204,15 @@ export default {
 }
 
 .file-tab.active {
-  background-color: #ebecf0;
+  background-color: #f5f5f5;
   color: #4caf50;
-  border-top: none;
+  border-top-width: 1.5px;
   border-bottom: none;
+  border-right-width: 1.5px;
   font-weight: 600;
   position: relative;
 }
 
-.file-tab.active::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  background-color: #4caf50;
-}
 
 .file-tab.add-tab {
   padding: 12px 15px;
@@ -1231,6 +1223,40 @@ export default {
 .file-tab .add-icon {
   font-size: 16px;
   font-weight: bold;
+}
+
+/* Server tab styles */
+.server-tab {
+  border-left: 3px solid #4caf50;
+}
+
+.server-tab.active {
+  border-left-width: 6px;
+}
+
+.server-tab::after {
+  content: '•';
+  font-size: 14px;
+  color: #4caf50;
+  margin-left: 8px;
+  opacity: 0.7;
+}
+
+/* Custom tab styles */
+.custom-tab {
+  border-left: 3px solid #2196F3;
+}
+
+.custom-tab.active {
+  border-left-width: 6px;
+}
+
+.custom-tab::after {
+  content: '↑';
+  font-size: 12px;
+  color: #2196F3;
+  margin-left: 8px;
+  opacity: 0.7;
 }
 
 .loading {
