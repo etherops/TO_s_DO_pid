@@ -5,26 +5,13 @@
         <img src="./assets/favicon.svg" alt="Logo" class="app-logo">
         <h1>TO_s_DO_pid</h1>
       </div>
-      <div class="file-selector">
-        <select v-model="selectedFile" @change="handleFileChange">
-          <option v-for="file in availableFiles" :key="file.name" :value="file.name">
-            {{ file.name }}
-          </option>
-          <option v-if="availableFiles.length > 0" disabled>──────────</option>
-          <option v-for="file in customFiles" :key="file.path" :value="file.path">
-            {{ file.name }} (Custom)
-          </option>
-          <option v-if="customFiles.length > 0" disabled>──────────</option>
-          <option value="__select_from_device__">Select from device...</option>
-        </select>
-        <input 
-          type="file" 
-          ref="fileInput" 
-          style="display: none" 
-          accept=".txt,.md" 
-          @change="handleFileInputChange" 
-        />
-      </div>
+      <input 
+        type="file" 
+        ref="fileInput" 
+        style="display: none" 
+        accept=".txt,.md" 
+        @change="handleFileInputChange" 
+      />
     </div>
 
     <div v-if="parsingError" class="error-message">
@@ -35,7 +22,32 @@
       Loading...
     </div>
 
-    <div v-else class="kanban-container">
+    <div v-else>
+      <div class="file-tabs">
+        <div 
+          v-for="file in availableFiles" 
+          :key="file.name" 
+          :class="['file-tab', { active: selectedFile === file.name }]"
+          @click="selectedFile = file.name; handleFileChange()"
+          :title="file.name"
+        >
+          {{ formatTabName(file.name) }}
+        </div>
+        <div 
+          v-for="file in customFiles" 
+          :key="file.path" 
+          :class="['file-tab', { active: selectedFile === file.path }]"
+          @click="selectedFile = file.path; handleFileChange()"
+          :title="file.path"
+        >
+          {{ formatTabName(file.name) }}
+        </div>
+        <div class="file-tab add-tab" @click="fileInput.click()">
+          <span class="add-icon">+</span>
+        </div>
+      </div>
+
+      <div class="kanban-container">
       <!-- TODO Column -->
       <div class="kanban-column todo-column">
         <div class="column-header">TODO</div>
@@ -431,6 +443,7 @@
           </draggable>
         </div>
       </div>
+      </div>
     </div>
   </div>
 </template>
@@ -758,6 +771,17 @@ export default {
       } catch (error) {
         console.error('Error loading custom files from storage:', error);
       }
+    };
+
+    // Format tab name by removing .txt extension and replacing underscores with spaces
+    const formatTabName = (filename) => {
+      // Remove .txt extension (case insensitive)
+      let displayName = filename.replace(/\.txt$/i, '');
+
+      // Replace underscores with spaces
+      displayName = displayName.replace(/_/g, ' ');
+
+      return displayName;
     };
 
     // Function to toggle task status
@@ -1108,7 +1132,8 @@ export default {
       createNewTask,
       requestDeleteTask,
       confirmDeleteTask,
-      cancelDeleteTask
+      cancelDeleteTask,
+      formatTabName
     };
   }
 }
@@ -1147,24 +1172,65 @@ export default {
   margin-right: 10px;
 }
 
-.file-selector {
-  margin-left: 20px;
+.file-tabs {
+  display: flex;
+  overflow-x: auto;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 0 20px;
+  margin-top: 15px;
 }
 
-.file-selector select {
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: none;
-  background-color: white;
-  color: #2c3e50;
-  font-size: 14px;
+.file-tab {
+  padding: 12px 20px;
+  margin: 0 2px;
+  background-color: #e9e9e9;
+  color: #555;
+  border-radius: 8px 8px 0 0;
   cursor: pointer;
-  min-width: 180px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  border: 1px solid #e0e0e0;
+  border-bottom: none;
 }
 
-.file-selector select:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+.file-tab:hover {
+  background-color: #f0f0f0;
+  color: #4caf50;
+}
+
+.file-tab.active {
+  background-color: #ebecf0;
+  color: #4caf50;
+  border-top: none;
+  border-bottom: none;
+  font-weight: 600;
+  position: relative;
+}
+
+.file-tab.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background-color: #4caf50;
+}
+
+.file-tab.add-tab {
+  padding: 12px 15px;
+  min-width: 40px;
+  justify-content: center;
+}
+
+.file-tab .add-icon {
+  font-size: 16px;
+  font-weight: bold;
 }
 
 .loading {
