@@ -1,16 +1,12 @@
-# Simple Todo Kanban Board
+# STUPID TO DO LIST
 
-A stupidly simple Kanban board application built with Vue 3 that uses a plain text file as its database.
+This is a really really stupid to do list web app that shouldn't exist.
+
+[TO_s_DO_pid2.mov](https://s3.us-east-1.amazonaws.com/golightwire.com/TO_s_DO_pid2.mov)
 
 ## Features
 
-- Shows todo items in a Kanban board with 3 columns: TODO, WIP, and DONE
-- Separate Archive view for completed items
-- Parses items with different statuses:
-  - `[ ]` for todo items
-  - `[~]` for in-progress items
-  - `[x]` for completed items
-- Groups items by their categories from the text file
+- Only the maintainer knows how to use it - watch the video. Like, thumbs up and subscribe.
 
 ## Prerequisites
 
