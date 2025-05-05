@@ -10,11 +10,11 @@
         </select>
       </div>
     </div>
-    
+
     <div v-if="loading" class="loading">
       Loading...
     </div>
-    
+
     <div v-else class="kanban-container">
       <!-- TODO Column -->
       <div class="kanban-column todo-column">
@@ -39,14 +39,22 @@
                   @dblclick="section.archivable && startEditingSection(section)"
                 >
                   <template v-if="editableSectionId === section.name">
-                    <input 
-                      type="text" 
-                      class="section-name-edit" 
-                      v-model="editSectionName" 
-                      @blur="saveEditedSection"
-                      @keydown="handleEditKeydown"
-                      ref="sectionNameInput"
-                    />
+                    <div class="section-edit-container">
+                      <input 
+                        type="text" 
+                        class="section-name-edit" 
+                        v-model="editSectionName" 
+                        @blur="saveEditedSection"
+                        @keydown="handleEditKeydown"
+                        ref="sectionNameInput"
+                      />
+                      <button class="confirm-section-btn" @click="saveEditedSection">
+                        <span class="confirm-icon">✓</span>
+                      </button>
+                      <button class="cancel-section-btn" @click="cancelEditSection">
+                        <span class="cancel-icon">×</span>
+                      </button>
+                    </div>
                   </template>
                   <template v-else>
                     {{ section.name }}
@@ -84,13 +92,21 @@
                           ></div>
                         </div>
                         <template v-if="editableTaskId === item.id">
-                          <input 
-                            type="text" 
-                            class="task-text-edit" 
-                            v-model="editTaskText" 
-                            @blur="saveEditedTask"
-                            @keydown="handleTaskEditKeydown"
-                          />
+                          <div class="task-edit-container">
+                            <input 
+                              type="text" 
+                              class="task-text-edit" 
+                              v-model="editTaskText" 
+                              @blur="saveEditedTask"
+                              @keydown="handleTaskEditKeydown"
+                            />
+                            <button class="confirm-task-btn" @click="saveEditedTask">
+                              <span class="confirm-icon">✓</span>
+                            </button>
+                            <button class="cancel-task-btn" @click="cancelEditTask">
+                              <span class="cancel-icon">×</span>
+                            </button>
+                          </div>
                         </template>
                         <template v-else>
                           <span 
@@ -154,14 +170,22 @@
                   @dblclick="section.archivable && startEditingSection(section)"
                 >
                   <template v-if="editableSectionId === section.name">
-                    <input 
-                      type="text" 
-                      class="section-name-edit" 
-                      v-model="editSectionName" 
-                      @blur="saveEditedSection"
-                      @keydown="handleEditKeydown"
-                      ref="sectionNameInput"
-                    />
+                    <div class="section-edit-container">
+                      <input 
+                        type="text" 
+                        class="section-name-edit" 
+                        v-model="editSectionName" 
+                        @blur="saveEditedSection"
+                        @keydown="handleEditKeydown"
+                        ref="sectionNameInput"
+                      />
+                      <button class="confirm-section-btn" @click="saveEditedSection">
+                        <span class="confirm-icon">✓</span>
+                      </button>
+                      <button class="cancel-section-btn" @click="cancelEditSection">
+                        <span class="cancel-icon">×</span>
+                      </button>
+                    </div>
                   </template>
                   <template v-else>
                     {{ section.name }}
@@ -199,13 +223,21 @@
                           ></div>
                         </div>
                         <template v-if="editableTaskId === item.id">
-                          <input 
-                            type="text" 
-                            class="task-text-edit" 
-                            v-model="editTaskText" 
-                            @blur="saveEditedTask"
-                            @keydown="handleTaskEditKeydown"
-                          />
+                          <div class="task-edit-container">
+                            <input 
+                              type="text" 
+                              class="task-text-edit" 
+                              v-model="editTaskText" 
+                              @blur="saveEditedTask"
+                              @keydown="handleTaskEditKeydown"
+                            />
+                            <button class="confirm-task-btn" @click="saveEditedTask">
+                              <span class="confirm-icon">✓</span>
+                            </button>
+                            <button class="cancel-task-btn" @click="cancelEditTask">
+                              <span class="cancel-icon">×</span>
+                            </button>
+                          </div>
                         </template>
                         <template v-else>
                           <span 
@@ -226,7 +258,9 @@
                               </button>
                             </template>
                             <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
-                              <span class="delete-icon">🗑</span>
+                              <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                              </svg>
                             </button>
                           </span>
                         </template>
@@ -267,14 +301,22 @@
                   @dblclick="section.archivable && startEditingSection(section)"
                 >
                   <template v-if="editableSectionId === section.name">
-                    <input 
-                      type="text" 
-                      class="section-name-edit" 
-                      v-model="editSectionName" 
-                      @blur="saveEditedSection"
-                      @keydown="handleEditKeydown"
-                      ref="sectionNameInput"
-                    />
+                    <div class="section-edit-container">
+                      <input 
+                        type="text" 
+                        class="section-name-edit" 
+                        v-model="editSectionName" 
+                        @blur="saveEditedSection"
+                        @keydown="handleEditKeydown"
+                        ref="sectionNameInput"
+                      />
+                      <button class="confirm-section-btn" @click="saveEditedSection">
+                        <span class="confirm-icon">✓</span>
+                      </button>
+                      <button class="cancel-section-btn" @click="cancelEditSection">
+                        <span class="cancel-icon">×</span>
+                      </button>
+                    </div>
                   </template>
                   <template v-else>
                     {{ section.name }}
@@ -321,6 +363,9 @@
                               @keydown="handleTaskEditKeydown"
                               placeholder="Enter task text..."
                             />
+                            <button class="confirm-task-btn" @click="saveEditedTask">
+                              <span class="confirm-icon">✓</span>
+                            </button>
                             <button class="cancel-task-btn" @click="cancelEditTask">
                               <span class="cancel-icon">×</span>
                             </button>
@@ -345,7 +390,9 @@
                               </button>
                             </template>
                             <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
-                              <span class="delete-icon">🗑</span>
+                              <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                              </svg>
                             </button>
                           </span>
                         </template>
@@ -400,11 +447,11 @@ export default {
     const todoSections = computed(() => {
       return sections.value.filter(section => section.column === 'TODO' && !section.hidden);
     });
-    
+
     const wipSections = computed(() => {
       return sections.value.filter(section => section.column === 'WIP' && !section.hidden);
     });
-    
+
     const doneSections = computed(() => {
       // Filter out any hidden sections (like ARCHIVE) for display
       return sections.value.filter(section => section.column === 'DONE' && !section.hidden);
@@ -416,10 +463,10 @@ export default {
         const response = await axios.get(`${API_BASE_URL}/files`);
         availableFiles.value = response.data.files;
         console.log('Available files:', availableFiles.value);
-        
+
         // Check for saved file in localStorage
         const savedFile = localStorage.getItem('selectedTodoFile');
-        
+
         // Set the selected file - first try localStorage, then first file in list
         if (savedFile && availableFiles.value.some(file => file.name === savedFile)) {
           // If we have a saved file and it still exists in the file list
@@ -455,21 +502,21 @@ export default {
     const persistTodoData = async () => {
       try {
         console.log('Persisting todo data to server...');
-        
+
         // Render the sections into text content
         const content = renderTodoFile(sections.value);
-        
+
         if (!content) {
           console.error('No content generated for saving');
           return false;
         }
-        
+
         // Send the content to the server, including the filename
         const payload = { 
           content,
           filename: selectedFile.value 
         };
-        
+
         const response = await axios.post(`${API_BASE_URL}/todos`, payload);
         console.log('Todo data saved successfully', response.data);
         return true;
@@ -478,7 +525,7 @@ export default {
         return false;
       }
     };
-    
+
     // Create a new task in the specified section
     const createNewTask = (section) => {
       // Calculate the next available task ID
@@ -490,7 +537,7 @@ export default {
           }
         });
       });
-      
+
       // Create a new task with default values
       const newTask = {
         id: maxId + 1,
@@ -499,10 +546,10 @@ export default {
         lineIndex: -1, // This will be assigned when saving
         isNew: true // Flag to track newly created tasks
       };
-      
+
       // Add the task to the section
       section.items.push(newTask);
-      
+
       // Open the task for editing immediately
       nextTick(() => {
         startEditingTask(newTask);
@@ -527,7 +574,7 @@ export default {
       } else {
         item.statusChar = ' ';
       }
-    
+
       // Persist changes to file
       persistTodoData();
     };
@@ -538,7 +585,7 @@ export default {
       // Persist changes after drag operations
       persistTodoData();
     };
-    
+
     // Function to check if a section can be moved
     const checkSectionMove = (evt) => {
       const draggedSection = evt.draggedContext.element;
@@ -565,29 +612,29 @@ export default {
     // Track dragging state
     const isDragging = ref(false);
     const draggedSection = ref(null);
-    
+
     // Start dragging a section
     const onSectionDragStart = (event) => {
       console.log('Section drag started', event);
       isDragging.value = true;
       draggedSection.value = event.item.__draggable_context.element;
-      
+
       // If the dragged section is archivable, add a special class to the done column
       if (draggedSection.value.archivable) {
         document.querySelector('.done-column')?.classList.add('potential-target');
       }
     };
-    
+
     // End dragging a section
     const onSectionDragEnd = (event) => {
       console.log('Section drag ended', event);
       isDragging.value = false;
       draggedSection.value = null;
-      
+
       // Remove classes from the done column
       document.querySelector('.done-column')?.classList.remove('potential-target', 'drag-target');
     };
-    
+
     // When dragging over the DONE column
     const onDoneColumnDragOver = () => {
       // Only highlight if we're dragging an archivable section
@@ -596,21 +643,21 @@ export default {
         document.querySelector('.done-column')?.classList.add('drag-target');
       }
     };
-    
+
     // When leaving the DONE column during drag
     const onDoneColumnDragLeave = () => {
       console.log('Leaving DONE column');
       document.querySelector('.done-column')?.classList.remove('drag-target');
     };
-    
+
     // Handle section added to DONE column
     const onSectionAdded = (event) => {
       console.log('Section added to DONE column', event);
-      
+
       // Get the moved section from the event
       const movedSection = event.item.__draggable_context.element;
       console.log('Moving section:', movedSection.name);
-      
+
       // Find the ARCHIVE section
       const archiveSectionIndex = getArchiveSectionIndex();
       if (archiveSectionIndex == -1) {
@@ -633,14 +680,14 @@ export default {
 
       persistTodoData();
     };
-    
+
     // Start editing a section name
     const startEditingSection = (section) => {
       // Only allow editing archivable sections
       if (section.archivable) {
         editableSectionId.value = section.name;
         editSectionName.value = section.name;
-        
+
         // Focus the input after the DOM updates
         nextTick(() => {
           const input = document.querySelector('.section-name-edit');
@@ -650,35 +697,35 @@ export default {
         });
       }
     };
-    
+
     // Save the edited section name
     const saveEditedSection = async () => {
       if (!editableSectionId.value || !editSectionName.value.trim()) {
         cancelEditSection();
         return;
       }
-      
+
       // Find the section being edited
       const sectionIndex = sections.value.findIndex(s => s.name === editableSectionId.value);
       if (sectionIndex !== -1 && editSectionName.value.trim() !== sections.value[sectionIndex].name) {
         // Update the section name
         sections.value[sectionIndex].name = editSectionName.value.trim();
-        
+
         // Persist the change
         await persistTodoData();
       }
-      
+
       // Reset edit state
       editableSectionId.value = null;
       editSectionName.value = '';
     };
-    
+
     // Cancel editing without saving
     const cancelEditSection = () => {
       editableSectionId.value = null;
       editSectionName.value = '';
     };
-    
+
     // Handle keydown events in the edit input
     const handleEditKeydown = (event) => {
       if (event.key === 'Enter') {
@@ -689,12 +736,12 @@ export default {
         cancelEditSection();
       }
     };
-    
+
     // Start editing a task
     const startEditingTask = (item) => {
       editableTaskId.value = item.id;
       editTaskText.value = item.text;
-      
+
       // Focus the input after the DOM updates
       nextTick(() => {
         const input = document.querySelector('.task-text-edit');
@@ -703,7 +750,7 @@ export default {
         }
       });
     };
-    
+
     // Save the edited task text
     const saveEditedTask = async () => {
       // If no task ID or empty text, cancel editing (which will remove new tasks)
@@ -711,10 +758,10 @@ export default {
         cancelEditTask();
         return;
       }
-      
+
       // Find the task being edited
       let taskFound = false;
-      
+
       // Search in all sections
       for (const section of sections.value) {
         const taskIndex = section.items.findIndex(item => item.id === editableTaskId.value);
@@ -723,24 +770,24 @@ export default {
           if (section.items[taskIndex].isNew) {
             delete section.items[taskIndex].isNew;
           }
-          
+
           // Update the task text
           if (editTaskText.value.trim() !== section.items[taskIndex].text) {
             section.items[taskIndex].text = editTaskText.value.trim();
             taskFound = true;
           }
-          
+
           // Persist the change
           await persistTodoData();
           break;
         }
       }
-      
+
       // Reset edit state
       editableTaskId.value = null;
       editTaskText.value = '';
     };
-    
+
     // Cancel editing task without saving
     const cancelEditTask = () => {
       // Find the task being edited
@@ -757,12 +804,12 @@ export default {
           }
         }
       }
-      
+
       // Reset edit state
       editableTaskId.value = null;
       editTaskText.value = '';
     };
-    
+
     // Handle keydown events in the task edit input
     const handleTaskEditKeydown = (event) => {
       if (event.key === 'Enter') {
@@ -773,7 +820,7 @@ export default {
         cancelEditTask();
       }
     };
-    
+
     // Request deletion of a task - first step that asks for confirmation
     const requestDeleteTask = (item) => {
       taskPendingDelete.value = item.id;
@@ -784,12 +831,12 @@ export default {
         }
       }, 3000);
     };
-    
+
     // Cancel a delete request
     const cancelDeleteTask = () => {
       taskPendingDelete.value = null;
     };
-    
+
     // Confirm and execute the deletion
     const confirmDeleteTask = async (item, section) => {
       // Find the task index in the section
@@ -803,14 +850,14 @@ export default {
         await persistTodoData();
       }
     };
-    
+
     onMounted(async () => {
       // First load available files
       await loadAvailableFiles();
       // Then load todo data for the selected file
       await loadTodoData();
     });
-    
+
     return {
       sections,
       todoSections,
@@ -1226,6 +1273,82 @@ export default {
   font-weight: bold;
 }
 
+.confirm-task-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #4caf50;
+  font-size: 20px;
+  margin-left: 5px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 26px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.confirm-task-btn:hover {
+  background-color: #e8f5e9;
+  transform: scale(1.1);
+}
+
+.confirm-icon {
+  font-weight: bold;
+}
+
+.section-edit-container {
+  display: flex;
+  align-items: center;
+  width: calc(100% - 20px);
+}
+
+.confirm-section-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #4caf50;
+  font-size: 18px;
+  margin-left: 5px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 26px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.confirm-section-btn:hover {
+  background-color: #e8f5e9;
+  transform: scale(1.1);
+}
+
+.cancel-section-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e53935;
+  font-size: 18px;
+  margin-left: 5px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  width: 26px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.cancel-section-btn:hover {
+  background-color: #ffebee;
+  transform: scale(1.1);
+}
+
 .edit-task-btn {
   visibility: hidden;
   background: none;
@@ -1287,9 +1410,9 @@ export default {
 }
 
 .confirm-delete-btn {
-  background-color: #ffcdd2;
-  border: none;
-  border-radius: 20px; /* More rounded edges */
+  background-color: rgba(229, 115, 115, 0.1);
+  border: 1px solid rgba(229, 115, 115, 0.3);
+  border-radius: 20px;
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
@@ -1300,7 +1423,7 @@ export default {
   top: 50%;
   transform: translateY(-50%);
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
   line-height: 1.5;
   display: flex;
@@ -1309,18 +1432,20 @@ export default {
 }
 
 .confirm-delete-btn:hover {
-  background-color: #ef9a9a;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background-color: rgba(229, 115, 115, 0.2);
+  border-color: rgba(229, 115, 115, 0.5);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-50%) scale(1.02);
 }
 
 .cancel-delete-btn {
   background: none;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 50%;
   cursor: pointer;
   font-size: 16px;
-  color: #333;
-  padding: 2px;
+  color: #757575;
+  padding: 0;
   width: 22px;
   height: 22px;
   display: flex;
@@ -1334,8 +1459,10 @@ export default {
 }
 
 .cancel-delete-btn:hover {
-  color: #757575;
-  background-color: #f1f1f1;
+  color: #e53935;
+  background-color: rgba(229, 115, 115, 0.1);
+  border-color: rgba(229, 115, 115, 0.3);
+  transform: translateY(-50%) scale(1.1);
 }
 
 /* Add Task button styles */
