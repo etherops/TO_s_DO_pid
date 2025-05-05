@@ -32,7 +32,7 @@ app.use(express.static('dist'));
 const getDefaultTodoFilePath = () => {
   const todoFilePath = path.join(__dirname, 'todo.txt');
   const exampleTodoFilePath = path.join(__dirname, 'example_todo.txt');
-  
+
   // Check if todo.txt exists, if not fallback to example_todo.txt
   if (fs.existsSync(todoFilePath)) {
     logger.info('Using todo.txt as default file');
@@ -40,6 +40,48 @@ const getDefaultTodoFilePath = () => {
   } else {
     logger.info('Fallback to example_todo.txt as default file');
     return exampleTodoFilePath;
+  }
+};
+
+// Function to create a backup of a todo file
+const createBackup = (filePath) => {
+  try {
+    // Get the directory where the file is located
+    const fileDir = path.dirname(filePath);
+
+    // Create backup directory path
+    const backupDirName = '.TO_s_DO_pid.bak';
+    const backupDirPath = path.join(fileDir, backupDirName);
+
+    // Create backup directory if it doesn't exist
+    if (!fs.existsSync(backupDirPath)) {
+      logger.info('Creating backup directory', { path: backupDirPath });
+      fs.mkdirSync(backupDirPath);
+    }
+
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+
+    // Create backup filename with today's date
+    const fileName = path.basename(filePath);
+    // Extract filename without extension
+    const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+    const backupFileName = `${fileNameWithoutExt}_bak_${today}.txt`;
+    const backupFilePath = path.join(backupDirPath, backupFileName);
+
+    // Check if backup already exists for today
+    if (fs.existsSync(backupFilePath)) {
+      logger.info('Backup already exists for today', { path: backupFilePath });
+      return;
+    }
+
+    // Create backup
+    logger.info('Creating backup', { path: backupFilePath });
+    fs.copyFileSync(filePath, backupFilePath);
+    logger.info('Backup created successfully');
+  } catch (error) {
+    logger.error('Error creating backup:', error);
+    // Don't throw the error, just log it - we don't want to prevent the main file write
   }
 };
 
@@ -58,7 +100,7 @@ app.get('/api/files', (req, res) => {
     const files = fs.readdirSync(__dirname)
       .filter(file => file.endsWith('.txt'))
       .map(file => ({ name: file }));
-    
+
     res.json({ files });
   } catch (error) {
     logger.error('Error listing text files:', error);
@@ -71,7 +113,7 @@ app.get('/api/todos', (req, res) => {
   try {
     const filename = req.query.filename;
     const filePath = getTodoFilePath(filename);
-    
+
     logger.info('Reading todo file', { path: filePath });
     const fileContent = fs.readFileSync(filePath, 'utf8');
     res.json({ content: fileContent });
@@ -85,13 +127,17 @@ app.get('/api/todos', (req, res) => {
 app.post('/api/todos', (req, res) => {
   try {
     const { content, filename } = req.body;
-    
+
     if (!content) {
       logger.error('Missing content in request');
       return res.status(400).json({ error: 'Content is required' });
     }
-    
+
     const filePath = getTodoFilePath(filename);
+
+    // Create backup before writing to file
+    createBackup(filePath);
+
     logger.info('Writing todo file', { path: filePath, contentLength: content.length });
     fs.writeFileSync(filePath, content, 'utf8');
     logger.info('Todo file successfully written');

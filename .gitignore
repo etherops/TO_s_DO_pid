@@ -1,4 +1,12 @@
+# IDE
 .idea
+
+# npm
 node_modules
-todo.txt
+
+# mac
 .DS_Store
+
+# TO_s_DO_pid
+todo.txt
+.TO_s_DO_pid.bak

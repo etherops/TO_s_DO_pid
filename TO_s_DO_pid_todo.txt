@@ -1,0 +1,19 @@
+### Features
+* [ ] Create project/section/group
+* [ ] Support Notes
+* [ ] Support subtasks
+
+### Bugs
+* [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
+
+#######
+# WIP #
+#######
+* [ ] File backup before writing
+
+###########
+# ARCHIVE #
+###########
+
+### Just done
+* [x] Improve file picker

@@ -7,8 +7,25 @@
           <option v-for="file in availableFiles" :key="file.name" :value="file.name">
             {{ file.name }}
           </option>
+          <option v-if="availableFiles.length > 0" disabled>──────────</option>
+          <option v-for="file in customFiles" :key="file.path" :value="file.path">
+            {{ file.name }} (Custom)
+          </option>
+          <option v-if="customFiles.length > 0" disabled>──────────</option>
+          <option value="__select_from_device__">Select from device...</option>
         </select>
+        <input 
+          type="file" 
+          ref="fileInput" 
+          style="display: none" 
+          accept=".txt,.md" 
+          @change="handleFileInputChange" 
+        />
       </div>
+    </div>
+
+    <div v-if="parsingError" class="error-message">
+      {{ parsingError }}
     </div>
 
     <div v-if="loading" class="loading">
@@ -439,6 +456,9 @@ export default {
     const loading = ref(true);
     const availableFiles = ref([]);
     const selectedFile = ref('');
+    const customFiles = ref([]);
+    const parsingError = ref('');
+    const fileInput = ref(null);
     const editableSectionId = ref(null);
     const editSectionName = ref('');
     const editableTaskId = ref(null);
@@ -487,24 +507,67 @@ export default {
     const loadTodoData = async () => {
       try {
         loading.value = true;
-        const params = selectedFile.value ? { filename: selectedFile.value } : {};
-        const response = await axios.get(`${API_BASE_URL}/todos`, { params });
+        parsingError.value = '';
 
-        // Parse the todo text into sections
-        sections.value = parseTodoFile(response.data.content);
-        console.log('Loaded sections:', sections.value);
+        // Check if the selected file is a custom file
+        if (selectedFile.value && selectedFile.value.startsWith('custom:')) {
+          // Find the custom file in the list
+          const customFile = customFiles.value.find(file => file.path === selectedFile.value);
+          if (customFile) {
+            // Parse the custom file content
+            try {
+              sections.value = parseTodoFile(customFile.content);
+              console.log('Loaded sections from custom file:', sections.value);
+            } catch (parseError) {
+              console.error('Error parsing custom todo file:', parseError);
+              parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
+              // Revert to the previously selected file if possible
+              const previousFile = localStorage.getItem('previousTodoFile');
+              if (previousFile && previousFile !== selectedFile.value) {
+                selectedFile.value = previousFile;
+                // Try loading the previous file
+                await loadTodoData();
+                return;
+              }
+            }
+          } else {
+            console.error('Custom file not found:', selectedFile.value);
+            parsingError.value = 'Custom file not found';
+            // Revert to the first available file if possible
+            if (availableFiles.value.length > 0) {
+              selectedFile.value = availableFiles.value[0].name;
+              localStorage.setItem('selectedTodoFile', selectedFile.value);
+            }
+          }
+        } else {
+          // Load from server
+          const params = selectedFile.value ? { filename: selectedFile.value } : {};
+          const response = await axios.get(`${API_BASE_URL}/todos`, { params });
 
+          try {
+            // Parse the todo text into sections
+            sections.value = parseTodoFile(response.data.content);
+            console.log('Loaded sections:', sections.value);
+          } catch (parseError) {
+            console.error('Error parsing server todo file:', parseError);
+            parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
+          }
+        }
+
+        // Save the current file as the previous file
+        localStorage.setItem('previousTodoFile', selectedFile.value);
         loading.value = false;
       } catch (error) {
         console.error('Error loading todo file:', error);
+        parsingError.value = `Error loading file: ${error.message || 'Could not load file'}`;
         loading.value = false;
       }
     };
 
-    // Save todo data to the server
+    // Save todo data to the server or update custom file
     const persistTodoData = async () => {
       try {
-        console.log('Persisting todo data to server...');
+        console.log('Persisting todo data...');
 
         // Render the sections into text content
         const content = renderTodoFile(sections.value);
@@ -514,17 +577,35 @@ export default {
           return false;
         }
 
-        // Send the content to the server, including the filename
-        const payload = { 
-          content,
-          filename: selectedFile.value 
-        };
+        // Check if the selected file is a custom file
+        if (selectedFile.value && selectedFile.value.startsWith('custom:')) {
+          // Find the custom file in the list
+          const customFileIndex = customFiles.value.findIndex(file => file.path === selectedFile.value);
+          if (customFileIndex >= 0) {
+            // Update the custom file content
+            customFiles.value[customFileIndex].content = content;
+            // Save the updated custom files to localStorage
+            saveCustomFilesToStorage();
+            console.log('Custom todo file updated successfully');
+            return true;
+          } else {
+            console.error('Custom file not found for updating:', selectedFile.value);
+            return false;
+          }
+        } else {
+          // Send the content to the server, including the filename
+          const payload = { 
+            content,
+            filename: selectedFile.value 
+          };
 
-        const response = await axios.post(`${API_BASE_URL}/todos`, payload);
-        console.log('Todo data saved successfully', response.data);
-        return true;
+          const response = await axios.post(`${API_BASE_URL}/todos`, payload);
+          console.log('Todo data saved successfully to server', response.data);
+          return true;
+        }
       } catch (error) {
         console.error('Error saving todo data:', error);
+        parsingError.value = `Error saving file: ${error.message || 'Could not save file'}`;
         return false;
       }
     };
@@ -562,9 +643,118 @@ export default {
     // Handle file selection change
     const handleFileChange = async () => {
       console.log('File changed to:', selectedFile.value);
+
+      // Clear any previous parsing errors
+      parsingError.value = '';
+
+      // Check if the user selected the "Select from device" option
+      if (selectedFile.value === '__select_from_device__') {
+        // Trigger the file input click
+        fileInput.value.click();
+        return;
+      }
+
       // Save selected file to localStorage
       localStorage.setItem('selectedTodoFile', selectedFile.value);
       await loadTodoData();
+    };
+
+    // Handle file selection from the device
+    const handleFileInputChange = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        // Read the file content
+        const content = await readFileContent(file);
+
+        // Try to parse the file content
+        try {
+          // Parse the todo text into sections
+          sections.value = parseTodoFile(content);
+          console.log('Loaded sections from local file:', sections.value);
+
+          // Create a custom file object
+          const customFile = {
+            name: file.name,
+            path: `custom:${file.name}`,
+            content: content
+          };
+
+          // Check if this file is already in the custom files list
+          const existingIndex = customFiles.value.findIndex(f => f.path === customFile.path);
+          if (existingIndex >= 0) {
+            // Update the existing file
+            customFiles.value[existingIndex] = customFile;
+          } else {
+            // Add the new file to the custom files list
+            customFiles.value.push(customFile);
+          }
+
+          // Save the custom files to localStorage
+          saveCustomFilesToStorage();
+
+          // Select the custom file
+          selectedFile.value = customFile.path;
+          localStorage.setItem('selectedTodoFile', selectedFile.value);
+
+          loading.value = false;
+        } catch (parseError) {
+          console.error('Error parsing todo file:', parseError);
+          parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
+          // Reset the file input
+          event.target.value = '';
+          // Revert to the previously selected file
+          selectedFile.value = localStorage.getItem('selectedTodoFile') || '';
+          loading.value = false;
+        }
+      } catch (readError) {
+        console.error('Error reading file:', readError);
+        parsingError.value = `Error reading file: ${readError.message || 'Could not read file'}`;
+        // Reset the file input
+        event.target.value = '';
+        // Revert to the previously selected file
+        selectedFile.value = localStorage.getItem('selectedTodoFile') || '';
+        loading.value = false;
+      }
+    };
+
+    // Helper function to read file content
+    const readFileContent = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = (e) => reject(new Error('Failed to read file'));
+        reader.readAsText(file);
+      });
+    };
+
+    // Save custom files to localStorage
+    const saveCustomFilesToStorage = () => {
+      const customFilesData = customFiles.value.map(file => ({
+        name: file.name,
+        path: file.path,
+        content: file.content
+      }));
+      localStorage.setItem('customTodoFiles', JSON.stringify(customFilesData));
+    };
+
+    // Load custom files from localStorage
+    const loadCustomFilesFromStorage = () => {
+      try {
+        const customFilesData = localStorage.getItem('customTodoFiles');
+        if (customFilesData) {
+          const parsedData = JSON.parse(customFilesData);
+          customFiles.value = parsedData.map(file => ({
+            name: file.name,
+            path: file.path,
+            content: file.content
+          }));
+          console.log('Loaded custom files from storage:', customFiles.value);
+        }
+      } catch (error) {
+        console.error('Error loading custom files from storage:', error);
+      }
     };
 
     // Function to toggle task status
@@ -866,8 +1056,12 @@ export default {
     };
 
     onMounted(async () => {
-      // First load available files
+      // First load custom files from localStorage
+      loadCustomFilesFromStorage();
+
+      // Then load available files from the server
       await loadAvailableFiles();
+
       // Then load todo data for the selected file
       await loadTodoData();
     });
@@ -881,13 +1075,17 @@ export default {
       isDragging,
       draggedSection,
       availableFiles,
+      customFiles,
       selectedFile,
+      parsingError,
+      fileInput,
       editableSectionId,
       editSectionName,
       editableTaskId,
       editTaskText,
       taskPendingDelete,
       handleFileChange,
+      handleFileInputChange,
       toggleTaskStatus,
       onDragEnd,
       checkSectionMove,
@@ -962,6 +1160,16 @@ export default {
   height: 100%;
   font-size: 20px;
   color: #555;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 10px 15px;
+  margin: 10px 20px;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  font-size: 14px;
 }
 
 .kanban-container {
