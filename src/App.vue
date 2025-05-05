@@ -191,11 +191,11 @@
                     {{ section.name }}
                     <span v-if="section.archivable" class="archive-badge">Archivable</span>
                     <div class="section-header-actions">
-                      <button class="add-task-btn" @click="createNewTask(section)">
-                        <span class="add-icon">+</span> Add Task
-                      </button>
                       <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
                         <span class="edit-icon">✎</span>
+                      </button>
+                      <button class="add-task-btn" @click="createNewTask(section)">
+                        <span class="add-icon">+</span> Add Task
                       </button>
                     </div>
                   </template>
