@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
   <!-- Unchecked checkbox (top left) - first in cascade -->
-  <rect x="5" y="5" width="14" height="14" rx="3" ry="3" 
+  <rect x="2" y="18" width="34" height="34" rx="3" ry="3"
         fill="white" stroke="#aaaaaa" stroke-width="2" />
 
   <!-- Indeterminate checkbox (middle) - second in cascade -->
-  <rect x="10" y="10" width="24" height="24" rx="3" ry="3" 
+  <rect x="6" y="8" width="40" height="40" rx="3" ry="3"
         fill="#fff8e1" stroke="#ff9800" stroke-width="2" fill-opacity="0.9" />
   <line x1="15" y1="22" x2="29" y2="22" stroke="#ff9800" stroke-width="2" />
 
   <!-- Checked checkbox (bottom right) - third in cascade -->
-  <rect x="16" y="16" width="32" height="32" rx="3" ry="3" 
-        fill="#e8f5e9" stroke="#4caf50" stroke-width="2" fill-opacity="0.8" />
-  <path d="M26,32 L33,39 L41,30" fill="none" stroke="#4caf50" stroke-width="2.5" />
+  <rect x="13" y="13" width="45" height="45" rx="3" ry="3"
+        fill="#e8f5e9" stroke="#4caf50" stroke-width="2.5" fill-opacity="0.96" />
+  <path d="M25,34 L34,43 L45,30" fill="none" stroke="#4caf50" stroke-width="3" />
 </svg>
