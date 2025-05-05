@@ -102,6 +102,19 @@
                             <button class="edit-task-btn" @click="startEditingTask(item)">
                               <span class="edit-icon">✎</span>
                             </button>
+                            <template v-if="taskPendingDelete === item.id">
+                              <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)">
+                                Confirm Delete?
+                              </button>
+                              <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
+                                ×
+                              </button>
+                            </template>
+                            <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                              <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                              </svg>
+                            </button>
                           </span>
                         </template>
                       </div>
@@ -203,6 +216,17 @@
                             {{ item.text }}
                             <button class="edit-task-btn" @click="startEditingTask(item)">
                               <span class="edit-icon">✎</span>
+                            </button>
+                            <template v-if="taskPendingDelete === item.id">
+                              <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)">
+                                Confirm Delete?
+                              </button>
+                              <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
+                                ×
+                              </button>
+                            </template>
+                            <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                              <span class="delete-icon">🗑</span>
                             </button>
                           </span>
                         </template>
@@ -312,6 +336,17 @@
                             <button class="edit-task-btn" @click="startEditingTask(item)">
                               <span class="edit-icon">✎</span>
                             </button>
+                            <template v-if="taskPendingDelete === item.id">
+                              <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)" :title="'Delete: ' + item.text">
+                                Delete "{{ item.text.substring(0, 10) + (item.text.length > 10 ? '...' : '') }}"?
+                              </button>
+                              <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
+                                ×
+                              </button>
+                            </template>
+                            <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                              <span class="delete-icon">🗑</span>
+                            </button>
                           </span>
                         </template>
                       </div>
@@ -359,6 +394,7 @@ export default {
     const editableTaskId = ref(null);
     const editTaskText = ref('');
     const nextTaskId = ref(1);
+    const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -738,6 +774,36 @@ export default {
       }
     };
     
+    // Request deletion of a task - first step that asks for confirmation
+    const requestDeleteTask = (item) => {
+      taskPendingDelete.value = item.id;
+      // Auto-cancel after 3 seconds for better UX
+      setTimeout(() => {
+        if (taskPendingDelete.value === item.id) {
+          taskPendingDelete.value = null;
+        }
+      }, 3000);
+    };
+    
+    // Cancel a delete request
+    const cancelDeleteTask = () => {
+      taskPendingDelete.value = null;
+    };
+    
+    // Confirm and execute the deletion
+    const confirmDeleteTask = async (item, section) => {
+      // Find the task index in the section
+      const taskIndex = section.items.findIndex(task => task.id === item.id);
+      if (taskIndex !== -1) {
+        // Remove the task from the section
+        section.items.splice(taskIndex, 1);
+        // Reset the pending delete state
+        taskPendingDelete.value = null;
+        // Persist the change
+        await persistTodoData();
+      }
+    };
+    
     onMounted(async () => {
       // First load available files
       await loadAvailableFiles();
@@ -759,6 +825,7 @@ export default {
       editSectionName,
       editableTaskId,
       editTaskText,
+      taskPendingDelete,
       handleFileChange,
       toggleTaskStatus,
       onDragEnd,
@@ -776,7 +843,10 @@ export default {
       saveEditedTask,
       cancelEditTask,
       handleTaskEditKeydown,
-      createNewTask
+      createNewTask,
+      requestDeleteTask,
+      confirmDeleteTask,
+      cancelDeleteTask
     };
   }
 }
@@ -927,6 +997,7 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 130px; /* Make more space for confirmation buttons */
   padding-right: 30px;
   position: relative;
 }
@@ -1167,12 +1238,36 @@ export default {
   opacity: 0.9;
   transition: all 0.2s;
   position: absolute;
-  right: 0;
+  right: 30px; /* Move to make room for delete button */
   top: 50%;
   transform: translateY(-50%);
 }
 
-.task-title:hover .edit-task-btn {
+.delete-task-btn {
+  visibility: hidden;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 5px;
+  opacity: 0.9;
+  transition: all 0.2s;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-icon {
+  fill: #e57373; /* Red color for the trash icon */
+  transition: fill 0.2s;
+}
+
+.task-title:hover .edit-task-btn,
+.task-title:hover .delete-task-btn {
   visibility: visible;
 }
 
@@ -1180,6 +1275,67 @@ export default {
   opacity: 1;
   color: #4caf50;
   transform: translateY(-50%) scale(1.1);
+}
+
+.delete-task-btn:hover {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.delete-task-btn:hover .delete-icon {
+  fill: #e53935; /* Darker red on hover */
+}
+
+.confirm-delete-btn {
+  background-color: #ffcdd2;
+  border: none;
+  border-radius: 20px; /* More rounded edges */
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: #d32f2f;
+  padding: 4px 12px;
+  position: absolute;
+  right: 25px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
+.confirm-delete-btn:hover {
+  background-color: #ef9a9a;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.cancel-delete-btn {
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  color: #333;
+  padding: 2px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all 0.2s ease;
+}
+
+.cancel-delete-btn:hover {
+  color: #757575;
+  background-color: #f1f1f1;
 }
 
 /* Add Task button styles */
