@@ -6,8 +6,9 @@ This is a really really stupid to do list web app that shouldn't exist.
 [Watch it, stupid](https://www.youtube.com/watch?v=mzJVpDaHGUg)
 
 ## Features
-
 - Only the maintainer knows how to use it - watch the video. Like, thumbs up and subscribe.
+- It's so stupid that the database is a text file.
+- It only runs on your computer machine and you have to be a developer to know how to run it
 
 ## Prerequisites
 
