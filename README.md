@@ -1,8 +1,9 @@
 # STUPID TO DO LIST
 
 This is a really really stupid to do list web app that shouldn't exist.
+![stupid.png](stupid.png)
 
-[TO_s_DO_pid2.mov](https://s3.us-east-1.amazonaws.com/golightwire.com/TO_s_DO_pid2.mov)
+[Watch it, stupid](https://www.youtube.com/watch?v=mzJVpDaHGUg)
 
 ## Features
 
