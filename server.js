@@ -66,7 +66,7 @@ const createBackup = (filePath) => {
     const fileName = path.basename(filePath);
     // Extract filename without extension
     const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
-    const backupFileName = `${fileNameWithoutExt}_bak_${today}.txt`;
+    const backupFileName = `${fileNameWithoutExt}.bak.${today}.txt`;
     const backupFilePath = path.join(backupDirPath, backupFileName);
 
     // Check if backup already exists for today

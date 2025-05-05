@@ -27,14 +27,14 @@
 * [~] SOCIAL - Event coordination for friends
 * [x] PROPERTY - Research local zoning regulations
 
-### CURRENT WEEK (Week of May 1)
+### CURRENT WEEK (Week of May 1
 * [x] WORK - Website maintenance
 * [ ] TECH - Schedule service appointment
 
 ### CURRENT DAY (Thursday May 1)
 * [x] VEHICLE - Send photos to buyer
 * [ ] WORK - Update software subscriptions
-* [ ] HOBBY - Prepare for upcoming event
+* [ ] HOBBY - Prepare for upcoming thing
 
 #########
 # LOW-P #
@@ -46,6 +46,18 @@
 ########
 * [ ] HEALTH - Schedule appointment
 * [ ] WORK - Contact potential partner
+
+#######
+# ICE #
+#######
+* [ ] FUTURE - Project idea for next year
+* [ ] FUTURE - Long-term planning
+
+###########
+# ON HOLD #
+###########
+* [ ] PAUSED - Waiting for external input
+* [ ] PAUSED - Pending decision
 
 ###########
 # ARCHIVE #

@@ -1,7 +1,9 @@
 ### Features
+* [ ] TODOs... tabs instead of file drop down
 * [ ] Create project/section/group
 * [ ] Support Notes
 * [ ] Support subtasks
+* [ ] Backup rotation
 
 ### Bugs
 * [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
@@ -9,7 +11,7 @@
 #######
 # WIP #
 #######
-* [ ] File backup before writing
+* [~] favicon test
 
 ###########
 # ARCHIVE #
@@ -17,3 +19,4 @@
 
 ### Just done
 * [x] Improve file picker
+* [x] File backup before writing

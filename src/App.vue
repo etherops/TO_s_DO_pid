@@ -1,7 +1,10 @@
 <template>
   <div class="todo-app">
     <div class="app-header">
-      <h1>TO_s_DO_pid</h1>
+      <div class="logo-container">
+        <img src="./assets/favicon.svg" alt="Logo" class="app-logo">
+        <h1>TO_s_DO_pid</h1>
+      </div>
       <div class="file-selector">
         <select v-model="selectedFile" @change="handleFileChange">
           <option v-for="file in availableFiles" :key="file.name" :value="file.name">
@@ -1131,6 +1134,17 @@ export default {
 .app-header h1 {
   margin: 0;
   font-size: 24px;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.app-logo {
+  height: 30px;
+  width: 30px;
+  margin-right: 10px;
 }
 
 .file-selector {
