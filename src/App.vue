@@ -1178,11 +1178,11 @@ export default {
   background-color: #f5f5f5;
   border-bottom: 1px solid #e0e0e0;
   padding: 0 20px;
-  margin-top: 15px;
+  margin-top: 5px;
 }
 
 .file-tab {
-  padding: 12px 20px;
+  padding: 7px 20px;
   margin: 0 2px;
   background-color: #e9e9e9;
   color: #555;
@@ -1215,7 +1215,7 @@ export default {
 
 
 .file-tab.add-tab {
-  padding: 12px 15px;
+  padding: 7px 15px;
   min-width: 40px;
   justify-content: center;
 }
@@ -1353,13 +1353,13 @@ export default {
 }
 
 .section-items {
-  padding: 0 8px 8px;
+  padding: 0 4px 8px;
 }
 
 .task-card {
   background-color: white;
   border-radius: 5px;
-  padding: 6px 6px 6px 1px;
+  padding: 6px 3px 6px 1px;
   margin-bottom: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   display: flex;
@@ -1380,12 +1380,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 16px;
 }
 
 .custom-checkbox {
-  width: 16px;
+  width: 20px;
   height: 16px;
   border: 2px solid #aaa;
   border-radius: 2px;
@@ -1432,7 +1432,7 @@ export default {
   content: "";
   position: absolute;
   top: 2px;
-  left: 5px;
+  left: 6px;
   width: 4px;
   height: 8px;
   border: solid #4caf50;

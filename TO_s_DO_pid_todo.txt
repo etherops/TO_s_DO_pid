@@ -6,6 +6,7 @@
 * [ ] Backup rotation
 * [ ] Auto sort sections
 * [ ] Refactor: 3# = column, 1# = section
+* [ ] Truncated task, expand item with wrapping on hover instead of tool tip
 
 ### Bugs
 * [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog

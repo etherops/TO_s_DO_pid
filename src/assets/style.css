@@ -2,7 +2,7 @@
 .kanban-container {
   display: flex;
   height: calc(100vh - 80px);
-  gap: 20px;
+  gap: 10px;
   padding: 10px;
   overflow-x: auto;
 }
