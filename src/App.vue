@@ -1,10 +1,6 @@
 <template>
   <div class="todo-app">
     <div class="app-header">
-      <div class="logo-container">
-        <img src="./assets/favicon.svg" alt="Logo" class="app-logo">
-        <h1>TO_s_DO_pid</h1>
-      </div>
       <input 
         type="file" 
         ref="fileInput" 
@@ -24,7 +20,11 @@
 
     <div v-else>
       <div class="file-tabs">
-        <div 
+        <div class="logo-container">
+          <img src="./assets/favicon.svg" alt="Logo" class="app-logo">
+        </div>
+        <div class="app-title">It's TO_s_DO_pid TODO...</div>
+        <div
           v-for="file in availableFiles" 
           :key="file.name" 
           :class="['file-tab', 'server-tab', { active: selectedFile === file.name }]"
@@ -1148,28 +1148,31 @@ export default {
 }
 
 .app-header {
-  background-color: #2c3e50;
-  color: white;
-  padding: 10px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: 24px;
+  display: none;
 }
 
 .logo-container {
   display: flex;
   align-items: center;
+  margin-right: 2px;
 }
 
 .app-logo {
-  height: 30px;
-  width: 30px;
-  margin-right: 10px;
+  height: 24px;
+  width: 24px;
+  margin-right: 5px;
+}
+
+.app-title {
+  vertical-align: bottom;
+  font-size: 13px;
+  font-weight: bold;
+  color: #71797E;
+  margin-right: 15px;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  display: flex;
+  align-items: end;
 }
 
 .file-tabs {
@@ -1182,7 +1185,7 @@ export default {
 }
 
 .file-tab {
-  padding: 7px 20px;
+  padding: 7px 10px;
   margin: 0 2px;
   background-color: #e9e9e9;
   color: #555;
@@ -1280,9 +1283,9 @@ export default {
 
 .kanban-container {
   display: flex;
-  height: calc(100vh - 60px);
-  gap: 20px;
-  padding: 20px;
+  height: calc(100vh - 40px);
+  gap: 10px;
+  padding: 10px;
   overflow-x: auto;
 }
 
