@@ -4,6 +4,8 @@
 * [ ] Support Notes
 * [ ] Support subtasks
 * [ ] Backup rotation
+* [ ] Auto sort sections
+* [ ] Refactor: 3# = column, 1# = section
 
 ### Bugs
 * [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog

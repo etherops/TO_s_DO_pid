@@ -3,7 +3,7 @@
   display: flex;
   height: calc(100vh - 80px);
   gap: 20px;
-  padding: 20px;
+  padding: 10px;
   overflow-x: auto;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .column-header {
-  padding: 12px;
+  padding: 6px;
   font-weight: bold;
   text-align: center;
   background-color: #ebecf0;
@@ -78,21 +78,21 @@
 .column-content {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 5px;
 }
 
 .task-card {
   background-color: white;
   border-radius: 5px;
-  padding: 6px 10px;
-  margin-bottom: 6px;
+  padding: 3px 10px;
+  margin-bottom: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: flex-start;
 }
 
 .task-title {
-  margin-left: 12px;
+  margin-left: 8px;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -135,14 +135,14 @@
 }
 
 .task-group {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .task-group-title {
-  padding: 6px;
+  padding: 3px;
   background-color: rgba(0, 0, 0, 0.06);
   border-radius: 4px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-weight: bold;
 }
 

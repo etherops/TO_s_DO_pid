@@ -1324,7 +1324,7 @@ export default {
 }
 
 .section {
-  margin-bottom: 20px;
+  margin-bottom: 5px;
   background-color: rgba(255, 255, 255, 0.6);
   border-radius: 5px;
   padding: 2px;
@@ -1343,7 +1343,7 @@ export default {
   text-align: center;
   color: #2c3e50;
   background-color: rgba(255, 255, 255, 0.8);
-  padding: 15px 10px;
+  padding: 6px 10px;
 }
 
 .section-header.small {
@@ -1359,21 +1359,20 @@ export default {
 .task-card {
   background-color: white;
   border-radius: 5px;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 6px 6px 6px 1px;
+  margin-bottom: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   display: flex;
   align-items: flex-start;
 }
 
 .task-title {
-  margin-left: 12px;
+  margin-left: 6px;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 130px; /* Make more space for confirmation buttons */
-  padding-right: 30px;
+  padding-right: 50px;
   position: relative;
 }
 
@@ -1381,15 +1380,15 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
 }
 
 .custom-checkbox {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border: 2px solid #aaa;
-  border-radius: 3px;
+  border-radius: 2px;
   position: relative;
   cursor: pointer;
   transition: all 0.2s;
@@ -1416,9 +1415,9 @@ export default {
   content: "";
   position: absolute;
   top: 50%;
-  left: 3px;
-  right: 3px;
-  height: 2px;
+  left: 2px;
+  right: 2px;
+  height: 1px;
   background-color: #ff9800;
   transform: translateY(-50%);
 }
@@ -1433,19 +1432,21 @@ export default {
   content: "";
   position: absolute;
   top: 2px;
-  left: 6px;
-  width: 5px;
-  height: 10px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
   border: solid #4caf50;
-  border-width: 0 2px 2px 0;
+  border-width: 0 1px 1px 0;
   transform: rotate(45deg);
 }
 
 .empty-section {
-  padding: 10px;
+  padding: 1px;
   color: #999;
   font-style: italic;
   text-align: center;
+  height: 11px;
+  line-height: 11px;
 }
 
 /* Drag and drop styles */
@@ -1718,7 +1719,7 @@ export default {
   opacity: 0.9;
   transition: all 0.2s;
   position: absolute;
-  right: 30px; /* Move to make room for delete button */
+  right: 25px; /* Move to make room for delete button */
   top: 50%;
   transform: translateY(-50%);
 }
