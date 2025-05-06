@@ -41,6 +41,17 @@
           :title="file.path"
         >
           {{ formatTabName(file.name) }}
+          <template v-if="tabPendingRemove === file.path">
+            <div class="tab-confirm-actions">
+              <button class="confirm-remove-btn" @click.stop="confirmRemoveCustomFile(file)">
+                Forget tab?
+              </button>
+              <button class="cancel-remove-btn" @click.stop="cancelRemoveCustomFile">
+                ×
+              </button>
+            </div>
+          </template>
+          <button v-else class="close-tab-btn" @click.stop="requestRemoveCustomFile(file)">×</button>
         </div>
         <div class="file-tab add-tab" @click="fileInput.click()">
           <span class="add-icon">+</span>
@@ -481,6 +492,7 @@ export default {
     const editTaskText = ref('');
     const nextTaskId = ref(1);
     const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
+    const tabPendingRemove = ref(null); // Store the path of the tab pending removal
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -783,6 +795,59 @@ export default {
 
       return displayName;
     };
+
+    // Request to remove a custom file - first step that asks for confirmation
+    const requestRemoveCustomFile = (file) => {
+      tabPendingRemove.value = file.path;
+      // Auto-cancel after 3 seconds for better UX
+      setTimeout(() => {
+        if (tabPendingRemove.value === file.path) {
+          tabPendingRemove.value = null;
+        }
+      }, 3000);
+    };
+
+    // Cancel a tab removal request
+    const cancelRemoveCustomFile = () => {
+      tabPendingRemove.value = null;
+    };
+
+    // Confirm and execute the tab removal
+    const confirmRemoveCustomFile = (file) => {
+      // Find the index of the file in the customFiles array
+      const fileIndex = customFiles.value.findIndex(f => f.path === file.path);
+
+      if (fileIndex >= 0) {
+        // Remove the file from the array
+        customFiles.value.splice(fileIndex, 1);
+
+        // Save the updated custom files to localStorage
+        saveCustomFilesToStorage();
+
+        // If the removed file was the selected file, select another file
+        if (selectedFile.value === file.path) {
+          // Try to select another custom file first
+          if (customFiles.value.length > 0) {
+            selectedFile.value = customFiles.value[0].path;
+          } 
+          // Otherwise select a server file if available
+          else if (availableFiles.value.length > 0) {
+            selectedFile.value = availableFiles.value[0].name;
+          }
+          // Update localStorage and load the new file
+          localStorage.setItem('selectedTodoFile', selectedFile.value);
+          loadTodoData();
+        }
+
+        // Reset the pending remove state
+        tabPendingRemove.value = null;
+
+        console.log('Custom file removed:', file.name);
+      }
+    };
+
+    // Legacy function for backward compatibility
+    const removeCustomFile = confirmRemoveCustomFile;
 
     // Function to toggle task status
     const toggleTaskStatus = (item) => {
@@ -1111,6 +1176,7 @@ export default {
       editableTaskId,
       editTaskText,
       taskPendingDelete,
+      tabPendingRemove,
       handleFileChange,
       handleFileInputChange,
       toggleTaskStatus,
@@ -1133,7 +1199,11 @@ export default {
       requestDeleteTask,
       confirmDeleteTask,
       cancelDeleteTask,
-      formatTabName
+      formatTabName,
+      removeCustomFile,
+      requestRemoveCustomFile,
+      confirmRemoveCustomFile,
+      cancelRemoveCustomFile
     };
   }
 }
@@ -1248,6 +1318,35 @@ export default {
 /* Custom tab styles */
 .custom-tab {
   border-left: 3px solid #2196F3;
+  position: relative;
+  padding-right: 25px; /* Make room for the close button */
+}
+
+.close-tab-btn {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 50%;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.close-tab-btn:hover {
+  color: #f44336;
+  background-color: rgba(0, 0, 0, 0.05);
+  opacity: 1;
 }
 
 .custom-tab.active {
@@ -1260,6 +1359,42 @@ export default {
   color: #2196F3;
   margin-left: 8px;
   opacity: 0.7;
+}
+
+.tab-confirm-actions {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.confirm-remove-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.cancel-remove-btn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .loading {
