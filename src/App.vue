@@ -23,7 +23,7 @@
         <div class="logo-container">
           <img src="./assets/favicon.svg" alt="Logo" class="app-logo">
         </div>
-        <div class="app-title">It's TO_s_DO_pid TODO...</div>
+        <div class="app-title">TO_s_DO_pid</div>
         <div
           v-for="file in availableFiles" 
           :key="file.name" 
@@ -1533,7 +1533,7 @@ export default {
 
 .app-title {
   vertical-align: bottom;
-  font-size: 13px;
+  font-size: 22px;
   font-weight: bold;
   color: #71797E;
   margin-right: 15px;
