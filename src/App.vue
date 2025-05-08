@@ -153,29 +153,64 @@
                           </div>
                         </template>
                         <template v-else>
-                          <span 
-                            class="task-title" 
-                            :title="item.text"
-                            @dblclick="startEditingTask(item)"
-                          >
-                            {{ item.text }}
-                            <button class="edit-task-btn" @click="startEditingTask(item)">
-                              <span class="edit-icon">✎</span>
-                            </button>
-                            <template v-if="taskPendingDelete === item.id">
-                              <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)">
-                                Confirm Delete?
+                          <div class="task-container">
+                            <span 
+                              class="task-title" 
+                              :title="item.text"
+                              @dblclick="startEditingTask(item)"
+                            >
+                              {{ item.displayText || item.text }}
+                              <button v-if="item.hasNotes" class="notes-indicator" @click="toggleNotes(item.id)" :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'">
+                                {{ expandedNotes.has(item.id) ? '📝' : '📋' }}
                               </button>
-                              <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
-                                ×
+                              <button class="edit-task-btn" @click="startEditingTask(item)">
+                                <span class="edit-icon">✎</span>
                               </button>
-                            </template>
-                            <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
-                              <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
-                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                              </svg>
-                            </button>
-                          </span>
+                              <template v-if="taskPendingDelete === item.id">
+                                <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)">
+                                  Confirm Delete?
+                                </button>
+                                <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
+                                  ×
+                                </button>
+                              </template>
+                              <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                                <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                                </svg>
+                              </button>
+                            </span>
+
+                            <!-- Notes section (expanded) -->
+                            <div v-if="item.hasNotes && expandedNotes.has(item.id)" class="notes-section">
+                              <template v-if="editingNotes === item.id">
+                                <div class="notes-edit-container">
+                                  <textarea 
+                                    class="notes-edit-input" 
+                                    v-model="editNotesText" 
+                                    @keydown="handleNotesEditKeydown"
+                                    placeholder="Enter notes..."
+                                  ></textarea>
+                                  <div class="notes-edit-actions">
+                                    <button class="confirm-notes-btn" @click="saveEditedNotes">
+                                      <span class="confirm-icon">✓</span> Save
+                                    </button>
+                                    <button class="cancel-notes-btn" @click="cancelEditNotes">
+                                      <span class="cancel-icon">×</span> Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              </template>
+                              <template v-else>
+                                <div class="notes-content">
+                                  <div class="notes-text">{{ item.notes }}</div>
+                                  <button class="edit-notes-btn" @click="startEditingNotes(item)">
+                                    <span class="edit-icon">✎</span>
+                                  </button>
+                                </div>
+                              </template>
+                            </div>
+                          </div>
                         </template>
                       </div>
                     </template>
@@ -285,29 +320,64 @@
                           </div>
                         </template>
                         <template v-else>
-                          <span 
-                            class="task-title" 
-                            :title="item.text"
-                            @dblclick="startEditingTask(item)"
-                          >
-                            {{ item.text }}
-                            <button class="edit-task-btn" @click="startEditingTask(item)">
-                              <span class="edit-icon">✎</span>
-                            </button>
-                            <template v-if="taskPendingDelete === item.id">
-                              <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)">
-                                Confirm Delete?
+                          <div class="task-container">
+                            <span 
+                              class="task-title" 
+                              :title="item.text"
+                              @dblclick="startEditingTask(item)"
+                            >
+                              {{ item.displayText || item.text }}
+                              <button v-if="item.hasNotes" class="notes-indicator" @click="toggleNotes(item.id)" :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'">
+                                {{ expandedNotes.has(item.id) ? '📝' : '📋' }}
                               </button>
-                              <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
-                                ×
+                              <button class="edit-task-btn" @click="startEditingTask(item)">
+                                <span class="edit-icon">✎</span>
                               </button>
-                            </template>
-                            <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
-                              <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
-                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                              </svg>
-                            </button>
-                          </span>
+                              <template v-if="taskPendingDelete === item.id">
+                                <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)">
+                                  Confirm Delete?
+                                </button>
+                                <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
+                                  ×
+                                </button>
+                              </template>
+                              <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                                <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                                </svg>
+                              </button>
+                            </span>
+
+                            <!-- Notes section (expanded) -->
+                            <div v-if="item.hasNotes && expandedNotes.has(item.id)" class="notes-section">
+                              <template v-if="editingNotes === item.id">
+                                <div class="notes-edit-container">
+                                  <textarea 
+                                    class="notes-edit-input" 
+                                    v-model="editNotesText" 
+                                    @keydown="handleNotesEditKeydown"
+                                    placeholder="Enter notes..."
+                                  ></textarea>
+                                  <div class="notes-edit-actions">
+                                    <button class="confirm-notes-btn" @click="saveEditedNotes">
+                                      <span class="confirm-icon">✓</span> Save
+                                    </button>
+                                    <button class="cancel-notes-btn" @click="cancelEditNotes">
+                                      <span class="cancel-icon">×</span> Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              </template>
+                              <template v-else>
+                                <div class="notes-content">
+                                  <div class="notes-text">{{ item.notes }}</div>
+                                  <button class="edit-notes-btn" @click="startEditingNotes(item)">
+                                    <span class="edit-icon">✎</span>
+                                  </button>
+                                </div>
+                              </template>
+                            </div>
+                          </div>
                         </template>
                       </div>
                     </template>
@@ -418,29 +488,64 @@
                           </div>
                         </template>
                         <template v-else>
-                          <span 
-                            class="task-title" 
-                            :title="item.text"
-                            @dblclick="startEditingTask(item)"
-                          >
-                            {{ item.text }}
-                            <button class="edit-task-btn" @click="startEditingTask(item)">
-                              <span class="edit-icon">✎</span>
-                            </button>
-                            <template v-if="taskPendingDelete === item.id">
-                              <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)" :title="'Delete: ' + item.text">
-                                Delete "{{ item.text.substring(0, 10) + (item.text.length > 10 ? '...' : '') }}"?
+                          <div class="task-container">
+                            <span 
+                              class="task-title" 
+                              :title="item.text"
+                              @dblclick="startEditingTask(item)"
+                            >
+                              {{ item.displayText || item.text }}
+                              <button v-if="item.hasNotes" class="notes-indicator" @click="toggleNotes(item.id)" :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'">
+                                {{ expandedNotes.has(item.id) ? '📝' : '📋' }}
                               </button>
-                              <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
-                                ×
+                              <button class="edit-task-btn" @click="startEditingTask(item)">
+                                <span class="edit-icon">✎</span>
                               </button>
-                            </template>
-                            <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
-                              <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
-                                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-                              </svg>
-                            </button>
-                          </span>
+                              <template v-if="taskPendingDelete === item.id">
+                                <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)" :title="'Delete: ' + item.text">
+                                  Delete "{{ (item.displayText || item.text).substring(0, 10) + ((item.displayText || item.text).length > 10 ? '...' : '') }}"?
+                                </button>
+                                <button class="cancel-delete-btn" @click.stop="cancelDeleteTask">
+                                  ×
+                                </button>
+                              </template>
+                              <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                                <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                                </svg>
+                              </button>
+                            </span>
+
+                            <!-- Notes section (expanded) -->
+                            <div v-if="item.hasNotes && expandedNotes.has(item.id)" class="notes-section">
+                              <template v-if="editingNotes === item.id">
+                                <div class="notes-edit-container">
+                                  <textarea 
+                                    class="notes-edit-input" 
+                                    v-model="editNotesText" 
+                                    @keydown="handleNotesEditKeydown"
+                                    placeholder="Enter notes..."
+                                  ></textarea>
+                                  <div class="notes-edit-actions">
+                                    <button class="confirm-notes-btn" @click="saveEditedNotes">
+                                      <span class="confirm-icon">✓</span> Save
+                                    </button>
+                                    <button class="cancel-notes-btn" @click="cancelEditNotes">
+                                      <span class="cancel-icon">×</span> Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              </template>
+                              <template v-else>
+                                <div class="notes-content">
+                                  <div class="notes-text">{{ item.notes }}</div>
+                                  <button class="edit-notes-btn" @click="startEditingNotes(item)">
+                                    <span class="edit-icon">✎</span>
+                                  </button>
+                                </div>
+                              </template>
+                            </div>
+                          </div>
                         </template>
                       </div>
                     </template>
@@ -493,6 +598,9 @@ export default {
     const nextTaskId = ref(1);
     const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
     const tabPendingRemove = ref(null); // Store the path of the tab pending removal
+    const expandedNotes = ref(new Set()); // Store IDs of tasks with expanded notes
+    const editingNotes = ref(null); // Store ID of task with notes being edited
+    const editNotesText = ref(''); // Store the edited notes text
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -531,6 +639,27 @@ export default {
       }
     };
 
+    // Extract notes from the text property of todo items
+    const extractNotes = () => {
+      // Process all sections and their items
+      for (const section of sections.value) {
+        for (const item of section.items) {
+          // Extract notes from parentheses at the end of the text
+          const notesMatch = item.text.match(/\s*\((.*)\)\s*$/);
+          if (notesMatch) {
+            item.notes = notesMatch[1];
+            // Remove the parentheses and their content from the display text
+            item.displayText = item.text.replace(/\s*\((.*)\)\s*$/, '');
+            item.hasNotes = true;
+          } else {
+            item.notes = '';
+            item.displayText = item.text;
+            item.hasNotes = false;
+          }
+        }
+      }
+    };
+
     // Load todo data from the server for the selected file
     const loadTodoData = async () => {
       try {
@@ -546,6 +675,8 @@ export default {
             try {
               sections.value = parseTodoFile(customFile.content);
               console.log('Loaded sections from custom file:', sections.value);
+              // Extract notes from the text property of todo items
+              extractNotes();
             } catch (parseError) {
               console.error('Error parsing custom todo file:', parseError);
               parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
@@ -576,6 +707,8 @@ export default {
             // Parse the todo text into sections
             sections.value = parseTodoFile(response.data.content);
             console.log('Loaded sections:', sections.value);
+            // Extract notes from the text property of todo items
+            extractNotes();
           } catch (parseError) {
             console.error('Error parsing server todo file:', parseError);
             parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
@@ -655,6 +788,9 @@ export default {
         id: maxId + 1,
         statusChar: ' ', // Default to unchecked
         text: '', // Empty text to be filled by user
+        displayText: '', // Empty display text
+        notes: '', // Empty notes
+        hasNotes: false, // No notes by default
         lineIndex: -1, // This will be assigned when saving
         isNew: true // Flag to track newly created tasks
       };
@@ -701,6 +837,8 @@ export default {
           // Parse the todo text into sections
           sections.value = parseTodoFile(content);
           console.log('Loaded sections from local file:', sections.value);
+          // Extract notes from the text property of todo items
+          extractNotes();
 
           // Create a custom file object
           const customFile = {
@@ -1067,9 +1205,34 @@ export default {
             delete section.items[taskIndex].isNew;
           }
 
+          // Get the current task
+          const task = section.items[taskIndex];
+
+          // Preserve any existing notes
+          let newText = editTaskText.value.trim();
+
+          // If the task has notes and they're not included in the edited text
+          if (task.notes && !newText.endsWith(`(${task.notes})`)) {
+            // Append the notes in parentheses
+            newText = `${newText} (${task.notes})`;
+          }
+
           // Update the task text
-          if (editTaskText.value.trim() !== section.items[taskIndex].text) {
-            section.items[taskIndex].text = editTaskText.value.trim();
+          if (newText !== task.text) {
+            task.text = newText;
+
+            // Update displayText and notes properties
+            const notesMatch = newText.match(/\s*\((.*)\)\s*$/);
+            if (notesMatch) {
+              task.notes = notesMatch[1];
+              task.displayText = newText.replace(/\s*\((.*)\)\s*$/, '');
+              task.hasNotes = true;
+            } else {
+              task.notes = '';
+              task.displayText = newText;
+              task.hasNotes = false;
+            }
+
             taskFound = true;
           }
 
@@ -1082,6 +1245,84 @@ export default {
       // Reset edit state
       editableTaskId.value = null;
       editTaskText.value = '';
+    };
+
+    // Toggle expanded notes for a task
+    const toggleNotes = (taskId) => {
+      if (expandedNotes.value.has(taskId)) {
+        expandedNotes.value.delete(taskId);
+      } else {
+        expandedNotes.value.add(taskId);
+      }
+    };
+
+    // Start editing notes for a task
+    const startEditingNotes = (item) => {
+      editingNotes.value = item.id;
+      editNotesText.value = item.notes || '';
+
+      // Ensure notes are expanded
+      expandedNotes.value.add(item.id);
+
+      // Focus the notes input after the DOM updates
+      nextTick(() => {
+        const input = document.querySelector('.notes-edit-input');
+        if (input) {
+          input.focus();
+        }
+      });
+    };
+
+    // Save edited notes
+    const saveEditedNotes = async () => {
+      if (editingNotes.value === null) {
+        return;
+      }
+
+      // Find the task with notes being edited
+      for (const section of sections.value) {
+        const taskIndex = section.items.findIndex(item => item.id === editingNotes.value);
+        if (taskIndex !== -1) {
+          const task = section.items[taskIndex];
+          const newNotes = editNotesText.value.trim();
+
+          // Update the notes
+          task.notes = newNotes;
+          task.hasNotes = !!newNotes;
+
+          // Update the full text to include notes in parentheses
+          if (newNotes) {
+            task.text = `${task.displayText} (${newNotes})`;
+          } else {
+            task.text = task.displayText;
+          }
+
+          // Persist the change
+          await persistTodoData();
+          break;
+        }
+      }
+
+      // Reset edit state
+      editingNotes.value = null;
+      editNotesText.value = '';
+    };
+
+    // Cancel editing notes
+    const cancelEditNotes = () => {
+      editingNotes.value = null;
+      editNotesText.value = '';
+    };
+
+    // Handle keydown events in the notes edit input
+    const handleNotesEditKeydown = (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        saveEditedNotes();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelEditNotes();
+      }
     };
 
     // Cancel editing task without saving
@@ -1177,6 +1418,9 @@ export default {
       editTaskText,
       taskPendingDelete,
       tabPendingRemove,
+      expandedNotes,
+      editingNotes,
+      editNotesText,
       handleFileChange,
       handleFileInputChange,
       toggleTaskStatus,
@@ -1203,7 +1447,12 @@ export default {
       removeCustomFile,
       requestRemoveCustomFile,
       confirmRemoveCustomFile,
-      cancelRemoveCustomFile
+      cancelRemoveCustomFile,
+      toggleNotes,
+      startEditingNotes,
+      saveEditedNotes,
+      cancelEditNotes,
+      handleNotesEditKeydown
     };
   }
 }
@@ -1692,6 +1941,107 @@ export default {
   border-radius: 3px;
   background-color: white;
   outline: none;
+}
+
+/* Notes styles */
+.task-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.notes-indicator {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  font-size: 14px;
+  padding: 0 4px;
+  margin-left: 5px;
+  opacity: 0.7;
+  transition: all 0.2s;
+}
+
+.notes-indicator:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.notes-section {
+  margin-top: 5px;
+  padding: 8px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border-left: 3px solid #4caf50;
+  font-size: 14px;
+}
+
+.notes-content {
+  display: flex;
+  align-items: flex-start;
+}
+
+.notes-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #555;
+  line-height: 1.4;
+}
+
+.edit-notes-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  font-size: 12px;
+  padding: 2px 4px;
+  opacity: 0.5;
+  transition: all 0.2s;
+}
+
+.edit-notes-btn:hover {
+  opacity: 1;
+}
+
+.notes-edit-container {
+  width: 100%;
+}
+
+.notes-edit-input {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.notes-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 5px;
+}
+
+.confirm-notes-btn, .cancel-notes-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-left: 5px;
+  border-radius: 3px;
+}
+
+.confirm-notes-btn {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.cancel-notes-btn {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #f44336;
 }
 
 .edit-section-btn {

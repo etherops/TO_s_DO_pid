@@ -211,6 +211,7 @@ export function renderTodoFile(sections) {
     // Render items in this section
     if (section.items && section.items.length > 0) {
       section.items.forEach(item => {
+        // Use the original text which includes notes in parentheses
         outputContent += `* [${item.statusChar}] ${item.text}\n`;
       });
     }

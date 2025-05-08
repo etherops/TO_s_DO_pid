@@ -1,25 +1,39 @@
 ### Features
-* [ ] TODOs... tabs instead of file drop down
-* [ ] Create project/section/group
-* [ ] Support Notes
-* [ ] Support subtasks
-* [ ] Backup rotation
-* [ ] Auto sort sections
 * [ ] Refactor: 3# = column, 1# = section
-* [ ] Truncated task, expand item with wrapping on hover instead of tool tip
+* [ ] PARSE: non destructive write-back
+* [ ] Support Notes
+* [ ] Backup rotation
+* [ ] VIEW - sortable tabs
+* [ ] LARGE: iPhone app
+* [ ] LARGE: Host on Lightwire
+* [ ] SERVER: git push integration
+* [ ] VIEW - diff revisions
+* [ ] BOTH: auto append "(DD/MM/YY)" on complete
+* [ ] VIEW: Auto sort sections
+* [ ] search feature
+* [ ] add [-] for strikethrough/cancelled
+* [ ] add [>] for ON HOLD
+* [ ] archive adds a timestamp to the header
 
 ### Bugs
 * [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
+* [ ] Compact "confirm delete" is truncated vertically
 
 #######
 # WIP #
 #######
-* [~] favicon test
+* [ ] VIEW: Truncated task, expand item with wrapping on hover instead of tool tip
+* [ ] Support subtasks
 
 ###########
 # ARCHIVE #
 ###########
 
 ### Just done
+* [x] parenthesis doesn't display, because notes
+* [x] VIEW: remove custom tabs
+* [x] TODOs... tabs instead of file drop down
+* [x] favicon test
+* [x] compactiffy display
 * [x] Improve file picker
 * [x] File backup before writing
