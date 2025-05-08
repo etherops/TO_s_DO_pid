@@ -291,7 +291,7 @@
                     @end="onDragEnd"
                   >
                     <template #item="{ element: item }">
-                      <div class="task-card">
+                      <div v-if="item.statusChar !== 'x'" class="task-card">
                         <div class="checkbox-wrapper">
                           <div
                             :class="['custom-checkbox', {
@@ -304,10 +304,10 @@
                         </div>
                         <template v-if="editableTaskId === item.id">
                           <div class="task-edit-container">
-                            <input 
-                              type="text" 
-                              class="task-text-edit" 
-                              v-model="editTaskText" 
+                            <input
+                              type="text"
+                              class="task-text-edit"
+                              v-model="editTaskText"
                               @blur="saveEditedTask"
                               @keydown="handleTaskEditKeydown"
                             />
@@ -321,8 +321,8 @@
                         </template>
                         <template v-else>
                           <div class="task-container">
-                            <span 
-                              class="task-title" 
+                            <span
+                              class="task-title"
                               :title="item.text"
                               @dblclick="startEditingTask(item)"
                             >
@@ -352,9 +352,9 @@
                             <div v-if="item.hasNotes && expandedNotes.has(item.id)" class="notes-section">
                               <template v-if="editingNotes === item.id">
                                 <div class="notes-edit-container">
-                                  <textarea 
-                                    class="notes-edit-input" 
-                                    v-model="editNotesText" 
+                                  <textarea
+                                    class="notes-edit-input"
+                                    v-model="editNotesText"
                                     @keydown="handleNotesEditKeydown"
                                     placeholder="Enter notes..."
                                   ></textarea>
@@ -396,6 +396,30 @@
       <div class="kanban-column done-column">
         <div class="column-header">DONE</div>
         <div class="column-content">
+          <!-- Ghost sections for completed items from WIP -->
+          <div v-for="ghostSection in ghostSections" :key="'ghost-' + ghostSection.name" class="section ghost-section">
+            <div :class="['section-header', ghostSection.headerStyle === 'LARGE' ? 'large' : 'small']">
+              {{ ghostSection.name }}
+              <span class="ghost-badge">Ghost</span>
+              <div v-if="ghostSection.on_ice" class="on-ice-label">ON ICE</div>
+            </div>
+            <div class="section-items">
+              <div v-for="item in ghostSection.items" :key="'ghost-item-' + item.id" class="task-card ghost-task" draggable="false">
+                <div class="checkbox-wrapper">
+                  <div 
+                    class="custom-checkbox checked"
+                    @click="toggleTaskStatus(item)"
+                  ></div>
+                </div>
+                <div class="task-container">
+                  <span class="task-title" :title="item.text">
+                    {{ item.displayText || item.text }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <draggable
             v-model="doneSections"
             :group="{ name: 'sections', pull: false, put: true }"
@@ -614,6 +638,30 @@ export default {
     const doneSections = computed(() => {
       // Filter out any hidden sections (like ARCHIVE) for display
       return sections.value.filter(section => section.column === 'DONE' && !section.hidden);
+    });
+
+    // Computed property to create ghost sections for completed items from WIP sections
+    const ghostSections = computed(() => {
+      const result = [];
+
+      // Loop through WIP sections
+      for (const section of wipSections.value) {
+        // Check if section has completed items
+        const completedItems = section.items.filter(item => item.statusChar === 'x');
+
+        // If there are completed items, create a ghost section
+        if (completedItems.length > 0) {
+          result.push({
+            name: section.name,
+            headerStyle: section.headerStyle,
+            isGhost: true, // Mark as ghost section
+            items: completedItems, // Only include completed items
+            on_ice: section.on_ice
+          });
+        }
+      }
+
+      return result;
     });
 
     // Load available text files from the server
@@ -1404,6 +1452,7 @@ export default {
       todoSections,
       wipSections,
       doneSections,
+      ghostSections,
       loading,
       isDragging,
       draggedSection,
@@ -1851,6 +1900,45 @@ export default {
   opacity: 0.6;
   background: #e0f7fa;
   border: 2px dashed #26c6da;
+}
+
+/* Ghost section styles for completed items from WIP */
+.section.ghost-section {
+  opacity: 0.8;
+  background-color: rgba(240, 240, 240, 0.5);
+  border: 1px solid #e0e0e0;
+  margin-bottom: 15px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.ghost-badge {
+  background-color: #e0e0e0;
+  color: #757575;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.task-card.ghost-task {
+  cursor: default;
+  opacity: 0.7;
+  background-color: rgba(255, 255, 255, 0.7);
+  border: 1px solid #e0e0e0;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.task-card.ghost-task .custom-checkbox {
+  cursor: pointer;
+}
+
+.task-card.ghost-task:active {
+  cursor: default;
 }
 
 .task-card {
