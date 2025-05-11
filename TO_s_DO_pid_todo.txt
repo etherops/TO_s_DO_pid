@@ -1,5 +1,5 @@
 ### Features
-* [ ] due date `!! May 12th` on items that pops/alert visually
+* [ ] archive-ghost: animates as it transitions
 * [ ] Support subtasks
 * [ ] Refactor: 3# = column, 1# = section
 * [ ] PARSE: non destructive write-back
@@ -16,6 +16,13 @@
 * [ ] add [-] for strikethrough/cancelled
 * [ ] add [>] for ON HOLD
 * [ ] archive adds a timestamp to the header
+* [ ] "add task" should be a an empty row ready
+* [ ] NOTES: notes expand section says "Notes:"
+* [ ] NOTES: BUG - notes messes up if not the last thing
+* [ ] BUG: multi line notes get truncated
+* [ ] SECTION - delete
+* [ ] FEATURE: calendar view!
+* [ ] re-order tabs
 
 ### Bugs
 * [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
@@ -31,6 +38,7 @@
 ###########
 
 ### Just done
+* [~] due date `\!\! May 12th` on items that pops/alert visually
 * [x] pre-archive ghost-archive complete items in WIP
 * [x] parenthesis doesn't display, because notes
 * [x] VIEW: remove custom tabs

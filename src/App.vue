@@ -155,7 +155,12 @@
                         <template v-else>
                           <div class="task-container">
                             <span 
-                              class="task-title" 
+                              :class="[
+                                'task-title',
+                                { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
+                                { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
+                                { 'due-this-week': !item.statusChar.includes('x') && isThisWeek(item.text) }
+                              ]"
                               :title="item.text"
                               @dblclick="startEditingTask(item)"
                             >
@@ -322,7 +327,12 @@
                         <template v-else>
                           <div class="task-container">
                             <span
-                              class="task-title"
+                              :class="[
+                                'task-title',
+                                { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
+                                { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
+                                { 'due-this-week': !item.statusChar.includes('x') && isThisWeek(item.text) }
+                              ]"
                               :title="item.text"
                               @dblclick="startEditingTask(item)"
                             >
@@ -412,7 +422,15 @@
                   ></div>
                 </div>
                 <div class="task-container">
-                  <span class="task-title" :title="item.text">
+                  <span 
+                    :class="[
+                      'task-title',
+                      { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
+                      { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
+                      { 'due-this-week': !item.statusChar.includes('x') && isThisWeek(item.text) }
+                    ]"
+                    :title="item.text"
+                  >
                     {{ item.displayText || item.text }}
                   </span>
                 </div>
@@ -514,7 +532,12 @@
                         <template v-else>
                           <div class="task-container">
                             <span 
-                              class="task-title" 
+                              :class="[
+                                'task-title',
+                                { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
+                                { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
+                                { 'due-this-week': !item.statusChar.includes('x') && isThisWeek(item.text) }
+                              ]"
                               :title="item.text"
                               @dblclick="startEditingTask(item)"
                             >
@@ -1447,6 +1470,89 @@ export default {
       await loadTodoData();
     });
 
+    // Due date helper functions
+    const extractDateFromText = (text) => {
+      if (!text || !text.includes('!!')) return null;
+
+      // Extract the text after !!
+      const dueDatePart = text.split('!!')[1].trim();
+
+      // Try to find a date pattern in various formats
+      // Format: Month Day (e.g., "May 15")
+      const monthDayPattern = /([A-Za-z]+)\s+(\d+)(?:st|nd|rd|th)?/i;
+      // Format: Day Month (e.g., "15 May")
+      const dayMonthPattern = /(\d+)(?:st|nd|rd|th)?\s+([A-Za-z]+)/i;
+      // Format: Month-Day (e.g., "May-15")
+      const monthDayDashPattern = /([A-Za-z]+)-(\d+)/i;
+      // Format: Day-Month (e.g., "15-May")
+      const dayMonthDashPattern = /(\d+)-([A-Za-z]+)/i;
+
+      let match;
+      let month, day;
+
+      if (match = dueDatePart.match(monthDayPattern)) {
+        month = match[1];
+        day = parseInt(match[2], 10);
+      } else if (match = dueDatePart.match(dayMonthPattern)) {
+        day = parseInt(match[1], 10);
+        month = match[2];
+      } else if (match = dueDatePart.match(monthDayDashPattern)) {
+        month = match[1];
+        day = parseInt(match[2], 10);
+      } else if (match = dueDatePart.match(dayMonthDashPattern)) {
+        day = parseInt(match[1], 10);
+        month = match[2];
+      } else {
+        return null; // No recognized date format
+      }
+
+      // Create a date object
+      const date = new Date(`${month} ${day}, ${new Date().getFullYear()}`);
+
+      // If the date is in the past (e.g., "May 1" when it's already December),
+      // assume it's for next year
+      if (date < new Date() && date.getMonth() < new Date().getMonth()) {
+        date.setFullYear(date.getFullYear() + 1);
+      }
+
+      return date;
+    };
+
+    const isToday = (text) => {
+      const date = extractDateFromText(text);
+      if (!date) return false;
+
+      const today = new Date();
+
+      // Check if date is today OR if it's in the past (overdue)
+      return (date.getDate() === today.getDate() &&
+             date.getMonth() === today.getMonth() &&
+             date.getFullYear() === today.getFullYear()) ||
+             date < today;
+    };
+
+    const isThisWeek = (text) => {
+      const date = extractDateFromText(text);
+      if (!date) return false;
+
+      const today = new Date();
+      // Set to the start of tomorrow
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+
+      const oneWeekFromNow = new Date(today);
+      oneWeekFromNow.setDate(today.getDate() + 7);
+
+      // Only include future dates within the next week, excluding today and past dates
+      return date >= tomorrow && date <= oneWeekFromNow;
+    };
+
+    // Check if a task has a due date (contains !!)
+    const hasDueDate = (text) => {
+      return text && text.includes('!!');
+    };
+
     return {
       sections,
       todoSections,
@@ -1501,7 +1607,10 @@ export default {
       startEditingNotes,
       saveEditedNotes,
       cancelEditNotes,
-      handleNotesEditKeydown
+      handleNotesEditKeydown,
+      isToday,
+      isThisWeek,
+      hasDueDate
     };
   }
 }
@@ -1808,7 +1917,7 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 50px;
+  padding-right: 70px;
   position: relative;
 }
 
@@ -1900,6 +2009,79 @@ export default {
   opacity: 0.6;
   background: #e0f7fa;
   border: 2px dashed #26c6da;
+}
+
+/* Due date styles */
+/* Base styles for all due dates */
+.task-card .task-title.due-date {
+  position: relative;
+  max-width: calc(100% - 70px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Add clock emoji for all due dates */
+.task-card .task-title.due-date::after {
+  content: "⏰";
+  margin-left: 5px;
+  font-size: 14px;
+  position: absolute;
+  right: 50px;
+  top: 0;
+  z-index: 10;
+}
+
+/* Style for due today or past due */
+.task-card .task-title.due-today {
+  animation: pulse 1.5s infinite;
+  color: #f44336;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+/* Style the entire task card for due today */
+.task-card:has(.task-title.due-today) {
+  background-color: #ffebee;
+  box-shadow: 0 2px 5px rgba(255, 0, 0, 0.2);
+}
+
+/* Style for due this week */
+.task-card .task-title.due-this-week {
+  color: #ff9800;
+  font-weight: 500;
+}
+
+/* Style the entire task card for due this week */
+.task-card:has(.task-title.due-this-week) {
+  background-color: #fffde7;
+  box-shadow: 0 2px 5px rgba(255, 193, 7, 0.2);
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Cancel due date styling for completed tasks */
+.task-card:has(.custom-checkbox.checked) .task-title.due-date {
+  color: inherit !important;
+  font-weight: normal !important;
+  font-size: 1em !important;
+  animation: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.task-card:has(.custom-checkbox.checked) .task-title.due-date::after {
+  display: none !important;
 }
 
 /* Ghost section styles for completed items from WIP */

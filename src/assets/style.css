@@ -101,21 +101,21 @@
   font-weight: bold;
 }
 
-.task-title:hover::after {
-  content: attr(title);
-  position: absolute;
-  left: 0;
-  top: 100%;
-  z-index: 10;
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  padding: 5px;
-  border-radius: 3px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  white-space: normal;
-  max-width: 300px;
-  word-wrap: break-word;
-}
+/*.task-title:hover::after {*/
+/*  content: attr(title);*/
+/*  position: absolute;*/
+/*  left: 0;*/
+/*  top: 100%;*/
+/*  z-index: 10;*/
+/*  background-color: #f9f9f9;*/
+/*  border: 1px solid #ddd;*/
+/*  padding: 5px;*/
+/*  border-radius: 3px;*/
+/*  box-shadow: 0 2px 5px rgba(0,0,0,0.2);*/
+/*  white-space: normal;*/
+/*  max-width: 300px;*/
+/*  word-wrap: break-word;*/
+/*}*/
 
 .task-card .status {
   font-size: 12px;
