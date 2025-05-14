@@ -137,13 +137,12 @@
                         </div>
                         <template v-if="editableTaskId === item.id">
                           <div class="task-edit-container">
-                            <input 
-                              type="text" 
+                            <textarea 
                               class="task-text-edit" 
                               v-model="editTaskText" 
                               @blur="saveEditedTask"
                               @keydown="handleTaskEditKeydown"
-                            />
+                            ></textarea>
                             <button class="confirm-task-btn" @click="saveEditedTask">
                               <span class="confirm-icon">✓</span>
                             </button>
@@ -159,18 +158,39 @@
                                 'task-title',
                                 { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
                                 { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
-                                { 'due-this-week': !item.statusChar.includes('x') && isThisWeek(item.text) }
+                                { 'due-soon': !item.statusChar.includes('x') && isSoon(item.text) }
                               ]"
                               :title="item.text"
                               @dblclick="startEditingTask(item)"
                             >
                               {{ item.displayText || item.text }}
-                              <button v-if="item.hasNotes" class="notes-indicator" @click="toggleNotes(item.id)" :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'">
+                            </span>
+
+                            <div class="task-buttons-container">
+                              <!-- Clock button - always visible, transparent when no due date -->
+                              <button 
+                                class="task-icon-btn clock-btn" 
+                                :class="{ 'has-due-date': !item.statusChar.includes('x') && hasDueDate(item.text) }"
+                              >
+                                ⏰
+                              </button>
+
+                              <!-- Notes button - always visible, transparent when no notes -->
+                              <button 
+                                class="task-icon-btn notes-btn" 
+                                :class="{ 'has-notes': item.hasNotes }"
+                                @click="toggleNotes(item.id)" 
+                                :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'"
+                              >
                                 {{ expandedNotes.has(item.id) ? '📝' : '📋' }}
                               </button>
-                              <button class="edit-task-btn" @click="startEditingTask(item)">
+
+                              <!-- Edit button - always visible, transparent when not hovered -->
+                              <button class="task-icon-btn edit-btn" @click="startEditingTask(item)">
                                 <span class="edit-icon">✎</span>
                               </button>
+
+                              <!-- Delete button or confirmation buttons -->
                               <template v-if="taskPendingDelete === item.id">
                                 <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)">
                                   Confirm Delete?
@@ -179,12 +199,12 @@
                                   ×
                                 </button>
                               </template>
-                              <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                              <button v-else class="task-icon-btn delete-btn" @click.stop="requestDeleteTask(item)">
                                 <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
                                   <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                                 </svg>
                               </button>
-                            </span>
+                            </div>
 
                             <!-- Notes section (expanded) -->
                             <div v-if="item.hasNotes && expandedNotes.has(item.id)" class="notes-section">
@@ -309,13 +329,12 @@
                         </div>
                         <template v-if="editableTaskId === item.id">
                           <div class="task-edit-container">
-                            <input
-                              type="text"
+                            <textarea
                               class="task-text-edit"
                               v-model="editTaskText"
                               @blur="saveEditedTask"
                               @keydown="handleTaskEditKeydown"
-                            />
+                            ></textarea>
                             <button class="confirm-task-btn" @click="saveEditedTask">
                               <span class="confirm-icon">✓</span>
                             </button>
@@ -326,23 +345,44 @@
                         </template>
                         <template v-else>
                           <div class="task-container">
-                            <span
+                            <span 
                               :class="[
                                 'task-title',
                                 { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
                                 { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
-                                { 'due-this-week': !item.statusChar.includes('x') && isThisWeek(item.text) }
+                                { 'due-soon': !item.statusChar.includes('x') && isSoon(item.text) }
                               ]"
                               :title="item.text"
                               @dblclick="startEditingTask(item)"
                             >
                               {{ item.displayText || item.text }}
-                              <button v-if="item.hasNotes" class="notes-indicator" @click="toggleNotes(item.id)" :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'">
+                            </span>
+
+                            <div class="task-buttons-container">
+                              <!-- Clock button - always visible, transparent when no due date -->
+                              <button 
+                                class="task-icon-btn clock-btn" 
+                                :class="{ 'has-due-date': !item.statusChar.includes('x') && hasDueDate(item.text) }"
+                              >
+                                ⏰
+                              </button>
+
+                              <!-- Notes button - always visible, transparent when no notes -->
+                              <button 
+                                class="task-icon-btn notes-btn" 
+                                :class="{ 'has-notes': item.hasNotes }"
+                                @click="toggleNotes(item.id)" 
+                                :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'"
+                              >
                                 {{ expandedNotes.has(item.id) ? '📝' : '📋' }}
                               </button>
-                              <button class="edit-task-btn" @click="startEditingTask(item)">
+
+                              <!-- Edit button - always visible, transparent when not hovered -->
+                              <button class="task-icon-btn edit-btn" @click="startEditingTask(item)">
                                 <span class="edit-icon">✎</span>
                               </button>
+
+                              <!-- Delete button or confirmation buttons -->
                               <template v-if="taskPendingDelete === item.id">
                                 <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)">
                                   Confirm Delete?
@@ -351,12 +391,12 @@
                                   ×
                                 </button>
                               </template>
-                              <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                              <button v-else class="task-icon-btn delete-btn" @click.stop="requestDeleteTask(item)">
                                 <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
                                   <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                                 </svg>
                               </button>
-                            </span>
+                            </div>
 
                             <!-- Notes section (expanded) -->
                             <div v-if="item.hasNotes && expandedNotes.has(item.id)" class="notes-section">
@@ -427,7 +467,7 @@
                       'task-title',
                       { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
                       { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
-                      { 'due-this-week': !item.statusChar.includes('x') && isThisWeek(item.text) }
+                      { 'due-soon': !item.statusChar.includes('x') && isSoon(item.text) }
                     ]"
                     :title="item.text"
                   >
@@ -513,14 +553,13 @@
                         </div>
                         <template v-if="editableTaskId === item.id">
                           <div class="task-edit-container">
-                            <input 
-                              type="text" 
+                            <textarea 
                               class="task-text-edit" 
                               v-model="editTaskText" 
                               @blur="saveEditedTask"
                               @keydown="handleTaskEditKeydown"
                               placeholder="Enter task text..."
-                            />
+                            ></textarea>
                             <button class="confirm-task-btn" @click="saveEditedTask">
                               <span class="confirm-icon">✓</span>
                             </button>
@@ -536,18 +575,39 @@
                                 'task-title',
                                 { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
                                 { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
-                                { 'due-this-week': !item.statusChar.includes('x') && isThisWeek(item.text) }
+                                { 'due-soon': !item.statusChar.includes('x') && isSoon(item.text) }
                               ]"
                               :title="item.text"
                               @dblclick="startEditingTask(item)"
                             >
                               {{ item.displayText || item.text }}
-                              <button v-if="item.hasNotes" class="notes-indicator" @click="toggleNotes(item.id)" :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'">
+                            </span>
+
+                            <div class="task-buttons-container">
+                              <!-- Clock button - always visible, transparent when no due date -->
+                              <button 
+                                class="task-icon-btn clock-btn" 
+                                :class="{ 'has-due-date': !item.statusChar.includes('x') && hasDueDate(item.text) }"
+                              >
+                                ⏰
+                              </button>
+
+                              <!-- Notes button - always visible, transparent when no notes -->
+                              <button 
+                                class="task-icon-btn notes-btn" 
+                                :class="{ 'has-notes': item.hasNotes }"
+                                @click="toggleNotes(item.id)" 
+                                :title="expandedNotes.has(item.id) ? 'Hide notes' : 'Show notes'"
+                              >
                                 {{ expandedNotes.has(item.id) ? '📝' : '📋' }}
                               </button>
-                              <button class="edit-task-btn" @click="startEditingTask(item)">
+
+                              <!-- Edit button - always visible, transparent when not hovered -->
+                              <button class="task-icon-btn edit-btn" @click="startEditingTask(item)">
                                 <span class="edit-icon">✎</span>
                               </button>
+
+                              <!-- Delete button or confirmation buttons -->
                               <template v-if="taskPendingDelete === item.id">
                                 <button class="confirm-delete-btn" @click.stop="confirmDeleteTask(item, section)" :title="'Delete: ' + item.text">
                                   Delete "{{ (item.displayText || item.text).substring(0, 10) + ((item.displayText || item.text).length > 10 ? '...' : '') }}"?
@@ -556,12 +616,12 @@
                                   ×
                                 </button>
                               </template>
-                              <button v-else class="delete-task-btn" @click.stop="requestDeleteTask(item)">
+                              <button v-else class="task-icon-btn delete-btn" @click.stop="requestDeleteTask(item)">
                                 <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
                                   <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
                                 </svg>
                               </button>
-                            </span>
+                            </div>
 
                             <!-- Notes section (expanded) -->
                             <div v-if="item.hasNotes && expandedNotes.has(item.id)" class="notes-section">
@@ -646,8 +706,6 @@ export default {
     const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
     const tabPendingRemove = ref(null); // Store the path of the tab pending removal
     const expandedNotes = ref(new Set()); // Store IDs of tasks with expanded notes
-    const editingNotes = ref(null); // Store ID of task with notes being edited
-    const editNotesText = ref(''); // Store the edited notes text
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -710,26 +768,6 @@ export default {
       }
     };
 
-    // Extract notes from the text property of todo items
-    const extractNotes = () => {
-      // Process all sections and their items
-      for (const section of sections.value) {
-        for (const item of section.items) {
-          // Extract notes from parentheses at the end of the text
-          const notesMatch = item.text.match(/\s*\((.*)\)\s*$/);
-          if (notesMatch) {
-            item.notes = notesMatch[1];
-            // Remove the parentheses and their content from the display text
-            item.displayText = item.text.replace(/\s*\((.*)\)\s*$/, '');
-            item.hasNotes = true;
-          } else {
-            item.notes = '';
-            item.displayText = item.text;
-            item.hasNotes = false;
-          }
-        }
-      }
-    };
 
     // Load todo data from the server for the selected file
     const loadTodoData = async () => {
@@ -746,8 +784,6 @@ export default {
             try {
               sections.value = parseTodoFile(customFile.content);
               console.log('Loaded sections from custom file:', sections.value);
-              // Extract notes from the text property of todo items
-              extractNotes();
             } catch (parseError) {
               console.error('Error parsing custom todo file:', parseError);
               parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
@@ -778,8 +814,6 @@ export default {
             // Parse the todo text into sections
             sections.value = parseTodoFile(response.data.content);
             console.log('Loaded sections:', sections.value);
-            // Extract notes from the text property of todo items
-            extractNotes();
           } catch (parseError) {
             console.error('Error parsing server todo file:', parseError);
             parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
@@ -860,8 +894,8 @@ export default {
         statusChar: ' ', // Default to unchecked
         text: '', // Empty text to be filled by user
         displayText: '', // Empty display text
-        notes: '', // Empty notes
-        hasNotes: false, // No notes by default
+        hasNotes: false, // No notes by default (dummy property for compatibility)
+        notes: '', // Empty notes (dummy property for compatibility)
         lineIndex: -1, // This will be assigned when saving
         isNew: true // Flag to track newly created tasks
       };
@@ -908,8 +942,6 @@ export default {
           // Parse the todo text into sections
           sections.value = parseTodoFile(content);
           console.log('Loaded sections from local file:', sections.value);
-          // Extract notes from the text property of todo items
-          extractNotes();
 
           // Create a custom file object
           const customFile = {
@@ -1279,30 +1311,11 @@ export default {
           // Get the current task
           const task = section.items[taskIndex];
 
-          // Preserve any existing notes
-          let newText = editTaskText.value.trim();
-
-          // If the task has notes and they're not included in the edited text
-          if (task.notes && !newText.endsWith(`(${task.notes})`)) {
-            // Append the notes in parentheses
-            newText = `${newText} (${task.notes})`;
-          }
-
           // Update the task text
+          const newText = editTaskText.value.trim();
           if (newText !== task.text) {
             task.text = newText;
-
-            // Update displayText and notes properties
-            const notesMatch = newText.match(/\s*\((.*)\)\s*$/);
-            if (notesMatch) {
-              task.notes = notesMatch[1];
-              task.displayText = newText.replace(/\s*\((.*)\)\s*$/, '');
-              task.hasNotes = true;
-            } else {
-              task.notes = '';
-              task.displayText = newText;
-              task.hasNotes = false;
-            }
+            task.displayText = newText;
 
             taskFound = true;
           }
@@ -1318,82 +1331,17 @@ export default {
       editTaskText.value = '';
     };
 
-    // Toggle expanded notes for a task
+
+    // NOTE: The notes feature has been removed from the application.
+    // However, some dummy properties (item.hasNotes, item.notes) and functions (toggleNotes)
+    // remain in the code for compatibility with the existing template.
+    // In a future update, the template should be updated to completely remove all notes-related UI elements.
+
+    // Toggle notes for a task (dummy function to prevent errors)
     const toggleNotes = (taskId) => {
-      if (expandedNotes.value.has(taskId)) {
-        expandedNotes.value.delete(taskId);
-      } else {
-        expandedNotes.value.add(taskId);
-      }
-    };
-
-    // Start editing notes for a task
-    const startEditingNotes = (item) => {
-      editingNotes.value = item.id;
-      editNotesText.value = item.notes || '';
-
-      // Ensure notes are expanded
-      expandedNotes.value.add(item.id);
-
-      // Focus the notes input after the DOM updates
-      nextTick(() => {
-        const input = document.querySelector('.notes-edit-input');
-        if (input) {
-          input.focus();
-        }
-      });
-    };
-
-    // Save edited notes
-    const saveEditedNotes = async () => {
-      if (editingNotes.value === null) {
-        return;
-      }
-
-      // Find the task with notes being edited
-      for (const section of sections.value) {
-        const taskIndex = section.items.findIndex(item => item.id === editingNotes.value);
-        if (taskIndex !== -1) {
-          const task = section.items[taskIndex];
-          const newNotes = editNotesText.value.trim();
-
-          // Update the notes
-          task.notes = newNotes;
-          task.hasNotes = !!newNotes;
-
-          // Update the full text to include notes in parentheses
-          if (newNotes) {
-            task.text = `${task.displayText} (${newNotes})`;
-          } else {
-            task.text = task.displayText;
-          }
-
-          // Persist the change
-          await persistTodoData();
-          break;
-        }
-      }
-
-      // Reset edit state
-      editingNotes.value = null;
-      editNotesText.value = '';
-    };
-
-    // Cancel editing notes
-    const cancelEditNotes = () => {
-      editingNotes.value = null;
-      editNotesText.value = '';
-    };
-
-    // Handle keydown events in the notes edit input
-    const handleNotesEditKeydown = (event) => {
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        saveEditedNotes();
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        cancelEditNotes();
-      }
+      // This function is intentionally empty
+      // It's here to prevent errors when the notes button is clicked
+      console.log('Notes feature has been removed');
     };
 
     // Cancel editing task without saving
@@ -1421,6 +1369,11 @@ export default {
     // Handle keydown events in the task edit input
     const handleTaskEditKeydown = (event) => {
       if (event.key === 'Enter') {
+        // If Shift key is pressed, allow new line
+        if (event.shiftKey) {
+          return; // Let the default behavior (new line) happen
+        }
+        // Otherwise, save the task
         event.preventDefault();
         saveEditedTask();
       } else if (event.key === 'Escape') {
@@ -1531,7 +1484,7 @@ export default {
              date < today;
     };
 
-    const isThisWeek = (text) => {
+    const isSoon = (text) => {
       const date = extractDateFromText(text);
       if (!date) return false;
 
@@ -1542,7 +1495,7 @@ export default {
       tomorrow.setHours(0, 0, 0, 0);
 
       const oneWeekFromNow = new Date(today);
-      oneWeekFromNow.setDate(today.getDate() + 7);
+      oneWeekFromNow.setDate(today.getDate() + 3);
 
       // Only include future dates within the next week, excluding today and past dates
       return date >= tomorrow && date <= oneWeekFromNow;
@@ -1574,8 +1527,6 @@ export default {
       taskPendingDelete,
       tabPendingRemove,
       expandedNotes,
-      editingNotes,
-      editNotesText,
       handleFileChange,
       handleFileInputChange,
       toggleTaskStatus,
@@ -1604,12 +1555,8 @@ export default {
       confirmRemoveCustomFile,
       cancelRemoveCustomFile,
       toggleNotes,
-      startEditingNotes,
-      saveEditedNotes,
-      cancelEditNotes,
-      handleNotesEditKeydown,
       isToday,
-      isThisWeek,
+      isSoon,
       hasDueDate
     };
   }
@@ -1842,7 +1789,7 @@ export default {
 }
 
 .column-header {
-  padding: 12px;
+  padding: 6px;
   font-weight: bold;
   text-align: center;
   background-color: #ebecf0;
@@ -1865,7 +1812,7 @@ export default {
 .column-content {
   flex: 1;
   overflow-y: auto;
-  padding: 10px;
+  padding: 5px;
 }
 
 .section {
@@ -1904,21 +1851,23 @@ export default {
 .task-card {
   background-color: white;
   border-radius: 5px;
-  padding: 6px 3px 6px 1px;
-  margin-bottom: 8px;
+  padding: 3px 10px;
+  margin-bottom: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .task-title {
-  margin-left: 6px;
+  margin-left: 8px;
   flex: 1;
   white-space: nowrap;
+  font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 70px;
   position: relative;
+  transition: all 0.3s ease;
+  max-width: calc(100% - 110px); /* Leave space for buttons container */
 }
 
 .checkbox-wrapper {
@@ -2006,37 +1955,16 @@ export default {
 }
 
 .ghost-section {
-  opacity: 0.6;
-  background: #e0f7fa;
-  border: 2px dashed #26c6da;
+  opacity: 0.5;
+  background-color: #e0f7fa;
+  border: 1px dashed #26c6da;
 }
-
 /* Due date styles */
-/* Base styles for all due dates */
-.task-card .task-title.due-date {
-  position: relative;
-  max-width: calc(100% - 70px);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Add clock emoji for all due dates */
-.task-card .task-title.due-date::after {
-  content: "⏰";
-  margin-left: 5px;
-  font-size: 14px;
-  position: absolute;
-  right: 50px;
-  top: 0;
-  z-index: 10;
-}
 
 /* Style for due today or past due */
-.task-card .task-title.due-today {
+.task-title.due-today {
   animation: pulse 1.5s infinite;
   color: #f44336;
-  font-weight: bold;
   font-size: 1.1em;
 }
 
@@ -2047,13 +1975,12 @@ export default {
 }
 
 /* Style for due this week */
-.task-card .task-title.due-this-week {
+.task-title.due-soon {
   color: #ff9800;
-  font-weight: 500;
 }
 
 /* Style the entire task card for due this week */
-.task-card:has(.task-title.due-this-week) {
+.task-card:has(.task-title.due-soon) {
   background-color: #fffde7;
   box-shadow: 0 2px 5px rgba(255, 193, 7, 0.2);
 }
@@ -2071,7 +1998,7 @@ export default {
 }
 
 /* Cancel due date styling for completed tasks */
-.task-card:has(.custom-checkbox.checked) .task-title.due-date {
+.task-card:has(.custom-checkbox.checked) .task-title.has-due-date {
   color: inherit !important;
   font-weight: normal !important;
   font-size: 1em !important;
@@ -2080,8 +2007,77 @@ export default {
   box-shadow: none !important;
 }
 
-.task-card:has(.custom-checkbox.checked) .task-title.due-date::after {
-  display: none !important;
+/* Hide clock button for completed tasks */
+.task-card:has(.custom-checkbox.checked) .clock-btn.has-due-date {
+  opacity: 0.3 !important;
+}
+
+/* Task hover effects - combined and simplified */
+.task-card:hover {
+  height: auto;
+  z-index: 10;
+}
+
+.task-card:hover .task-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: initial;
+  max-width: calc(100% - 110px); /* Maintain space for buttons */
+}
+
+/* Keep buttons at the top when task card expands */
+.task-card:hover .task-buttons-container {
+  align-self: flex-start;
+  margin-top: 0;
+}
+
+/* Keep task container centered when task card expands */
+.task-card:hover .task-container {
+  align-items: center;
+}
+
+/* Task buttons container */
+.task-buttons-container {
+  display: flex;
+  align-items: center;
+  z-index: 20;
+  width: 100px; /* Fixed width for the buttons container */
+  justify-content: flex-end;
+  margin-left: auto; /* Push to the right */
+}
+
+/* Common styles for all task icon buttons */
+.task-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 3px;
+  opacity: 0.3;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Specific button styles */
+.clock-btn {
+  font-size: 14px;
+}
+
+.clock-btn.has-due-date {
+  opacity: 1;
+}
+
+
+/* Hover effects */
+.task-card:hover .edit-btn,
+.task-card:hover .delete-btn {
+  opacity: 1;
+}
+
+.task-icon-btn:hover {
+  transform: scale(1.1);
 }
 
 /* Ghost section styles for completed items from WIP */
@@ -2216,103 +2212,14 @@ export default {
 /* Notes styles */
 .task-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   width: 100%;
+  position: relative;
+  align-items: center;
+  overflow: hidden;
 }
 
-.notes-indicator {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #666;
-  font-size: 14px;
-  padding: 0 4px;
-  margin-left: 5px;
-  opacity: 0.7;
-  transition: all 0.2s;
-}
 
-.notes-indicator:hover {
-  opacity: 1;
-  transform: scale(1.1);
-}
-
-.notes-section {
-  margin-top: 5px;
-  padding: 8px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  border-left: 3px solid #4caf50;
-  font-size: 14px;
-}
-
-.notes-content {
-  display: flex;
-  align-items: flex-start;
-}
-
-.notes-text {
-  flex: 1;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: #555;
-  line-height: 1.4;
-}
-
-.edit-notes-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #666;
-  font-size: 12px;
-  padding: 2px 4px;
-  opacity: 0.5;
-  transition: all 0.2s;
-}
-
-.edit-notes-btn:hover {
-  opacity: 1;
-}
-
-.notes-edit-container {
-  width: 100%;
-}
-
-.notes-edit-input {
-  width: 100%;
-  min-height: 60px;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  resize: vertical;
-  font-family: inherit;
-}
-
-.notes-edit-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 5px;
-}
-
-.confirm-notes-btn, .cancel-notes-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px 6px;
-  margin-left: 5px;
-  border-radius: 3px;
-}
-
-.confirm-notes-btn {
-  background-color: rgba(76, 175, 80, 0.1);
-  color: #4caf50;
-}
-
-.cancel-notes-btn {
-  background-color: rgba(244, 67, 54, 0.1);
-  color: #f44336;
-}
 
 .edit-section-btn {
   visibility: hidden;
@@ -2347,7 +2254,7 @@ export default {
 /* Task editing styles */
 .task-edit-container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex: 1;
   margin-left: 8px;
 }
@@ -2361,6 +2268,12 @@ export default {
   background-color: white;
   outline: none;
   flex: 1;
+  resize: vertical;
+  min-height: 30px;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .cancel-task-btn {
@@ -2370,6 +2283,7 @@ export default {
   color: #e53935;
   font-size: 20px;
   margin-left: 5px;
+  margin-top: 2px;
   padding: 0 5px;
   display: flex;
   align-items: center;
@@ -2396,6 +2310,7 @@ export default {
   color: #4caf50;
   font-size: 20px;
   margin-left: 5px;
+  margin-top: 2px;
   padding: 0 5px;
   display: flex;
   align-items: center;
@@ -2465,63 +2380,12 @@ export default {
   transform: scale(1.1);
 }
 
-.edit-task-btn {
-  visibility: hidden;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: #333;
-  padding: 2px 5px;
-  margin-left: 5px;
-  opacity: 0.9;
-  transition: all 0.2s;
-  position: absolute;
-  right: 25px; /* Move to make room for delete button */
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.delete-task-btn {
-  visibility: hidden;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 2px 5px;
-  opacity: 0.9;
-  transition: all 0.2s;
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .delete-icon {
   fill: #e57373; /* Red color for the trash icon */
   transition: fill 0.2s;
 }
 
-.task-title:hover .edit-task-btn,
-.task-title:hover .delete-task-btn {
-  visibility: visible;
-}
-
-.edit-task-btn:hover {
-  opacity: 1;
-  color: #4caf50;
-  transform: translateY(-50%) scale(1.1);
-}
-
-.delete-task-btn:hover {
-  opacity: 1;
-  transform: translateY(-50%) scale(1.1);
-}
-
-.delete-task-btn:hover .delete-icon {
+.delete-btn:hover .delete-icon {
   fill: #e53935; /* Darker red on hover */
 }
 

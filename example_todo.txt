@@ -1,22 +1,18 @@
-############
-# PROJECTS #
-############
-* [ ] PROJECT - Outdoor activities
-* [ ] PROJECT - Mountain trip planning
-
 ########
 # TODO #
 ########
+
+# PROJECTS
+* [ ] PROJECT - Outdoor activities
+* [ ] PROJECT - Mountain trip planning
+
+# TODO
 * [ ] WORK - Follow up with client
 
-#########
-# HOBBY #
-#########
+# HOBBY
 * [~] HOBBY - RSVP for local event
 
-##########
-# HELPER #
-##########
+# HELPER
 * [ ] HOME - Garden maintenance
 * [ ] HOME - Lawn care
 
@@ -36,14 +32,14 @@
 * [ ] WORK - Update software subscriptions
 * [ ] HOBBY - Prepare for upcoming thing
 
-#########
-# LOW-P #
-#########
+########
+# TODO #
+########
+
+# LOW-P
 * [ ] HEALTH - Research classes
 
-########
-# BACK #
-########
+# BACKLOG
 * [ ] HEALTH - Schedule appointment
 * [ ] WORK - Contact potential partner
 

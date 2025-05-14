@@ -1,44 +1,56 @@
-### Features
-* [ ] archive-ghost: animates as it transitions
-* [ ] Support subtasks
-* [ ] Refactor: 3# = column, 1# = section
-* [ ] PARSE: non destructive write-back
-* [ ] Support Notes
-* [ ] Backup rotation
-* [ ] VIEW - sortable tabs
+### Bigger Features
+* [ ] PARSE: non destructive write-backj
+* [ ] DYNAMIC: dynamic re-render/watch on file change
+* [ ] SUBTASKS: Support subtasks
+* [ ] MARKDOWN: 3# = column, 1# = section
 * [ ] LARGE: iPhone app
 * [ ] LARGE: Host on Lightwire
+* [ ] VIEW - diff revisions !! Due May 16
+* [ ] FEATURE: calendar view! !! Due Jun 18
 * [ ] SERVER: git push integration
-* [ ] VIEW - diff revisions
+* [ ] FEATURE: "Today, Tomorrow" as due dates
+* [ ] BUG: expland centers checkbox and text top-bottom. also it should show overtop instead of pushing down
+* [ ] BUG: date should hide date
+* [ ] feature: add the preceeding folder name in custom tabs
+* [ ] counts in tabs
+* [ ] feature: clock date picker to change due date
+
+### Quick Features
+* [ ] REFACT: why is there a separate style sheet from App.vue
+* [ ] archive-ghost: animates as it transitions
+* [ ] "add task" should be a an empty row ready
+* [ ] VIEW - sortable tabs
 * [ ] BOTH: auto append "(DD/MM/YY)" on complete
-* [ ] VIEW: Auto sort sections
-* [ ] search feature
 * [ ] add [-] for strikethrough/cancelled
 * [ ] add [>] for ON HOLD
-* [ ] archive adds a timestamp to the header
-* [ ] "add task" should be a an empty row ready
-* [ ] NOTES: notes expand section says "Notes:"
-* [ ] NOTES: BUG - notes messes up if not the last thing
-* [ ] BUG: multi line notes get truncated
 * [ ] SECTION - delete
-* [ ] FEATURE: calendar view!
-* [ ] re-order tabs
+* [ ] VIEW: Auto sort sections
+* [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
+* [ ] Backup rotation
+* [ ] BUG: Compact "confirm delete" is truncated vertically
 
 ### Bugs
-* [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
-* [ ] Compact "confirm delete" is truncated vertically
 
 #######
 # WIP #
 #######
-* [ ] VIEW: Truncated task, expand item with wrapping on hover instead of tool tip
+* [ ] BUG: Note is wrapping
+* [ ] NOTES: BUG - notes messes up if not the last thing
+* [ ] NOTES: notes expand section says "Notes:"
+* [ ] BUG: multi line notes get truncated
+* [ ] DUE DATE: should not display
+* [ ] archive back in a tab
+* [ ] flash red overdue
 
 ###########
 # ARCHIVE #
 ###########
 
 ### Just done
-* [~] due date `\!\! May 12th` on items that pops/alert visually
+* [x] VIEW: Truncated task, expand item with wrapping on hover instead of tool tip
+* [x] Larger edit box
+* [x] due date `\!\! May 12th` on items that pops/alert visually
+* [x] Support (Parenthetical) Notes
 * [x] pre-archive ghost-archive complete items in WIP
 * [x] parenthesis doesn't display, because notes
 * [x] VIEW: remove custom tabs
