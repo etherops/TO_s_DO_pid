@@ -1800,11 +1800,12 @@ export default {
   margin-bottom: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .task-title {
   margin-left: 8px;
+  margin-top: 3px; /* Align with checkbox */
   flex: 1;
   white-space: nowrap;
   font-weight: bold;
@@ -1821,6 +1822,7 @@ export default {
   justify-content: center;
   width: 20px;
   height: 16px;
+  margin-top: 3px; /* Align with the first line of text */
 }
 
 .custom-checkbox {
@@ -1968,6 +1970,7 @@ export default {
   overflow: visible;
   text-overflow: initial;
   max-width: calc(100% - 110px); /* Maintain space for buttons */
+  margin-top: 3px; /* Maintain alignment with checkbox */
 }
 
 /* Keep buttons at the top when task card expands */
@@ -1976,9 +1979,9 @@ export default {
   margin-top: 0;
 }
 
-/* Keep task container centered when task card expands */
+/* Keep task container aligned at the top when task card expands */
 .task-card:hover .task-container {
-  align-items: center;
+  align-items: flex-start;
 }
 
 /* Task buttons container */
@@ -2122,7 +2125,7 @@ export default {
   flex-direction: row;
   width: 100%;
   position: relative;
-  align-items: center;
+  align-items: flex-start;
   overflow: hidden;
 }
 
