@@ -34,6 +34,7 @@
 #######
 # WIP #
 #######
+* [ ] collapsible/hidable DONE
 * [ ] BUG: Note is wrapping
 * [ ] NOTES: BUG - notes messes up if not the last thing
 * [ ] NOTES: notes expand section says "Notes:"
@@ -41,12 +42,14 @@
 * [ ] DUE DATE: should not display
 * [ ] archive back in a tab
 * [ ] flash red overdue
+* [ ] can't archive a section with incomplete tasks
 
 ###########
 # ARCHIVE #
 ###########
 
 ### Just done
+* [x] kill ghost DONE
 * [x] VIEW: Truncated task, expand item with wrapping on hover instead of tool tip
 * [x] Larger edit box
 * [x] due date `\!\! May 12th` on items that pops/alert visually
