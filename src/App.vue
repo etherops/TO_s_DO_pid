@@ -10,6 +10,32 @@
       />
     </div>
 
+    <!-- Date Picker -->
+    <div 
+      v-if="datePickerTaskId !== null" 
+      class="date-picker-container"
+      :style="{ top: datePickerPosition.top + 'px', left: datePickerPosition.left + 'px' }"
+    >
+      <input 
+        type="date" 
+        class="date-picker-input" 
+        @keydown="handleDatePickerKeydown"
+        ref="datePickerInput"
+        v-model="selectedDateValue"
+      />
+      <div class="date-picker-actions">
+        <button class="date-picker-confirm-btn" @click="confirmDateSelection" title="Confirm (Enter)">
+          <span class="confirm-icon">✓</span> Set
+        </button>
+        <button class="date-picker-clear-btn" @click="clearDateSelection" title="Clear date">
+          <span class="clear-icon">✗</span> Clear
+        </button>
+        <button class="date-picker-close-btn" @click="closeDatePicker" title="Cancel (Esc)">
+          <span class="cancel-icon">×</span>
+        </button>
+      </div>
+    </div>
+
     <div v-if="parsingError" class="error-message">
       {{ parsingError }}
     </div>
@@ -171,6 +197,8 @@
                               <button 
                                 class="task-icon-btn clock-btn" 
                                 :class="{ 'has-due-date': !item.statusChar.includes('x') && hasDueDate(item.text) }"
+                                @click.stop="handleDueDateClick(item, $event)"
+                                :title="hasDueDate(item.text) ? getDueDateTooltip(item.text) : 'Add due date'"
                               >
                                 ⏰
                               </button>
@@ -363,6 +391,8 @@
                               <button 
                                 class="task-icon-btn clock-btn" 
                                 :class="{ 'has-due-date': !item.statusChar.includes('x') && hasDueDate(item.text) }"
+                                @click.stop="handleDueDateClick(item, $event)"
+                                :title="hasDueDate(item.text) ? getDueDateTooltip(item.text) : 'Add due date'"
                               >
                                 ⏰
                               </button>
@@ -557,6 +587,8 @@
                               <button 
                                 class="task-icon-btn clock-btn" 
                                 :class="{ 'has-due-date': !item.statusChar.includes('x') && hasDueDate(item.text) }"
+                                @click.stop="handleDueDateClick(item, $event)"
+                                :title="hasDueDate(item.text) ? getDueDateTooltip(item.text) : 'Add due date'"
                               >
                                 ⏰
                               </button>
@@ -641,7 +673,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, computed, nextTick, onUpdated, watch } from 'vue';
 import axios from 'axios';
 import { parseTodoFile, renderTodoFile } from './utils/TodoParser';
 import draggable from 'vuedraggable';
@@ -675,6 +707,9 @@ export default {
     const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
     const tabPendingRemove = ref(null); // Store the path of the tab pending removal
     const expandedNotes = ref(new Set()); // Store IDs of tasks with expanded notes
+    const datePickerTaskId = ref(null); // Store the ID of the task with open date picker
+    const datePickerPosition = ref({ top: 0, left: 0 }); // Store the position of the date picker
+    const selectedDateValue = ref(''); // Store the selected date value
 
     // Computed properties to filter sections by column
     const todoSections = computed(() => {
@@ -839,7 +874,7 @@ export default {
         id: maxId + 1,
         statusChar: ' ', // Default to unchecked
         text: '', // Empty text to be filled by user
-        displayText: '', // Empty display text
+        displayText: '', // Empty display text (will be set when text is updated)
         hasNotes: false, // No notes by default (dummy property for compatibility)
         notes: '', // Empty notes (dummy property for compatibility)
         lineIndex: -1, // This will be assigned when saving
@@ -1261,7 +1296,7 @@ export default {
           const newText = editTaskText.value.trim();
           if (newText !== task.text) {
             task.text = newText;
-            task.displayText = newText;
+            task.displayText = getDisplayTextWithoutDueDate(newText);
 
             taskFound = true;
           }
@@ -1371,10 +1406,10 @@ export default {
 
     // Due date helper functions
     const extractDateFromText = (text) => {
-      if (!text || !text.includes('!!')) return null;
+      if (!text || !text.includes('!!(')) return null;
 
       // Extract the text after !!
-      const dueDatePart = text.split('!!')[1].trim();
+      const dueDatePart = text.match(/!!\s*\((.*?)\)/)?.[1].trim();
 
       // Try to find a date pattern in various formats
       // Format: Month Day (e.g., "May 15")
@@ -1449,7 +1484,220 @@ export default {
 
     // Check if a task has a due date (contains !!)
     const hasDueDate = (text) => {
-      return text && text.includes('!!');
+      return text && text.includes('!!(');
+    };
+
+    // Format a date for display in the tooltip
+    const formatDateForTooltip = (date) => {
+      if (!date) return '';
+
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      return date.toLocaleDateString(undefined, options);
+    };
+
+    // Get formatted due date for tooltip
+    const getDueDateTooltip = (text) => {
+      const date = extractDateFromText(text);
+      return date ? formatDateForTooltip(date) : 'No due date';
+    };
+
+    // Remove due date from text for display
+    const getDisplayTextWithoutDueDate = (text) => {
+      if (!text || !text.includes('!!(')) return text;
+
+      // Split by !! and return just the first part
+      return text.replace(/!!\s*\([^)]*\)/g, '').trim();
+    };
+
+    // Process all tasks to set displayText without due date
+    const processTasksForDisplay = () => {
+      sections.value.forEach(section => {
+        section.items.forEach(item => {
+          if (item.text && item.text.includes('!!')) {
+            item.displayText = getDisplayTextWithoutDueDate(item.text);
+          }
+        });
+      });
+    };
+
+    // Call processTasksForDisplay after loading data
+    watch(sections, () => {
+      processTasksForDisplay();
+    }, { deep: true });
+
+    // Call processTasksForDisplay after loading data
+    onMounted(() => {
+      nextTick(() => {
+        processTasksForDisplay();
+      });
+    });
+
+    // We no longer need to update handlers after each render
+    // The Vue declarative event binding handles this automatically
+
+    // Handle clicking on the clock icon
+    const handleDueDateClick = (item, event) => {
+      // Prevent the default action and stop propagation
+      if (event) {
+        event.preventDefault();
+      }
+
+      // Set the task ID for the date picker
+      datePickerTaskId.value = item.id;
+
+      // Calculate position for the date picker
+      if (event && event.target) {
+        const rect = event.target.getBoundingClientRect();
+        datePickerPosition.value = {
+          top: rect.bottom + window.scrollY + 5,
+          left: rect.left + window.scrollX - 100 // Offset to center the date picker
+        };
+      }
+
+      // Set the date picker's initial value if there's already a due date
+      nextTick(() => {
+        const date = extractDateFromText(item.text);
+        if (date) {
+          // Format date as YYYY-MM-DD for the input
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          selectedDateValue.value = `${year}-${month}-${day}`;
+        } else {
+          // Set to today's date if no due date
+          const today = new Date();
+          const year = today.getFullYear();
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const day = String(today.getDate()).padStart(2, '0');
+          selectedDateValue.value = `${year}-${month}-${day}`;
+        }
+        
+        // Focus the date input after it's rendered
+        nextTick(() => {
+          const dateInput = document.querySelector('.date-picker-input');
+          if (dateInput) {
+            dateInput.focus();
+          }
+        });
+      });
+          };
+          
+          // Handle keyboard events in date picker
+          const handleDatePickerKeydown = (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        confirmDateSelection();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDatePicker();
+      }
+          };
+      
+          // Confirm date selection from the date picker
+          const confirmDateSelection = () => {
+      if (!selectedDateValue.value || !datePickerTaskId.value) {
+        closeDatePicker();
+        return;
+      }
+      
+      // Find the task
+      let taskFound = false;
+      let task = null;
+      
+      // Search in all sections
+      for (const section of sections.value) {
+        const taskIndex = section.items.findIndex(item => item.id === datePickerTaskId.value);
+        if (taskIndex !== -1) {
+          task = section.items[taskIndex];
+          taskFound = true;
+          break;
+        }
+      }
+      
+      if (!taskFound || !task) {
+        closeDatePicker();
+        return;
+      }
+      
+      // Parse the selected date
+      const [year, month, day] = selectedDateValue.value.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      
+      // Format the date for display (e.g., "May 15")
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}`;
+      
+            // Update the task text with the new format
+            if (task.text.includes('!!(')) {
+              // Replace existing due date in new format
+              task.text = task.text.replace(/!!\(.+?\)/, `!!(${formattedDate})`);
+            } else {
+              // Add new due date
+              task.text = task.text.trim() + ` !!(${formattedDate})`;
+      }
+      
+      // Update the display text
+      task.displayText = getDisplayTextWithoutDueDate(task.text);
+      
+      // Persist the changes
+      persistTodoData();
+      
+      // Close the date picker
+      closeDatePicker();
+          };
+          
+          // Clear the due date
+          const clearDateSelection = () => {
+      if (!datePickerTaskId.value) {
+        closeDatePicker();
+        return;
+      }
+      
+      // Find the task
+      let taskFound = false;
+      let task = null;
+      
+      // Search in all sections
+      for (const section of sections.value) {
+        const taskIndex = section.items.findIndex(item => item.id === datePickerTaskId.value);
+        if (taskIndex !== -1) {
+          task = section.items[taskIndex];
+          taskFound = true;
+          break;
+        }
+      }
+      
+      if (!taskFound || !task) {
+        closeDatePicker();
+        return;
+      }
+      
+      // Remove the due date if it exists
+            if (task.text.includes('!!(')) {
+              // Remove new format due date and preserve text after it
+              task.text = task.text.replace(/\s*!!\(.+?\)/, '');
+              task.displayText = task.text;
+              
+              // Persist the changes
+              persistTodoData();
+            } else if (task.text.includes('!!')) {
+              // Old format: Remove everything after !!
+              const parts = task.text.split('!!');
+              task.text = parts[0].trim();
+        task.displayText = task.text;
+        
+        // Persist the changes
+        persistTodoData();
+      }
+      
+      // Close the date picker
+      closeDatePicker();
+          };
+      
+          // Close the date picker
+          const closeDatePicker = () => {
+      datePickerTaskId.value = null;
+      selectedDateValue.value = '';
     };
 
     return {
@@ -1472,6 +1720,9 @@ export default {
       taskPendingDelete,
       tabPendingRemove,
       expandedNotes,
+      datePickerTaskId,
+      datePickerPosition,
+      selectedDateValue,
       handleFileChange,
       handleFileInputChange,
       toggleTaskStatus,
@@ -1502,7 +1753,14 @@ export default {
       toggleNotes,
       isToday,
       isSoon,
-      hasDueDate
+      hasDueDate,
+      getDueDateTooltip,
+      getDisplayTextWithoutDueDate,
+      handleDueDateClick,
+      handleDatePickerKeydown,
+      confirmDateSelection,
+      clearDateSelection,
+      closeDatePicker
     };
   }
 }
@@ -2083,6 +2341,97 @@ export default {
   letter-spacing: 0.5px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   vertical-align: middle;
+}
+
+/* Date Picker styles */
+.date-picker-container {
+  position: absolute;
+  z-index: 1000;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.date-picker-input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.date-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.date-picker-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.date-picker-confirm-btn {
+  background-color: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #2e7d32;
+  padding: 4px 10px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.date-picker-confirm-btn:hover {
+  background-color: #c8e6c9;
+  transform: scale(1.05);
+}
+
+.date-picker-clear-btn {
+  background-color: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #f57c00;
+  padding: 4px 10px;
+  margin: 0 5px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.date-picker-clear-btn:hover {
+  background-color: #ffecb3;
+  transform: scale(1.05);
+}
+
+.date-picker-close-btn {
+  background: none;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.date-picker-close-btn:hover {
+  background-color: #f0f0f0;
+  color: #e53935;
+  transform: scale(1.05);
 }
 
 .on-ice-label:hover {
