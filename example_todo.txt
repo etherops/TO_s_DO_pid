@@ -4,7 +4,7 @@
 * [ ] PROJECT - Mountain trip planning !!( Due May 16)
 
 ### ROJECTS
-* [~] SOCIAL - Event coordination for friends !!(May 16)
+* [~] SOCIAL - Event coordination for friends !!(Jun 1)
 * [ ] PROJECT - Outdoor activities
 
 ### ODO
@@ -24,12 +24,12 @@
 * [x] PROPERTY - Research local zoning regulations !! Due May 16
 
 ### CURRENT WEEK (Week of May 1
-* [~] WORK - Website maintenance !!(May 16)
-* [ ] TECH - Schedule service appointment !!(May 16)
+* [~] WORK - Website maintenance !!(May 19)
+* [ ] TECH - Schedule service appointment !!(May 19)
 
 ### CURRENT DAY (Thursday May 1)
 * [x] VEHICLE - Send photos to buyer
-* [ ] WORK - Update software subscriptions !!(May 15)
+* [ ] WORK - Update software subscriptions !!(May 25)
 * [ ] HOBBY - Prepare for upcoming thing
 
 ### OW-P

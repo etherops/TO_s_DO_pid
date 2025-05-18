@@ -1,4 +1,5 @@
 ### Bigger Features
+* [ ] TESTS
 * [ ] PARSE: non destructive write-backj
 * [ ] DYNAMIC: dynamic re-render/watch on file change
 * [ ] SUBTASKS: Support subtasks
@@ -14,6 +15,9 @@
 * [ ] feature: add the preceeding folder name in custom tabs
 * [ ] counts in tabs
 * [ ] feature: clock date picker to change due date
+* [ ] shift click move bulk items
+* [ ] can't archive a section with incomplete tasks
+* [ ] Archivable Section badge improvement
 
 ### Quick Features
 * [ ] REFACT: why is there a separate style sheet from App.vue
@@ -33,12 +37,10 @@
 #######
 # WIP #
 #######
-* [ ] SECTION - create/delete
-* [ ] Feature: Add Notes again
+* [ ] BUG: custom tabs is BROKEN CRAP!
 * [ ] collapsible/hidable DONE
-* [ ] archive back in a tab
-* [ ] flash red overdue
-* [ ] can't archive a section with incomplete tasks
+* [ ] archive back in a tab, side drawer
+* [ ] Feature: Add Notes again
 * [ ] "move done to week" button in WIP
 * [ ] "archive week" instead of janky d&d
 * [ ] right left day arrows for date picker
@@ -48,6 +50,8 @@
 ###########
 
 ### Just done
+* [x] SECTION - create/delete
+* [x] flash red overdue [May 16]
 * [x] VIEW: Truncated task, expand item with wrapping on hover instead of tool tip
 * [x] kill ghost DONE
 * [x] Larger edit box

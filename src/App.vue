@@ -87,7 +87,12 @@
       <div class="kanban-container">
       <!-- TODO Column -->
       <div class="kanban-column todo-column">
-        <div class="column-header">TODO</div>
+        <div class="column-header">
+          TODO
+          <button class="add-section-btn" @click="createNewSection('TODO')">
+            <span class="add-icon">+</span> Add Section
+          </button>
+        </div>
         <div class="column-content">
           <draggable
             v-model="todoSections"
@@ -135,6 +140,20 @@
                       </button>
                       <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection(section)">
                         <span class="edit-icon">✎</span>
+                      </button>
+                      <!-- Delete section button - always visible, but only clickable when empty -->
+                      <template v-if="sectionPendingDelete === section.name">
+                        <button class="confirm-delete-btn section-confirm-delete-btn" @click.stop="confirmDeleteSection(section)">
+                          Delete Section?
+                        </button>
+                        <button class="cancel-delete-btn" @click.stop="cancelDeleteSection">
+                          ×
+                        </button>
+                      </template>
+                      <button v-else class="delete-section-btn" :class="{ 'non-clickable': section.items.length > 0 }" @click.stop="section.items.length === 0 && requestDeleteSection(section)">
+                        <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                        </svg>
                       </button>
                     </div>
                   </template>
@@ -281,7 +300,12 @@
 
       <!-- WIP Column -->
       <div class="kanban-column wip-column">
-        <div class="column-header">WIP</div>
+        <div class="column-header">
+          WIP
+          <button class="add-section-btn" @click="createNewSection('WIP')">
+            <span class="add-icon">+</span> Add Section
+          </button>
+        </div>
         <div class="column-content">
           <draggable
             v-model="wipSections"
@@ -330,6 +354,20 @@
                       </button>
                       <button class="add-task-btn" @click="createNewTask(section)">
                         <span class="add-icon">+</span> Add Task
+                      </button>
+                      <!-- Delete section button - always visible, but only clickable when empty -->
+                      <template v-if="sectionPendingDelete === section.name">
+                        <button class="confirm-delete-btn section-confirm-delete-btn" @click.stop="confirmDeleteSection(section)">
+                          Delete Section?
+                        </button>
+                        <button class="cancel-delete-btn" @click.stop="cancelDeleteSection">
+                          ×
+                        </button>
+                      </template>
+                      <button v-else class="delete-section-btn" :class="{ 'non-clickable': section.items.length > 0 }" @click.stop="section.items.length === 0 && requestDeleteSection(section)">
+                        <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+                        </svg>
                       </button>
                     </div>
                   </template>
@@ -708,6 +746,7 @@ export default {
     const editTaskText = ref('');
     const nextTaskId = ref(1);
     const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
+    const sectionPendingDelete = ref(null); // Store the name of the section pending deletion
     const tabPendingRemove = ref(null); // Store the path of the tab pending removal
     const expandedNotes = ref(new Set()); // Store IDs of tasks with expanded notes
     const datePickerTaskId = ref(null); // Store the ID of the task with open date picker
@@ -891,6 +930,48 @@ export default {
       nextTick(() => {
         startEditingTask(newTask);
       });
+    };
+
+    // Create a new section in the specified column
+    const createNewSection = (column) => {
+      // Generate a unique section name
+      let sectionNumber = 1;
+      let sectionName = `New Section ${sectionNumber}`;
+
+      // Make sure the section name is unique
+      while (sections.value.some(s => s.name === sectionName)) {
+        sectionNumber++;
+        sectionName = `New Section ${sectionNumber}`;
+      }
+
+      // Create a new section with default values
+      const newSection = {
+        name: sectionName,
+        column: column,
+        headerStyle: 'WIP' == column ? 'SMALL' : 'LARGE',
+        archivable: 'WIP' == column,
+        hidden: false,
+        on_ice: false,
+        items: [] // Start with no items
+      };
+
+      // Insert the section at the appropriate position based on the column
+      let lastWipSectionIndex
+      if (column === 'TODO') {
+        sections.value.unshift(newSection);
+      } else if (column === 'WIP' && (lastWipSectionIndex = getLastWipArchivableSectionIndex()) !== -1) {
+        sections.value.splice(lastWipSectionIndex + 1, 0, newSection);
+      } else {
+        sections.value.push(newSection);
+      }
+
+      // Open the section for editing immediately
+      nextTick(() => {
+        startEditingSection(newSection);
+      });
+
+      // Persist the changes
+      persistTodoData();
     };
 
     // Handle file selection change
@@ -1130,6 +1211,27 @@ export default {
       return sections.value.findIndex(section => section.name === 'ARCHIVE');
     };
 
+    // Helper to find the WIP section index
+    const getWipSectionIndex = () => {
+      return sections.value.findIndex(section => section.name === 'WIP');
+    };
+
+    // Helper to find the index of the last archivable section in WIP
+    const getLastWipArchivableSectionIndex = () => {
+      // Start from the end of the array and find the first section that is:
+      // 1. In the WIP column
+      // 2. Archivable
+      // 3. Not hidden
+      for (let i = sections.value.length - 1; i >= 0; i--) {
+        const section = sections.value[i];
+        if (section.column === 'WIP' && section.archivable && !section.hidden) {
+          return i;
+        }
+      }
+      // If no archivable section is found, return the WIP section index
+      return getWipSectionIndex();
+    };
+
     // Track dragging state
     const isDragging = ref(false);
     const draggedSection = ref(null);
@@ -1204,19 +1306,16 @@ export default {
 
     // Start editing a section name
     const startEditingSection = (section) => {
-      // Only allow editing archivable sections
-      if (section.archivable) {
-        editableSectionId.value = section.name;
-        editSectionName.value = section.name;
+      editableSectionId.value = section.name;
+      editSectionName.value = section.name;
 
-        // Focus the input after the DOM updates
-        nextTick(() => {
-          const input = document.querySelector('.section-name-edit');
-          if (input) {
-            input.focus();
-          }
-        });
-      }
+      // Focus the input after the DOM updates
+      nextTick(() => {
+        const input = document.querySelector('.section-name-edit');
+        if (input) {
+          input.focus();
+        }
+      });
     };
 
     // Save the edited section name
@@ -1391,6 +1490,45 @@ export default {
         section.items.splice(taskIndex, 1);
         // Reset the pending delete state
         taskPendingDelete.value = null;
+        // Persist the change
+        await persistTodoData();
+      }
+    };
+
+    // Request deletion of a section - first step that asks for confirmation
+    const requestDeleteSection = (section) => {
+      // Only allow deletion of empty sections
+      if (section.items.length === 0) {
+        sectionPendingDelete.value = section.name;
+        // Auto-cancel after 3 seconds for better UX
+        setTimeout(() => {
+          if (sectionPendingDelete.value === section.name) {
+            sectionPendingDelete.value = null;
+          }
+        }, 3000);
+      }
+    };
+
+    // Cancel a section delete request
+    const cancelDeleteSection = () => {
+      sectionPendingDelete.value = null;
+    };
+
+    // Confirm and execute the section deletion
+    const confirmDeleteSection = async (section) => {
+      // Only allow deletion of empty sections
+      if (section.items.length !== 0) {
+        sectionPendingDelete.value = null;
+        return;
+      }
+
+      // Find the section index in the sections array
+      const sectionIndex = sections.value.findIndex(s => s.name === section.name);
+      if (sectionIndex !== -1) {
+        // Remove the section from the array
+        sections.value.splice(sectionIndex, 1);
+        // Reset the pending delete state
+        sectionPendingDelete.value = null;
         // Persist the change
         await persistTodoData();
       }
@@ -1583,7 +1721,7 @@ export default {
           const day = String(today.getDate()).padStart(2, '0');
           selectedDateValue.value = `${year}-${month}-${day}`;
         }
-        
+
         // Focus the date input after it's rendered
         nextTick(() => {
           const dateInput = document.querySelector('.date-picker-input');
@@ -1592,10 +1730,10 @@ export default {
           }
         });
       });
-          };
-          
+    };
+
           // Handle keyboard events in date picker
-          const handleDatePickerKeydown = (event) => {
+    const handleDatePickerKeydown = (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
         confirmDateSelection();
@@ -1603,19 +1741,19 @@ export default {
         event.preventDefault();
         closeDatePicker();
       }
-          };
-      
+    };
+
           // Confirm date selection from the date picker
-          const confirmDateSelection = () => {
+    const confirmDateSelection = () => {
       if (!selectedDateValue.value || !datePickerTaskId.value) {
         closeDatePicker();
         return;
       }
-      
+
       // Find the task
       let taskFound = false;
       let task = null;
-      
+
       // Search in all sections
       for (const section of sections.value) {
         const taskIndex = section.items.findIndex(item => item.id === datePickerTaskId.value);
@@ -1625,20 +1763,20 @@ export default {
           break;
         }
       }
-      
+
       if (!taskFound || !task) {
         closeDatePicker();
         return;
       }
-      
+
       // Parse the selected date
       const [year, month, day] = selectedDateValue.value.split('-').map(Number);
       const date = new Date(year, month - 1, day);
-      
+
       // Format the date for display (e.g., "May 15")
       const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}`;
-      
+
             // Update the task text with the new format
             if (task.text.includes('!!(')) {
               // Replace existing due date in new format
@@ -1647,28 +1785,28 @@ export default {
               // Add new due date
               task.text = task.text.trim() + ` !!(${formattedDate})`;
       }
-      
+
       // Update the display text
       task.displayText = getDisplayTextWithoutDueDate(task.text);
-      
+
       // Persist the changes
       persistTodoData();
-      
+
       // Close the date picker
       closeDatePicker();
-          };
-          
-          // Clear the due date
-          const clearDateSelection = () => {
+    };
+
+      // Clear the due date
+    const clearDateSelection = () => {
       if (!datePickerTaskId.value) {
         closeDatePicker();
         return;
       }
-      
+
       // Find the task
       let taskFound = false;
       let task = null;
-      
+
       // Search in all sections
       for (const section of sections.value) {
         const taskIndex = section.items.findIndex(item => item.id === datePickerTaskId.value);
@@ -1678,36 +1816,36 @@ export default {
           break;
         }
       }
-      
+
       if (!taskFound || !task) {
         closeDatePicker();
         return;
       }
-      
+
       // Remove the due date if it exists
-            if (task.text.includes('!!(')) {
-              // Remove new format due date and preserve text after it
-              task.text = task.text.replace(/\s*!!\(.+?\)/, '');
-              task.displayText = task.text;
-              
-              // Persist the changes
-              persistTodoData();
-            } else if (task.text.includes('!!')) {
-              // Old format: Remove everything after !!
-              const parts = task.text.split('!!');
-              task.text = parts[0].trim();
+      if (task.text.includes('!!(')) {
+        // Remove new format due date and preserve text after it
+        task.text = task.text.replace(/\s*!!\(.+?\)/, '');
         task.displayText = task.text;
-        
+
+        // Persist the changes
+        persistTodoData();
+      } else if (task.text.includes('!!')) {
+        // Old format: Remove everything after !!
+        const parts = task.text.split('!!');
+        task.text = parts[0].trim();
+        task.displayText = task.text;
+
         // Persist the changes
         persistTodoData();
       }
-      
+
       // Close the date picker
       closeDatePicker();
-          };
-      
-          // Close the date picker
-          const closeDatePicker = () => {
+    };
+
+    // Close the date picker
+    const closeDatePicker = () => {
       datePickerTaskId.value = null;
       selectedDateValue.value = '';
     };
@@ -1730,6 +1868,7 @@ export default {
       editableTaskId,
       editTaskText,
       taskPendingDelete,
+      sectionPendingDelete,
       tabPendingRemove,
       expandedNotes,
       datePickerTaskId,
@@ -1754,9 +1893,13 @@ export default {
       cancelEditTask,
       handleTaskEditKeydown,
       createNewTask,
+      createNewSection,
       requestDeleteTask,
       confirmDeleteTask,
       cancelDeleteTask,
+      requestDeleteSection,
+      confirmDeleteSection,
+      cancelDeleteSection,
       formatTabName,
       removeCustomFile,
       requestRemoveCustomFile,
@@ -2007,10 +2150,12 @@ export default {
 .column-header {
   padding: 6px;
   font-weight: bold;
-  text-align: center;
   background-color: #ebecf0;
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .todo-column .column-header {
@@ -2683,7 +2828,7 @@ export default {
   color: #d32f2f;
   padding: 4px 12px;
   position: absolute;
-  right: 25px;
+  right: 80px; /* For task delete buttons */
   top: 50%;
   transform: translateY(-50%);
   white-space: nowrap;
@@ -2693,6 +2838,12 @@ export default {
   display: flex;
   align-items: center;
   height: 20px;
+  z-index: 10; /* Ensure it's above other elements */
+}
+
+/* Section-specific confirm delete button */
+.section-confirm-delete-btn {
+  right: 120px; /* For section delete buttons */
 }
 
 .confirm-delete-btn:hover {
@@ -2762,5 +2913,71 @@ export default {
   font-size: 14px;
   margin-right: 5px;
   font-weight: bold;
+}
+
+/* Add Section button styles */
+.add-section-btn {
+  background-color: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #2e7d32;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.add-section-btn:hover {
+  background-color: #c8e6c9;
+  border-color: #66bb6a;
+  transform: scale(1.05);
+}
+
+/* Delete Section button styles */
+.delete-section-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  opacity: 0.7;
+}
+
+.delete-section-btn:hover {
+  background-color: rgba(229, 115, 115, 0.1);
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.delete-section-btn .delete-icon {
+  fill: #e57373; /* Red color for the trash icon */
+  transition: fill 0.2s;
+}
+
+.delete-section-btn:hover .delete-icon {
+  fill: #e53935; /* Darker red on hover */
+}
+
+/* Non-clickable delete button */
+.delete-section-btn.non-clickable {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.delete-section-btn.non-clickable:hover {
+  background-color: transparent;
+  transform: none;
+  opacity: 0.3;
+}
+
+.delete-section-btn.non-clickable:hover .delete-icon {
+  fill: #e57373; /* Keep the original color */
 }
 </style>
