@@ -183,6 +183,7 @@
                               :class="[
                                 'task-title',
                                 { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
+                                { 'due-past': !item.statusChar.includes('x') && isPast(item.text) },
                                 { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
                                 { 'due-soon': !item.statusChar.includes('x') && isSoon(item.text) }
                               ]"
@@ -377,6 +378,7 @@
                               :class="[
                                 'task-title',
                                 { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
+                                { 'due-past': !item.statusChar.includes('x') && isPast(item.text) },
                                 { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
                                 { 'due-soon': !item.statusChar.includes('x') && isSoon(item.text) }
                               ]"
@@ -573,6 +575,7 @@
                               :class="[
                                 'task-title',
                                 { 'due-date': !item.statusChar.includes('x') && hasDueDate(item.text) },
+                                { 'due-past': !item.statusChar.includes('x') && isPast(item.text) },
                                 { 'due-today': !item.statusChar.includes('x') && isToday(item.text) },
                                 { 'due-soon': !item.statusChar.includes('x') && isSoon(item.text) }
                               ]"
@@ -1452,6 +1455,16 @@ export default {
       return date;
     };
 
+    const isPast = (text) => {
+      const date = extractDateFromText(text);
+      if (!date) return false;
+
+      const today = new Date(new Date().setHours(0, 0, 0, 0));
+
+      // Check if date is today OR if it's in the past (overdue)
+      return date < today;
+    };
+
     const isToday = (text) => {
       const date = extractDateFromText(text);
       if (!date) return false;
@@ -1461,8 +1474,7 @@ export default {
       // Check if date is today OR if it's in the past (overdue)
       return (date.getDate() === today.getDate() &&
              date.getMonth() === today.getMonth() &&
-             date.getFullYear() === today.getFullYear()) ||
-             date < today;
+             date.getFullYear() === today.getFullYear());
     };
 
     const isSoon = (text) => {
@@ -1751,6 +1763,7 @@ export default {
       confirmRemoveCustomFile,
       cancelRemoveCustomFile,
       toggleNotes,
+      isPast,
       isToday,
       isSoon,
       hasDueDate,
@@ -2166,11 +2179,23 @@ export default {
 }
 /* Due date styles */
 
-/* Style for due today or past due */
-.task-title.due-today {
+/* Style for due today, due soon or past due */
+/* Style for due past (overdue) */
+.task-title.due-past {
   animation: pulse 1.5s infinite;
   color: #f44336;
   font-size: 1.1em;
+}
+
+/* Style the entire task card for due today */
+.task-card:has(.task-title.due-past) {
+  background-color: #ffebee;
+  box-shadow: 0 2px 5px rgba(255, 0, 0, 0.2);
+}
+
+/* Style for due today */
+.task-title.due-today {
+  color: #f44336;
 }
 
 /* Style the entire task card for due today */
@@ -2179,12 +2204,12 @@ export default {
   box-shadow: 0 2px 5px rgba(255, 0, 0, 0.2);
 }
 
-/* Style for due this week */
+/* Style for due soon */
 .task-title.due-soon {
   color: #ff9800;
 }
 
-/* Style the entire task card for due this week */
+/* Style the entire task card for due soon */
 .task-card:has(.task-title.due-soon) {
   background-color: #fffde7;
   box-shadow: 0 2px 5px rgba(255, 193, 7, 0.2);

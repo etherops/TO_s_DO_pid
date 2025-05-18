@@ -1,10 +1,11 @@
 ########
 # TODO #
 ########
+* [ ] PROJECT - Mountain trip planning !!( Due May 16)
 
 ### ROJECTS
+* [~] SOCIAL - Event coordination for friends !!(May 16)
 * [ ] PROJECT - Outdoor activities
-* [ ] PROJECT - Mountain trip planning
 
 ### ODO
 * [ ] WORK - Follow up with client
@@ -20,16 +21,15 @@
 # WIP #
 #######
 * [~] BILLS - Phone bill really really really really really really really really really really really really really really really really really long (Jan 14, follow up about refund)
-* [~] SOCIAL - Event coordination for friends
-* [x] PROPERTY - Research local zoning regulations
+* [x] PROPERTY - Research local zoning regulations !! Due May 16
 
 ### CURRENT WEEK (Week of May 1
-* [x] WORK - Website maintenance
-* [ ] TECH - Schedule service appointment
+* [~] WORK - Website maintenance !!(May 16)
+* [ ] TECH - Schedule service appointment !!(May 16)
 
 ### CURRENT DAY (Thursday May 1)
 * [x] VEHICLE - Send photos to buyer
-* [ ] WORK - Update software subscriptions
+* [ ] WORK - Update software subscriptions !!(May 15)
 * [ ] HOBBY - Prepare for upcoming thing
 
 ### OW-P
@@ -57,7 +57,7 @@
 
 ### MAY Week 4
 * [x] HOBBY - Event promotion
-* [x] SHOPPING - Return and replace items
+* [x] SHOPPING - Return and replace items !! Due May 16
 
 ### MAY Week 3
 * [x] SHOPPING - Purchase footwear

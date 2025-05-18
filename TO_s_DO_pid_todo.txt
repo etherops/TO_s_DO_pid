@@ -5,8 +5,8 @@
 * [ ] MARKDOWN: 3# = column, 1# = section
 * [ ] LARGE: iPhone app
 * [ ] LARGE: Host on Lightwire
-* [ ] VIEW - diff revisions !! Due May 16
-* [ ] FEATURE: calendar view! !! Due Jun 18
+* [ ] VIEW - diff revisions !!(May 18) test
+* [ ] FEATURE: calendar view! !!(Jun 18)
 * [ ] SERVER: git push integration
 * [ ] FEATURE: "Today, Tomorrow" as due dates
 * [ ] BUG: expland centers checkbox and text top-bottom. also it should show overtop instead of pushing down
@@ -23,7 +23,6 @@
 * [ ] BOTH: auto append "(DD/MM/YY)" on complete
 * [ ] add [-] for strikethrough/cancelled
 * [ ] add [>] for ON HOLD
-* [ ] SECTION - delete
 * [ ] VIEW: Auto sort sections
 * [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
 * [ ] Backup rotation
@@ -34,23 +33,23 @@
 #######
 # WIP #
 #######
+* [ ] SECTION - create/delete
+* [ ] Feature: Add Notes again
 * [ ] collapsible/hidable DONE
-* [ ] BUG: Note is wrapping
-* [ ] NOTES: BUG - notes messes up if not the last thing
-* [ ] NOTES: notes expand section says "Notes:"
-* [ ] BUG: multi line notes get truncated
-* [ ] DUE DATE: should not display
 * [ ] archive back in a tab
 * [ ] flash red overdue
 * [ ] can't archive a section with incomplete tasks
+* [ ] "move done to week" button in WIP
+* [ ] "archive week" instead of janky d&d
+* [ ] right left day arrows for date picker
 
 ###########
 # ARCHIVE #
 ###########
 
 ### Just done
-* [x] kill ghost DONE
 * [x] VIEW: Truncated task, expand item with wrapping on hover instead of tool tip
+* [x] kill ghost DONE
 * [x] Larger edit box
 * [x] due date `\!\! May 12th` on items that pops/alert visually
 * [x] Support (Parenthetical) Notes
