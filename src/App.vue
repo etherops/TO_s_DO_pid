@@ -691,7 +691,7 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import axios from 'axios';
 import { parseTodoFile, renderTodoFile } from './utils/TodoParser';
@@ -700,992 +700,919 @@ import draggable from 'vuedraggable';
 // Base URL for the API
 const API_BASE_URL = 'http://localhost:3001/api';
 
-export default {
-  name: 'App',
-  components: {
-    draggable
-  },
-  setup() {
-    const sections = ref([]);
-    const loading = ref(true);
-    const availableFiles = ref([]);
-    const selectedFile = ref({ name: '', isCustom: false });
-    const customFiles = ref([]);
-    const parsingError = ref('');
-    const fileInput = ref(null);
-    const editableSectionId = ref(null);
-    const editSectionName = ref('');
-    const editableTaskId = ref(null);
-    const editTaskText = ref('');
-    const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
-    const sectionPendingDelete = ref(null); // Store the name of the section pending deletion
-    const tabPendingRemove = ref(null); // Store the path of the tab pending removal
-    const expandedNotes = ref(new Set()); // Store IDs of tasks with expanded notes
-    const datePickerTaskId = ref(null); // Store the ID of the task with open date picker
-    const datePickerPosition = ref({ top: 0, left: 0 }); // Store the position of the date picker
-    const selectedDateValue = ref(''); // Store the selected date value
+const sections = ref([]);
+const loading = ref(true);
+const availableFiles = ref([]);
+const selectedFile = ref({ name: '', isCustom: false });
+const customFiles = ref([]);
+const parsingError = ref('');
+const fileInput = ref(null);
+const editableSectionId = ref(null);
+const editSectionName = ref('');
+const editableTaskId = ref(null);
+const editTaskText = ref('');
+const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
+const sectionPendingDelete = ref(null); // Store the name of the section pending deletion
+const tabPendingRemove = ref(null); // Store the path of the tab pending removal
+const expandedNotes = ref(new Set()); // Store IDs of tasks with expanded notes
+const datePickerTaskId = ref(null); // Store the ID of the task with open date picker
+const datePickerPosition = ref({ top: 0, left: 0 }); // Store the position of the date picker
+const selectedDateValue = ref(''); // Store the selected date value
 
-    // Computed properties to filter sections by column
-    const todoSections = computed(() => {
-      return sections.value.filter(section => section.column === 'TODO' && !section.hidden);
+// Computed properties to filter sections by column
+const todoSections = computed(() => {
+  return sections.value.filter(section => section.column === 'TODO' && !section.hidden);
+});
+
+const wipSections = computed(() => {
+  return sections.value.filter(section => section.column === 'WIP' && !section.hidden);
+});
+
+const doneSections = computed(() => {
+  // Filter out any hidden sections (like ARCHIVE) for display
+  return sections.value.filter(section => section.column === 'DONE' && !section.hidden);
+});
+
+
+// Load available text files from the server
+const loadAvailableFiles = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/files`);
+    availableFiles.value = response.data.files;
+    console.log('Available files:', availableFiles.value);
+
+    // Check for saved file in localStorage
+    const savedFile = JSON.parse(localStorage.getItem('selectedTodoFile'));
+    selectedFile.value = savedFile ? savedFile : availableFiles.value[0];
+    console.log('Set selected file to:', selectedFile.value);
+  } catch (error) {
+    console.error('Error loading file list:', error);
+  }
+};
+
+
+// Load todo data from the server for the selected file
+const loadTodoData = async () => {
+  try {
+    loading.value = true;
+    parsingError.value = '';
+
+    // Load from server
+    const params = selectedFile.value.name ? { 
+      filename: selectedFile.value.name,
+      isCustom: selectedFile.value.isCustom
+    } : {};
+
+    const response = await axios.get(`${API_BASE_URL}/todos`, { params });
+
+    try {
+      // Parse the todo text into sections
+      sections.value = parseTodoFile(response.data.content);
+      console.log('Loaded sections:', sections.value);
+    } catch (parseError) {
+      console.error('Error parsing server todo file:', parseError);
+      parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
+    }
+
+    loading.value = false;
+  } catch (error) {
+    console.error('Error loading todo file:', error);
+    parsingError.value = `Error loading file: ${error.message || 'Could not load file'}`;
+    loading.value = false;
+  }
+};
+
+// Save todo data to the server
+const persistTodoData = async () => {
+  try {
+    console.log('Persisting todo data...');
+
+    // Render the sections into text content
+    const content = renderTodoFile(sections.value);
+
+    if (!content) {
+      console.error('No content generated for saving');
+      return false;
+    }
+
+    // Send the content to the server, including the filename and isCustom flag
+    const payload = {
+      content,
+      filename: selectedFile.value.name,
+      isCustom: selectedFile.value.isCustom
+    };
+
+    console.log('Sending payload to server:', {
+      filename: payload.filename,
+      isCustom: payload.isCustom,
     });
 
-    const wipSections = computed(() => {
-      return sections.value.filter(section => section.column === 'WIP' && !section.hidden);
+    const response = await axios.post(`${API_BASE_URL}/todos`, payload);
+    console.log('Todo data saved successfully to server', response.data);
+    return true;
+  } catch (error) {
+    console.error('Error saving todo data:', error);
+    parsingError.value = `Error saving file: ${error.message || 'Could not save file'}`;
+    return false;
+  }
+};
+
+// Create a new task in the specified section
+const createNewTask = (section) => {
+  // Calculate the next available task ID
+  let maxId = 0;
+  sections.value.forEach(section => {
+    section.items.forEach(item => {
+      if (item.id > maxId) {
+        maxId = item.id;
+      }
     });
+  });
 
-    const doneSections = computed(() => {
-      // Filter out any hidden sections (like ARCHIVE) for display
-      return sections.value.filter(section => section.column === 'DONE' && !section.hidden);
-    });
+  // Create a new task with default values
+  const newTask = {
+    id: maxId + 1,
+    statusChar: ' ', // Default to unchecked
+    text: '', // Empty text to be filled by user
+    displayText: '', // Empty display text (will be set when text is updated)
+    hasNotes: false, // No notes by default (dummy property for compatibility)
+    notes: '', // Empty notes (dummy property for compatibility)
+    lineIndex: -1, // This will be assigned when saving
+    isNew: true // Flag to track newly created tasks
+  };
 
+  // Add the task to the section
+  section.items.push(newTask);
 
-    // Load available text files from the server
-    const loadAvailableFiles = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/files`);
-        availableFiles.value = response.data.files;
-        console.log('Available files:', availableFiles.value);
+  // Open the task for editing immediately
+  nextTick(() => {
+    startEditingTask(newTask);
+  });
+};
 
-        // Check for saved file in localStorage
-        const savedFile = JSON.parse(localStorage.getItem('selectedTodoFile'));
-        selectedFile.value = savedFile ? savedFile : availableFiles.value[0];
-        console.log('Set selected file to:', selectedFile.value);
-      } catch (error) {
-        console.error('Error loading file list:', error);
-      }
-    };
+// Create a new section in the specified column
+const createNewSection = (column) => {
+  // Generate a unique section name
+  let sectionNumber = 1;
+  let sectionName = `New Section ${sectionNumber}`;
 
+  // Make sure the section name is unique
+  while (sections.value.some(s => s.name === sectionName)) {
+    sectionNumber++;
+    sectionName = `New Section ${sectionNumber}`;
+  }
 
-    // Load todo data from the server for the selected file
-    const loadTodoData = async () => {
-      try {
-        loading.value = true;
-        parsingError.value = '';
+  // Create a new section with default values
+  const newSection = {
+    name: sectionName,
+    column: column,
+    headerStyle: 'WIP' == column ? 'SMALL' : 'LARGE',
+    archivable: 'WIP' == column,
+    hidden: false,
+    on_ice: false,
+    items: [] // Start with no items
+  };
 
-        // Load from server
-        const params = selectedFile.value.name ? { 
-          filename: selectedFile.value.name,
-          isCustom: selectedFile.value.isCustom
-        } : {};
+  // Insert the section at the appropriate position based on the column
+  let lastWipSectionIndex
+  if (column === 'TODO') {
+    sections.value.unshift(newSection);
+  } else if (column === 'WIP' && (lastWipSectionIndex = getLastWipArchivableSectionIndex()) !== -1) {
+    sections.value.splice(lastWipSectionIndex + 1, 0, newSection);
+  } else {
+    sections.value.push(newSection);
+  }
 
-        const response = await axios.get(`${API_BASE_URL}/todos`, { params });
+  // Open the section for editing immediately
+  nextTick(() => {
+    startEditingSection(newSection);
+  });
 
-        try {
-          // Parse the todo text into sections
-          sections.value = parseTodoFile(response.data.content);
-          console.log('Loaded sections:', sections.value);
-        } catch (parseError) {
-          console.error('Error parsing server todo file:', parseError);
-          parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
-        }
+  // Persist the changes
+  persistTodoData();
+};
 
-        loading.value = false;
-      } catch (error) {
-        console.error('Error loading todo file:', error);
-        parsingError.value = `Error loading file: ${error.message || 'Could not load file'}`;
-        loading.value = false;
-      }
-    };
+// Handle file selection change
+const handleFileChange = async () => {
+  console.log('File changed to:', selectedFile.value);
 
-    // Save todo data to the server
-    const persistTodoData = async () => {
-      try {
-        console.log('Persisting todo data...');
+  // Clear any previous parsing errors
+  parsingError.value = '';
 
-        // Render the sections into text content
-        const content = renderTodoFile(sections.value);
+  // Save selected file to localStorage
+  localStorage.setItem('selectedTodoFile', JSON.stringify(selectedFile.value));
 
-        if (!content) {
-          console.error('No content generated for saving');
-          return false;
-        }
+  await loadTodoData();
+};
 
-        // Send the content to the server, including the filename and isCustom flag
-        const payload = {
-          content,
-          filename: selectedFile.value.name,
-          isCustom: selectedFile.value.isCustom
-        };
+// Handle file selection from the device
+const handleFileInputChange = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+};
 
-        console.log('Sending payload to server:', {
-          filename: payload.filename,
-          isCustom: payload.isCustom,
-        });
+// Format tab name by removing .txt extension and replacing underscores with spaces
+const formatTabName = (filename) => {
+  // Remove .txt extension (case insensitive)
+  let displayName = filename.replace(/\.txt$/i, '');
 
-        const response = await axios.post(`${API_BASE_URL}/todos`, payload);
-        console.log('Todo data saved successfully to server', response.data);
-        return true;
-      } catch (error) {
-        console.error('Error saving todo data:', error);
-        parsingError.value = `Error saving file: ${error.message || 'Could not save file'}`;
-        return false;
-      }
-    };
+  // Replace underscores with spaces
+  displayName = displayName.replace(/_/g, ' ');
 
-    // Create a new task in the specified section
-    const createNewTask = (section) => {
-      // Calculate the next available task ID
-      let maxId = 0;
-      sections.value.forEach(section => {
-        section.items.forEach(item => {
-          if (item.id > maxId) {
-            maxId = item.id;
-          }
-        });
-      });
+  return displayName;
+};
 
-      // Create a new task with default values
-      const newTask = {
-        id: maxId + 1,
-        statusChar: ' ', // Default to unchecked
-        text: '', // Empty text to be filled by user
-        displayText: '', // Empty display text (will be set when text is updated)
-        hasNotes: false, // No notes by default (dummy property for compatibility)
-        notes: '', // Empty notes (dummy property for compatibility)
-        lineIndex: -1, // This will be assigned when saving
-        isNew: true // Flag to track newly created tasks
-      };
+// Function to toggle task status
+const toggleTaskStatus = (item) => {
+  // Find the section that contains this item
+  const section = sections.value.find(section => 
+    section.items.some(i => i.id === item.id)
+  );
 
-      // Add the task to the section
-      section.items.push(newTask);
+  // If the item is in an "on_ice" section, don't allow toggling
+  if (section && section.on_ice) {
+    console.log('Cannot toggle status of items in "on_ice" sections');
+    return;
+  }
 
-      // Open the task for editing immediately
-      nextTick(() => {
-        startEditingTask(newTask);
-      });
-    };
+  // Cycle through the states: ' ' (unchecked) -> '~' (in-progress) -> 'x' (done) -> ' ' (unchecked)
+  if (item.statusChar === ' ') {
+    item.statusChar = '~';
+  } else if (item.statusChar === '~') {
+    item.statusChar = 'x';
+  } else {
+    item.statusChar = ' ';
+  }
 
-    // Create a new section in the specified column
-    const createNewSection = (column) => {
-      // Generate a unique section name
-      let sectionNumber = 1;
-      let sectionName = `New Section ${sectionNumber}`;
+  // Persist changes to file
+  persistTodoData();
+};
 
-      // Make sure the section name is unique
-      while (sections.value.some(s => s.name === sectionName)) {
-        sectionNumber++;
-        sectionName = `New Section ${sectionNumber}`;
-      }
+// Handle drag end events
+const onDragEnd = (event) => {
+  console.log('Drag ended', event);
+  // Persist changes after drag operations
+  persistTodoData();
+};
 
-      // Create a new section with default values
-      const newSection = {
-        name: sectionName,
-        column: column,
-        headerStyle: 'WIP' == column ? 'SMALL' : 'LARGE',
-        archivable: 'WIP' == column,
-        hidden: false,
-        on_ice: false,
-        items: [] // Start with no items
-      };
+// Function to check if a section can be moved
+const checkSectionMove = (evt) => {
+  const draggedSection = evt.draggedContext.element;
+  const targetList = evt.to;
 
-      // Insert the section at the appropriate position based on the column
-      let lastWipSectionIndex
-      if (column === 'TODO') {
-        sections.value.unshift(newSection);
-      } else if (column === 'WIP' && (lastWipSectionIndex = getLastWipArchivableSectionIndex()) !== -1) {
-        sections.value.splice(lastWipSectionIndex + 1, 0, newSection);
-      } else {
-        sections.value.push(newSection);
-      }
+  // Only allow archivable sections to be dragged
+  if (!draggedSection.archivable) {
+    return false;
+  }
 
-      // Open the section for editing immediately
-      nextTick(() => {
-        startEditingSection(newSection);
-      });
+  if (!targetList || !targetList.closest('.done-column')) {
+    return false;
+  }
 
-      // Persist the changes
-      persistTodoData();
-    };
-
-    // Handle file selection change
-    const handleFileChange = async () => {
-      console.log('File changed to:', selectedFile.value);
-
-      // Clear any previous parsing errors
-      parsingError.value = '';
-
-      // Save selected file to localStorage
-      localStorage.setItem('selectedTodoFile', JSON.stringify(selectedFile.value));
-
-      await loadTodoData();
-    };
-
-    // Handle file selection from the device
-    const handleFileInputChange = async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-    };
-
-    // Format tab name by removing .txt extension and replacing underscores with spaces
-    const formatTabName = (filename) => {
-      // Remove .txt extension (case insensitive)
-      let displayName = filename.replace(/\.txt$/i, '');
-
-      // Replace underscores with spaces
-      displayName = displayName.replace(/_/g, ' ');
-
-      return displayName;
-    };
-
-    // Function to toggle task status
-    const toggleTaskStatus = (item) => {
-      // Find the section that contains this item
-      const section = sections.value.find(section => 
-        section.items.some(i => i.id === item.id)
-      );
-
-      // If the item is in an "on_ice" section, don't allow toggling
-      if (section && section.on_ice) {
-        console.log('Cannot toggle status of items in "on_ice" sections');
-        return;
-      }
-
-      // Cycle through the states: ' ' (unchecked) -> '~' (in-progress) -> 'x' (done) -> ' ' (unchecked)
-      if (item.statusChar === ' ') {
-        item.statusChar = '~';
-      } else if (item.statusChar === '~') {
-        item.statusChar = 'x';
-      } else {
-        item.statusChar = ' ';
-      }
-
-      // Persist changes to file
-      persistTodoData();
-    };
-
-    // Handle drag end events
-    const onDragEnd = (event) => {
-      console.log('Drag ended', event);
-      // Persist changes after drag operations
-      persistTodoData();
-    };
-
-    // Function to check if a section can be moved
-    const checkSectionMove = (evt) => {
-      const draggedSection = evt.draggedContext.element;
-      const targetList = evt.to;
-
-      // Only allow archivable sections to be dragged
-      if (!draggedSection.archivable) {
-        return false;
-      }
-
-      if (!targetList || !targetList.closest('.done-column')) {
-        return false;
-      }
-
-      return true;
-    };
+  return true;
+};
 
 
-    // Helper to find the ARCHIVE section index
-    const getArchiveSectionIndex = () => {
-      return sections.value.findIndex(section => section.name === 'ARCHIVE');
-    };
+// Helper to find the ARCHIVE section index
+const getArchiveSectionIndex = () => {
+  return sections.value.findIndex(section => section.name === 'ARCHIVE');
+};
 
-    // Helper to find the WIP section index
-    const getWipSectionIndex = () => {
-      return sections.value.findIndex(section => section.name === 'WIP');
-    };
+// Helper to find the WIP section index
+const getWipSectionIndex = () => {
+  return sections.value.findIndex(section => section.name === 'WIP');
+};
 
-    // Helper to find the index of the last archivable section in WIP
-    const getLastWipArchivableSectionIndex = () => {
-      // Start from the end of the array and find the first section that is:
-      // 1. In the WIP column
-      // 2. Archivable
-      // 3. Not hidden
-      for (let i = sections.value.length - 1; i >= 0; i--) {
-        const section = sections.value[i];
-        if (section.column === 'WIP' && section.archivable && !section.hidden) {
-          return i;
-        }
-      }
-      // If no archivable section is found, return the WIP section index
-      return getWipSectionIndex();
-    };
+// Helper to find the index of the last archivable section in WIP
+const getLastWipArchivableSectionIndex = () => {
+  // Start from the end of the array and find the first section that is:
+  // 1. In the WIP column
+  // 2. Archivable
+  // 3. Not hidden
+  for (let i = sections.value.length - 1; i >= 0; i--) {
+    const section = sections.value[i];
+    if (section.column === 'WIP' && section.archivable && !section.hidden) {
+      return i;
+    }
+  }
+  // If no archivable section is found, return the WIP section index
+  return getWipSectionIndex();
+};
 
-    // Track dragging state
-    const isDragging = ref(false);
-    const draggedSection = ref(null);
+// Track dragging state
+const isDragging = ref(false);
+const draggedSection = ref(null);
 
-    // Start dragging a section
-    const onSectionDragStart = (event) => {
-      console.log('Section drag started', event);
-      isDragging.value = true;
-      draggedSection.value = event.item.__draggable_context.element;
+// Start dragging a section
+const onSectionDragStart = (event) => {
+  console.log('Section drag started', event);
+  isDragging.value = true;
+  draggedSection.value = event.item.__draggable_context.element;
 
-      // If the dragged section is archivable, add a special class to the done column
-      if (draggedSection.value.archivable) {
-        document.querySelector('.done-column')?.classList.add('potential-target');
-      }
-    };
+  // If the dragged section is archivable, add a special class to the done column
+  if (draggedSection.value.archivable) {
+    document.querySelector('.done-column')?.classList.add('potential-target');
+  }
+};
 
-    // End dragging a section
-    const onSectionDragEnd = (event) => {
-      console.log('Section drag ended', event);
-      isDragging.value = false;
-      draggedSection.value = null;
+// End dragging a section
+const onSectionDragEnd = (event) => {
+  console.log('Section drag ended', event);
+  isDragging.value = false;
+  draggedSection.value = null;
 
-      // Remove classes from the done column
-      document.querySelector('.done-column')?.classList.remove('potential-target', 'drag-target');
-    };
+  // Remove classes from the done column
+  document.querySelector('.done-column')?.classList.remove('potential-target', 'drag-target');
+};
 
-    // When dragging over the DONE column
-    const onDoneColumnDragOver = () => {
-      // Only highlight if we're dragging an archivable section
-      if (isDragging.value && draggedSection.value?.archivable) {
-        console.log('Dragging over DONE column', draggedSection.value.name);
-        document.querySelector('.done-column')?.classList.add('drag-target');
-      }
-    };
+// When dragging over the DONE column
+const onDoneColumnDragOver = () => {
+  // Only highlight if we're dragging an archivable section
+  if (isDragging.value && draggedSection.value?.archivable) {
+    console.log('Dragging over DONE column', draggedSection.value.name);
+    document.querySelector('.done-column')?.classList.add('drag-target');
+  }
+};
 
-    // When leaving the DONE column during drag
-    const onDoneColumnDragLeave = () => {
-      console.log('Leaving DONE column');
-      document.querySelector('.done-column')?.classList.remove('drag-target');
-    };
+// When leaving the DONE column during drag
+const onDoneColumnDragLeave = () => {
+  console.log('Leaving DONE column');
+  document.querySelector('.done-column')?.classList.remove('drag-target');
+};
 
-    // Handle section added to DONE column
-    const onSectionAdded = (event) => {
-      console.log('Section added to DONE column', event);
+// Handle section added to DONE column
+const onSectionAdded = (event) => {
+  console.log('Section added to DONE column', event);
 
-      // Get the moved section from the event
-      const movedSection = event.item.__draggable_context.element;
-      console.log('Moving section:', movedSection.name);
+  // Get the moved section from the event
+  const movedSection = event.item.__draggable_context.element;
+  console.log('Moving section:', movedSection.name);
 
-      // Find the ARCHIVE section
-      const archiveSectionIndex = getArchiveSectionIndex();
-      if (archiveSectionIndex == -1) {
-        return false
-      }
+  // Find the ARCHIVE section
+  const archiveSectionIndex = getArchiveSectionIndex();
+  if (archiveSectionIndex == -1) {
+    return false
+  }
 
-      // Find the current position of the moved section in the main sections array
-      const currentIndex = sections.value.findIndex(s => s.name === movedSection.name);
-      if (currentIndex == -1) {
-        return false
+  // Find the current position of the moved section in the main sections array
+  const currentIndex = sections.value.findIndex(s => s.name === movedSection.name);
+  if (currentIndex == -1) {
+    return false
+  }
+
+  // Remove the section from its current position
+  const [removed] = sections.value.splice(currentIndex, 1);
+  // Insert it right after the ARCHIVE section (at the same position, not +1)
+  sections.value.splice(archiveSectionIndex, 0, removed);
+
+  // Update its column property
+  removed.column = 'DONE';
+
+  persistTodoData();
+};
+
+// Start editing a section name
+const startEditingSection = (section) => {
+  editableSectionId.value = section.name;
+  editSectionName.value = section.name;
+
+  // Focus the input after the DOM updates
+  nextTick(() => {
+    const input = document.querySelector('.section-name-edit');
+    if (input) {
+      input.focus();
+    }
+  });
+};
+
+// Save the edited section name
+const saveEditedSection = async () => {
+  if (!editableSectionId.value || !editSectionName.value.trim()) {
+    cancelEditSection();
+    return;
+  }
+
+  // Find the section being edited
+  const sectionIndex = sections.value.findIndex(s => s.name === editableSectionId.value);
+  if (sectionIndex !== -1 && editSectionName.value.trim() !== sections.value[sectionIndex].name) {
+    // Update the section name
+    sections.value[sectionIndex].name = editSectionName.value.trim();
+
+    // Persist the change
+    await persistTodoData();
+  }
+
+  // Reset edit state
+  editableSectionId.value = null;
+  editSectionName.value = '';
+};
+
+// Cancel editing without saving
+const cancelEditSection = () => {
+  editableSectionId.value = null;
+  editSectionName.value = '';
+};
+
+// Handle keydown events in the edit input
+const handleEditKeydown = (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    saveEditedSection();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    cancelEditSection();
+  }
+};
+
+// Start editing a task
+const startEditingTask = (item) => {
+  editableTaskId.value = item.id;
+  editTaskText.value = item.text;
+
+  // Focus the input after the DOM updates
+  nextTick(() => {
+    const input = document.querySelector('.task-text-edit');
+    if (input) {
+      input.focus();
+    }
+  });
+};
+
+// Save the edited task text
+const saveEditedTask = async () => {
+  // If no task ID or empty text, cancel editing (which will remove new tasks)
+  if (editableTaskId.value === null || !editTaskText.value.trim()) {
+    cancelEditTask();
+    return;
+  }
+
+  // Find the task being edited
+  let taskFound = false;
+
+  // Search in all sections
+  for (const section of sections.value) {
+    const taskIndex = section.items.findIndex(item => item.id === editableTaskId.value);
+    if (taskIndex !== -1) {
+      // Remove the isNew flag if it exists
+      if (section.items[taskIndex].isNew) {
+        delete section.items[taskIndex].isNew;
       }
 
-      // Remove the section from its current position
-      const [removed] = sections.value.splice(currentIndex, 1);
-      // Insert it right after the ARCHIVE section (at the same position, not +1)
-      sections.value.splice(archiveSectionIndex, 0, removed);
+      // Get the current task
+      const task = section.items[taskIndex];
 
-      // Update its column property
-      removed.column = 'DONE';
+      // Update the task text
+      const newText = editTaskText.value.trim();
+      if (newText !== task.text) {
+        task.text = newText;
+        task.displayText = getDisplayTextWithoutDueDate(newText);
 
-      persistTodoData();
-    };
-
-    // Start editing a section name
-    const startEditingSection = (section) => {
-      editableSectionId.value = section.name;
-      editSectionName.value = section.name;
-
-      // Focus the input after the DOM updates
-      nextTick(() => {
-        const input = document.querySelector('.section-name-edit');
-        if (input) {
-          input.focus();
-        }
-      });
-    };
-
-    // Save the edited section name
-    const saveEditedSection = async () => {
-      if (!editableSectionId.value || !editSectionName.value.trim()) {
-        cancelEditSection();
-        return;
+        taskFound = true;
       }
 
-      // Find the section being edited
-      const sectionIndex = sections.value.findIndex(s => s.name === editableSectionId.value);
-      if (sectionIndex !== -1 && editSectionName.value.trim() !== sections.value[sectionIndex].name) {
-        // Update the section name
-        sections.value[sectionIndex].name = editSectionName.value.trim();
+      // Persist the change
+      await persistTodoData();
+      break;
+    }
+  }
 
-        // Persist the change
-        await persistTodoData();
-      }
-
-      // Reset edit state
-      editableSectionId.value = null;
-      editSectionName.value = '';
-    };
-
-    // Cancel editing without saving
-    const cancelEditSection = () => {
-      editableSectionId.value = null;
-      editSectionName.value = '';
-    };
-
-    // Handle keydown events in the edit input
-    const handleEditKeydown = (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        saveEditedSection();
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        cancelEditSection();
-      }
-    };
-
-    // Start editing a task
-    const startEditingTask = (item) => {
-      editableTaskId.value = item.id;
-      editTaskText.value = item.text;
-
-      // Focus the input after the DOM updates
-      nextTick(() => {
-        const input = document.querySelector('.task-text-edit');
-        if (input) {
-          input.focus();
-        }
-      });
-    };
-
-    // Save the edited task text
-    const saveEditedTask = async () => {
-      // If no task ID or empty text, cancel editing (which will remove new tasks)
-      if (editableTaskId.value === null || !editTaskText.value.trim()) {
-        cancelEditTask();
-        return;
-      }
-
-      // Find the task being edited
-      let taskFound = false;
-
-      // Search in all sections
-      for (const section of sections.value) {
-        const taskIndex = section.items.findIndex(item => item.id === editableTaskId.value);
-        if (taskIndex !== -1) {
-          // Remove the isNew flag if it exists
-          if (section.items[taskIndex].isNew) {
-            delete section.items[taskIndex].isNew;
-          }
-
-          // Get the current task
-          const task = section.items[taskIndex];
-
-          // Update the task text
-          const newText = editTaskText.value.trim();
-          if (newText !== task.text) {
-            task.text = newText;
-            task.displayText = getDisplayTextWithoutDueDate(newText);
-
-            taskFound = true;
-          }
-
-          // Persist the change
-          await persistTodoData();
-          break;
-        }
-      }
-
-      // Reset edit state
-      editableTaskId.value = null;
-      editTaskText.value = '';
-    };
+  // Reset edit state
+  editableTaskId.value = null;
+  editTaskText.value = '';
+};
 
 
-    // NOTE: The notes feature has been removed from the application.
-    // However, some dummy properties (item.hasNotes, item.notes) and functions (toggleNotes)
-    // remain in the code for compatibility with the existing template.
-    // In a future update, the template should be updated to completely remove all notes-related UI elements.
+// NOTE: The notes feature has been removed from the application.
+// However, some dummy properties (item.hasNotes, item.notes) and functions (toggleNotes)
+// remain in the code for compatibility with the existing template.
+// In a future update, the template should be updated to completely remove all notes-related UI elements.
 
-    // Toggle notes for a task (dummy function to prevent errors)
-    const toggleNotes = (taskId) => {
-      // This function is intentionally empty
-      // It's here to prevent errors when the notes button is clicked
-      console.log('Notes feature has been removed');
-    };
+// Toggle notes for a task (dummy function to prevent errors)
+const toggleNotes = (taskId) => {
+  // This function is intentionally empty
+  // It's here to prevent errors when the notes button is clicked
+  console.log('Notes feature has been removed');
+};
 
-    // Cancel editing task without saving
-    const cancelEditTask = () => {
-      // Find the task being edited
-      if (editableTaskId.value !== null) {
-        // Look through all sections to find the task
-        for (const section of sections.value) {
-          const taskIndex = section.items.findIndex(item => item.id === editableTaskId.value);
-          if (taskIndex !== -1) {
-            // If this is a new task being canceled, remove it
-            if (section.items[taskIndex].isNew || section.items[taskIndex].text === '') {
-              section.items.splice(taskIndex, 1);
-            }
-            break;
-          }
-        }
-      }
-
-      // Reset edit state
-      editableTaskId.value = null;
-      editTaskText.value = '';
-    };
-
-    // Handle keydown events in the task edit input
-    const handleTaskEditKeydown = (event) => {
-      if (event.key === 'Enter') {
-        // If Shift key is pressed, allow new line
-        if (event.shiftKey) {
-          return; // Let the default behavior (new line) happen
-        }
-        // Otherwise, save the task
-        event.preventDefault();
-        saveEditedTask();
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        cancelEditTask();
-      }
-    };
-
-    // Request deletion of a task - first step that asks for confirmation
-    const requestDeleteTask = (item) => {
-      taskPendingDelete.value = item.id;
-      // Auto-cancel after 3 seconds for better UX
-      setTimeout(() => {
-        if (taskPendingDelete.value === item.id) {
-          taskPendingDelete.value = null;
-        }
-      }, 3000);
-    };
-
-    // Cancel a delete request
-    const cancelDeleteTask = () => {
-      taskPendingDelete.value = null;
-    };
-
-    // Confirm and execute the deletion
-    const confirmDeleteTask = async (item, section) => {
-      // Find the task index in the section
-      const taskIndex = section.items.findIndex(task => task.id === item.id);
+// Cancel editing task without saving
+const cancelEditTask = () => {
+  // Find the task being edited
+  if (editableTaskId.value !== null) {
+    // Look through all sections to find the task
+    for (const section of sections.value) {
+      const taskIndex = section.items.findIndex(item => item.id === editableTaskId.value);
       if (taskIndex !== -1) {
-        // Remove the task from the section
-        section.items.splice(taskIndex, 1);
-        // Reset the pending delete state
-        taskPendingDelete.value = null;
-        // Persist the change
-        await persistTodoData();
+        // If this is a new task being canceled, remove it
+        if (section.items[taskIndex].isNew || section.items[taskIndex].text === '') {
+          section.items.splice(taskIndex, 1);
+        }
+        break;
       }
-    };
+    }
+  }
 
-    // Request deletion of a section - first step that asks for confirmation
-    const requestDeleteSection = (section) => {
-      // Only allow deletion of empty sections
-      if (section.items.length === 0) {
-        sectionPendingDelete.value = section.name;
-        // Auto-cancel after 3 seconds for better UX
-        setTimeout(() => {
-          if (sectionPendingDelete.value === section.name) {
-            sectionPendingDelete.value = null;
-          }
-        }, 3000);
-      }
-    };
+  // Reset edit state
+  editableTaskId.value = null;
+  editTaskText.value = '';
+};
 
-    // Cancel a section delete request
-    const cancelDeleteSection = () => {
-      sectionPendingDelete.value = null;
-    };
+// Handle keydown events in the task edit input
+const handleTaskEditKeydown = (event) => {
+  if (event.key === 'Enter') {
+    // If Shift key is pressed, allow new line
+    if (event.shiftKey) {
+      return; // Let the default behavior (new line) happen
+    }
+    // Otherwise, save the task
+    event.preventDefault();
+    saveEditedTask();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    cancelEditTask();
+  }
+};
 
-    // Confirm and execute the section deletion
-    const confirmDeleteSection = async (section) => {
-      // Only allow deletion of empty sections
-      if (section.items.length !== 0) {
+// Request deletion of a task - first step that asks for confirmation
+const requestDeleteTask = (item) => {
+  taskPendingDelete.value = item.id;
+  // Auto-cancel after 3 seconds for better UX
+  setTimeout(() => {
+    if (taskPendingDelete.value === item.id) {
+      taskPendingDelete.value = null;
+    }
+  }, 3000);
+};
+
+// Cancel a delete request
+const cancelDeleteTask = () => {
+  taskPendingDelete.value = null;
+};
+
+// Confirm and execute the deletion
+const confirmDeleteTask = async (item, section) => {
+  // Find the task index in the section
+  const taskIndex = section.items.findIndex(task => task.id === item.id);
+  if (taskIndex !== -1) {
+    // Remove the task from the section
+    section.items.splice(taskIndex, 1);
+    // Reset the pending delete state
+    taskPendingDelete.value = null;
+    // Persist the change
+    await persistTodoData();
+  }
+};
+
+// Request deletion of a section - first step that asks for confirmation
+const requestDeleteSection = (section) => {
+  // Only allow deletion of empty sections
+  if (section.items.length === 0) {
+    sectionPendingDelete.value = section.name;
+    // Auto-cancel after 3 seconds for better UX
+    setTimeout(() => {
+      if (sectionPendingDelete.value === section.name) {
         sectionPendingDelete.value = null;
-        return;
       }
+    }, 3000);
+  }
+};
 
-      // Find the section index in the sections array
-      const sectionIndex = sections.value.findIndex(s => s.name === section.name);
-      if (sectionIndex !== -1) {
-        // Remove the section from the array
-        sections.value.splice(sectionIndex, 1);
-        // Reset the pending delete state
-        sectionPendingDelete.value = null;
-        // Persist the change
-        await persistTodoData();
+// Cancel a section delete request
+const cancelDeleteSection = () => {
+  sectionPendingDelete.value = null;
+};
+
+// Confirm and execute the section deletion
+const confirmDeleteSection = async (section) => {
+  // Only allow deletion of empty sections
+  if (section.items.length !== 0) {
+    sectionPendingDelete.value = null;
+    return;
+  }
+
+  // Find the section index in the sections array
+  const sectionIndex = sections.value.findIndex(s => s.name === section.name);
+  if (sectionIndex !== -1) {
+    // Remove the section from the array
+    sections.value.splice(sectionIndex, 1);
+    // Reset the pending delete state
+    sectionPendingDelete.value = null;
+    // Persist the change
+    await persistTodoData();
+  }
+};
+
+onMounted(async () => {
+  // Load available files from the server
+  await loadAvailableFiles();
+
+  // Then load todo data for the selected file
+  await loadTodoData();
+});
+
+// Due date helper functions
+const extractDateFromText = (text) => {
+  if (!text || !text.includes('!!(')) return null;
+
+  // Extract the text after !!
+  const dueDatePart = text.match(/!!\s*\((.*?)\)/)?.[1].trim();
+
+  // Try to find a date pattern in various formats
+  // Format: Month Day (e.g., "May 15")
+  const monthDayPattern = /([A-Za-z]+)\s+(\d+)(?:st|nd|rd|th)?/i;
+  // Format: Day Month (e.g., "15 May")
+  const dayMonthPattern = /(\d+)(?:st|nd|rd|th)?\s+([A-Za-z]+)/i;
+  // Format: Month-Day (e.g., "May-15")
+  const monthDayDashPattern = /([A-Za-z]+)-(\d+)/i;
+  // Format: Day-Month (e.g., "15-May")
+  const dayMonthDashPattern = /(\d+)-([A-Za-z]+)/i;
+
+  let match;
+  let month, day;
+
+  if (match = dueDatePart.match(monthDayPattern)) {
+    month = match[1];
+    day = parseInt(match[2], 10);
+  } else if (match = dueDatePart.match(dayMonthPattern)) {
+    day = parseInt(match[1], 10);
+    month = match[2];
+  } else if (match = dueDatePart.match(monthDayDashPattern)) {
+    month = match[1];
+    day = parseInt(match[2], 10);
+  } else if (match = dueDatePart.match(dayMonthDashPattern)) {
+    day = parseInt(match[1], 10);
+    month = match[2];
+  } else {
+    return null; // No recognized date format
+  }
+
+  // Create a date object
+  const date = new Date(`${month} ${day}, ${new Date().getFullYear()}`);
+
+  // If the date is in the past (e.g., "May 1" when it's already December),
+  // assume it's for next year
+  if (date < new Date() && date.getMonth() < new Date().getMonth()) {
+    date.setFullYear(date.getFullYear() + 1);
+  }
+
+  return date;
+};
+
+const isPast = (text) => {
+  const date = extractDateFromText(text);
+  if (!date) return false;
+
+  const today = new Date(new Date().setHours(0, 0, 0, 0));
+
+  // Check if date is today OR if it's in the past (overdue)
+  return date < today;
+};
+
+const isToday = (text) => {
+  const date = extractDateFromText(text);
+  if (!date) return false;
+
+  const today = new Date();
+
+  // Check if date is today OR if it's in the past (overdue)
+  return (date.getDate() === today.getDate() &&
+         date.getMonth() === today.getMonth() &&
+         date.getFullYear() === today.getFullYear());
+};
+
+const isSoon = (text) => {
+  const date = extractDateFromText(text);
+  if (!date) return false;
+
+  const today = new Date();
+  // Set to the start of tomorrow
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+
+  const oneWeekFromNow = new Date(today);
+  oneWeekFromNow.setDate(today.getDate() + 3);
+
+  // Only include future dates within the next week, excluding today and past dates
+  return date >= tomorrow && date <= oneWeekFromNow;
+};
+
+// Check if a task has a due date (contains !!)
+const hasDueDate = (text) => {
+  return text && text.includes('!!(');
+};
+
+// Format a date for display in the tooltip
+const formatDateForTooltip = (date) => {
+  if (!date) return '';
+
+  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  return date.toLocaleDateString(undefined, options);
+};
+
+// Get formatted due date for tooltip
+const getDueDateTooltip = (text) => {
+  const date = extractDateFromText(text);
+  return date ? formatDateForTooltip(date) : 'No due date';
+};
+
+// Remove due date from text for display
+const getDisplayTextWithoutDueDate = (text) => {
+  if (!text || !text.includes('!!(')) return text;
+
+  // Split by !! and return just the first part
+  return text.replace(/!!\s*\([^)]*\)/g, '').trim();
+};
+
+// Process all tasks to set displayText without due date
+const processTasksForDisplay = () => {
+  sections.value.forEach(section => {
+    section.items.forEach(item => {
+      if (item.text && item.text.includes('!!')) {
+        item.displayText = getDisplayTextWithoutDueDate(item.text);
       }
-    };
-
-    onMounted(async () => {
-      // Load available files from the server
-      await loadAvailableFiles();
-
-      // Then load todo data for the selected file
-      await loadTodoData();
     });
+  });
+};
 
-    // Due date helper functions
-    const extractDateFromText = (text) => {
-      if (!text || !text.includes('!!(')) return null;
+// Call processTasksForDisplay after loading data
+watch(sections, () => {
+  processTasksForDisplay();
+}, { deep: true });
 
-      // Extract the text after !!
-      const dueDatePart = text.match(/!!\s*\((.*?)\)/)?.[1].trim();
+// Call processTasksForDisplay after loading data
+onMounted(() => {
+  nextTick(() => {
+    processTasksForDisplay();
+  });
+});
 
-      // Try to find a date pattern in various formats
-      // Format: Month Day (e.g., "May 15")
-      const monthDayPattern = /([A-Za-z]+)\s+(\d+)(?:st|nd|rd|th)?/i;
-      // Format: Day Month (e.g., "15 May")
-      const dayMonthPattern = /(\d+)(?:st|nd|rd|th)?\s+([A-Za-z]+)/i;
-      // Format: Month-Day (e.g., "May-15")
-      const monthDayDashPattern = /([A-Za-z]+)-(\d+)/i;
-      // Format: Day-Month (e.g., "15-May")
-      const dayMonthDashPattern = /(\d+)-([A-Za-z]+)/i;
+// We no longer need to update handlers after each render
+// The Vue declarative event binding handles this automatically
 
-      let match;
-      let month, day;
+// Handle clicking on the clock icon
+const handleDueDateClick = (item, event) => {
+  // Prevent the default action and stop propagation
+  if (event) {
+    event.preventDefault();
+  }
 
-      if (match = dueDatePart.match(monthDayPattern)) {
-        month = match[1];
-        day = parseInt(match[2], 10);
-      } else if (match = dueDatePart.match(dayMonthPattern)) {
-        day = parseInt(match[1], 10);
-        month = match[2];
-      } else if (match = dueDatePart.match(monthDayDashPattern)) {
-        month = match[1];
-        day = parseInt(match[2], 10);
-      } else if (match = dueDatePart.match(dayMonthDashPattern)) {
-        day = parseInt(match[1], 10);
-        month = match[2];
-      } else {
-        return null; // No recognized date format
-      }
+  // Set the task ID for the date picker
+  datePickerTaskId.value = item.id;
 
-      // Create a date object
-      const date = new Date(`${month} ${day}, ${new Date().getFullYear()}`);
-
-      // If the date is in the past (e.g., "May 1" when it's already December),
-      // assume it's for next year
-      if (date < new Date() && date.getMonth() < new Date().getMonth()) {
-        date.setFullYear(date.getFullYear() + 1);
-      }
-
-      return date;
-    };
-
-    const isPast = (text) => {
-      const date = extractDateFromText(text);
-      if (!date) return false;
-
-      const today = new Date(new Date().setHours(0, 0, 0, 0));
-
-      // Check if date is today OR if it's in the past (overdue)
-      return date < today;
-    };
-
-    const isToday = (text) => {
-      const date = extractDateFromText(text);
-      if (!date) return false;
-
-      const today = new Date();
-
-      // Check if date is today OR if it's in the past (overdue)
-      return (date.getDate() === today.getDate() &&
-             date.getMonth() === today.getMonth() &&
-             date.getFullYear() === today.getFullYear());
-    };
-
-    const isSoon = (text) => {
-      const date = extractDateFromText(text);
-      if (!date) return false;
-
-      const today = new Date();
-      // Set to the start of tomorrow
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-
-      const oneWeekFromNow = new Date(today);
-      oneWeekFromNow.setDate(today.getDate() + 3);
-
-      // Only include future dates within the next week, excluding today and past dates
-      return date >= tomorrow && date <= oneWeekFromNow;
-    };
-
-    // Check if a task has a due date (contains !!)
-    const hasDueDate = (text) => {
-      return text && text.includes('!!(');
-    };
-
-    // Format a date for display in the tooltip
-    const formatDateForTooltip = (date) => {
-      if (!date) return '';
-
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      return date.toLocaleDateString(undefined, options);
-    };
-
-    // Get formatted due date for tooltip
-    const getDueDateTooltip = (text) => {
-      const date = extractDateFromText(text);
-      return date ? formatDateForTooltip(date) : 'No due date';
-    };
-
-    // Remove due date from text for display
-    const getDisplayTextWithoutDueDate = (text) => {
-      if (!text || !text.includes('!!(')) return text;
-
-      // Split by !! and return just the first part
-      return text.replace(/!!\s*\([^)]*\)/g, '').trim();
-    };
-
-    // Process all tasks to set displayText without due date
-    const processTasksForDisplay = () => {
-      sections.value.forEach(section => {
-        section.items.forEach(item => {
-          if (item.text && item.text.includes('!!')) {
-            item.displayText = getDisplayTextWithoutDueDate(item.text);
-          }
-        });
-      });
-    };
-
-    // Call processTasksForDisplay after loading data
-    watch(sections, () => {
-      processTasksForDisplay();
-    }, { deep: true });
-
-    // Call processTasksForDisplay after loading data
-    onMounted(() => {
-      nextTick(() => {
-        processTasksForDisplay();
-      });
-    });
-
-    // We no longer need to update handlers after each render
-    // The Vue declarative event binding handles this automatically
-
-    // Handle clicking on the clock icon
-    const handleDueDateClick = (item, event) => {
-      // Prevent the default action and stop propagation
-      if (event) {
-        event.preventDefault();
-      }
-
-      // Set the task ID for the date picker
-      datePickerTaskId.value = item.id;
-
-      // Calculate position for the date picker
-      if (event && event.target) {
-        const rect = event.target.getBoundingClientRect();
-        datePickerPosition.value = {
-          top: rect.bottom + window.scrollY + 5,
-          left: rect.left + window.scrollX - 100 // Offset to center the date picker
-        };
-      }
-
-      // Set the date picker's initial value if there's already a due date
-      nextTick(() => {
-        const date = extractDateFromText(item.text);
-        if (date) {
-          // Format date as YYYY-MM-DD for the input
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          selectedDateValue.value = `${year}-${month}-${day}`;
-        } else {
-          // Set to today's date if no due date
-          const today = new Date();
-          const year = today.getFullYear();
-          const month = String(today.getMonth() + 1).padStart(2, '0');
-          const day = String(today.getDate()).padStart(2, '0');
-          selectedDateValue.value = `${year}-${month}-${day}`;
-        }
-
-        // Focus the date input after it's rendered
-        nextTick(() => {
-          const dateInput = document.querySelector('.date-picker-input');
-          if (dateInput) {
-            dateInput.focus();
-          }
-        });
-      });
-    };
-
-          // Handle keyboard events in date picker
-    const handleDatePickerKeydown = (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        confirmDateSelection();
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        closeDatePicker();
-      }
-    };
-
-          // Confirm date selection from the date picker
-    const confirmDateSelection = () => {
-      if (!selectedDateValue.value || !datePickerTaskId.value) {
-        closeDatePicker();
-        return;
-      }
-
-      // Find the task
-      let taskFound = false;
-      let task = null;
-
-      // Search in all sections
-      for (const section of sections.value) {
-        const taskIndex = section.items.findIndex(item => item.id === datePickerTaskId.value);
-        if (taskIndex !== -1) {
-          task = section.items[taskIndex];
-          taskFound = true;
-          break;
-        }
-      }
-
-      if (!taskFound || !task) {
-        closeDatePicker();
-        return;
-      }
-
-      // Parse the selected date
-      const [year, month, day] = selectedDateValue.value.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-
-      // Format the date for display (e.g., "May 15")
-      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}`;
-
-            // Update the task text with the new format
-            if (task.text.includes('!!(')) {
-              // Replace existing due date in new format
-              task.text = task.text.replace(/!!\(.+?\)/, `!!(${formattedDate})`);
-            } else {
-              // Add new due date
-              task.text = task.text.trim() + ` !!(${formattedDate})`;
-      }
-
-      // Update the display text
-      task.displayText = getDisplayTextWithoutDueDate(task.text);
-
-      // Persist the changes
-      persistTodoData();
-
-      // Close the date picker
-      closeDatePicker();
-    };
-
-      // Clear the due date
-    const clearDateSelection = () => {
-      if (!datePickerTaskId.value) {
-        closeDatePicker();
-        return;
-      }
-
-      // Find the task
-      let taskFound = false;
-      let task = null;
-
-      // Search in all sections
-      for (const section of sections.value) {
-        const taskIndex = section.items.findIndex(item => item.id === datePickerTaskId.value);
-        if (taskIndex !== -1) {
-          task = section.items[taskIndex];
-          taskFound = true;
-          break;
-        }
-      }
-
-      if (!taskFound || !task) {
-        closeDatePicker();
-        return;
-      }
-
-      // Remove the due date if it exists
-      if (task.text.includes('!!(')) {
-        // Remove new format due date and preserve text after it
-        task.text = task.text.replace(/\s*!!\(.+?\)/, '');
-        task.displayText = task.text;
-
-        // Persist the changes
-        persistTodoData();
-      } else if (task.text.includes('!!')) {
-        // Old format: Remove everything after !!
-        const parts = task.text.split('!!');
-        task.text = parts[0].trim();
-        task.displayText = task.text;
-
-        // Persist the changes
-        persistTodoData();
-      }
-
-      // Close the date picker
-      closeDatePicker();
-    };
-
-    // Close the date picker
-    const closeDatePicker = () => {
-      datePickerTaskId.value = null;
-      selectedDateValue.value = '';
-    };
-
-    return {
-      sections,
-      todoSections,
-      wipSections,
-      doneSections,
-      loading,
-      isDragging,
-      draggedSection,
-      availableFiles,
-      customFiles,
-      selectedFile,
-      parsingError,
-      fileInput,
-      editableSectionId,
-      editSectionName,
-      editableTaskId,
-      editTaskText,
-      taskPendingDelete,
-      sectionPendingDelete,
-      tabPendingRemove,
-      expandedNotes,
-      datePickerTaskId,
-      datePickerPosition,
-      selectedDateValue,
-      handleFileChange,
-      handleFileInputChange,
-      toggleTaskStatus,
-      onDragEnd,
-      checkSectionMove,
-      onSectionDragStart,
-      onSectionDragEnd,
-      onDoneColumnDragOver,
-      onDoneColumnDragLeave,
-      onSectionAdded,
-      startEditingSection,
-      saveEditedSection,
-      cancelEditSection,
-      handleEditKeydown,
-      startEditingTask,
-      saveEditedTask,
-      cancelEditTask,
-      handleTaskEditKeydown,
-      createNewTask,
-      createNewSection,
-      requestDeleteTask,
-      confirmDeleteTask,
-      cancelDeleteTask,
-      requestDeleteSection,
-      confirmDeleteSection,
-      cancelDeleteSection,
-      formatTabName,
-      toggleNotes,
-      isPast,
-      isToday,
-      isSoon,
-      hasDueDate,
-      getDueDateTooltip,
-      getDisplayTextWithoutDueDate,
-      handleDueDateClick,
-      handleDatePickerKeydown,
-      confirmDateSelection,
-      clearDateSelection,
-      closeDatePicker
+  // Calculate position for the date picker
+  if (event && event.target) {
+    const rect = event.target.getBoundingClientRect();
+    datePickerPosition.value = {
+      top: rect.bottom + window.scrollY + 5,
+      left: rect.left + window.scrollX - 100 // Offset to center the date picker
     };
   }
-}
+
+  // Set the date picker's initial value if there's already a due date
+  nextTick(() => {
+    const date = extractDateFromText(item.text);
+    if (date) {
+      // Format date as YYYY-MM-DD for the input
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      selectedDateValue.value = `${year}-${month}-${day}`;
+    } else {
+      // Set to today's date if no due date
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      selectedDateValue.value = `${year}-${month}-${day}`;
+    }
+
+    // Focus the date input after it's rendered
+    nextTick(() => {
+      const dateInput = document.querySelector('.date-picker-input');
+      if (dateInput) {
+        dateInput.focus();
+      }
+    });
+  });
+};
+
+// Handle keyboard events in date picker
+const handleDatePickerKeydown = (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    confirmDateSelection();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    closeDatePicker();
+  }
+};
+
+// Confirm date selection from the date picker
+const confirmDateSelection = () => {
+  if (!selectedDateValue.value || !datePickerTaskId.value) {
+    closeDatePicker();
+    return;
+  }
+
+  // Find the task
+  let taskFound = false;
+  let task = null;
+
+  // Search in all sections
+  for (const section of sections.value) {
+    const taskIndex = section.items.findIndex(item => item.id === datePickerTaskId.value);
+    if (taskIndex !== -1) {
+      task = section.items[taskIndex];
+      taskFound = true;
+      break;
+    }
+  }
+
+  if (!taskFound || !task) {
+    closeDatePicker();
+    return;
+  }
+
+  // Parse the selected date
+  const [year, month, day] = selectedDateValue.value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  // Format the date for display (e.g., "May 15")
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}`;
+
+  // Update the task text with the new format
+  if (task.text.includes('!!(')) {
+    // Replace existing due date in new format
+    task.text = task.text.replace(/!!\(.+?\)/, `!!(${formattedDate})`);
+  } else {
+    // Add new due date
+    task.text = task.text.trim() + ` !!(${formattedDate})`;
+  }
+
+  // Update the display text
+  task.displayText = getDisplayTextWithoutDueDate(task.text);
+
+  // Persist the changes
+  persistTodoData();
+
+  // Close the date picker
+  closeDatePicker();
+};
+
+// Clear the due date
+const clearDateSelection = () => {
+  if (!datePickerTaskId.value) {
+    closeDatePicker();
+    return;
+  }
+
+  // Find the task
+  let taskFound = false;
+  let task = null;
+
+  // Search in all sections
+  for (const section of sections.value) {
+    const taskIndex = section.items.findIndex(item => item.id === datePickerTaskId.value);
+    if (taskIndex !== -1) {
+      task = section.items[taskIndex];
+      taskFound = true;
+      break;
+    }
+  }
+
+  if (!taskFound || !task) {
+    closeDatePicker();
+    return;
+  }
+
+  // Remove the due date if it exists
+  if (task.text.includes('!!(')) {
+    // Remove new format due date and preserve text after it
+    task.text = task.text.replace(/\s*!!\(.+?\)/, '');
+    task.displayText = task.text;
+
+    // Persist the changes
+    persistTodoData();
+  } else if (task.text.includes('!!')) {
+    // Old format: Remove everything after !!
+    const parts = task.text.split('!!');
+    task.text = parts[0].trim();
+    task.displayText = task.text;
+
+    // Persist the changes
+    persistTodoData();
+  }
+
+  // Close the date picker
+  closeDatePicker();
+};
+
+// Close the date picker
+const closeDatePicker = () => {
+  datePickerTaskId.value = null;
+  selectedDateValue.value = '';
+};
 </script>
 
 <style>

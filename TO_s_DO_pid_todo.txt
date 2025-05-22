@@ -51,6 +51,7 @@
 ###########
 
 ### Just done
+* [x] Script setup and composition API
 * [x] CUSTOM todo source folder in .env config
 * [x] BUG: custom tabs is BROKEN CRAP!
 * [x] SECTION - create/delete
