@@ -53,34 +53,12 @@
         <div
           v-for="file in availableFiles" 
           :key="file.name" 
-          :class="['file-tab', 'server-tab', { active: selectedFile === file.name }]"
-          @click="selectedFile = file.name; handleFileChange()"
-          :title="file.name"
+          :class="['file-tab', 'server-tab', { active: selectedFile.name === file.name }, { 'custom-file': file.isCustom }]"
+          @click="selectedFile = { name: file.name, isCustom: file.isCustom || false }; handleFileChange()"
+          :title="file.name + (file.isCustom ? ' (Custom)' : '')"
         >
           {{ formatTabName(file.name) }}
-        </div>
-        <div 
-          v-for="file in customFiles" 
-          :key="file.path" 
-          :class="['file-tab', 'custom-tab', { active: selectedFile === file.path }]"
-          @click="selectedFile = file.path; handleFileChange()"
-          :title="file.path"
-        >
-          {{ formatTabName(file.name) }}
-          <template v-if="tabPendingRemove === file.path">
-            <div class="tab-confirm-actions">
-              <button class="confirm-remove-btn" @click.stop="confirmRemoveCustomFile(file)">
-                Forget tab?
-              </button>
-              <button class="cancel-remove-btn" @click.stop="cancelRemoveCustomFile">
-                ×
-              </button>
-            </div>
-          </template>
-          <button v-else class="close-tab-btn" @click.stop="requestRemoveCustomFile(file)">×</button>
-        </div>
-        <div class="file-tab add-tab" @click="fileInput.click()">
-          <span class="add-icon">+</span>
+          <span v-if="file.isCustom" class="custom-badge">Custom</span>
         </div>
       </div>
 
@@ -714,18 +692,13 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, nextTick, onUpdated, watch } from 'vue';
+import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import axios from 'axios';
 import { parseTodoFile, renderTodoFile } from './utils/TodoParser';
 import draggable from 'vuedraggable';
 
 // Base URL for the API
 const API_BASE_URL = 'http://localhost:3001/api';
-
-// Custom directive to focus an element when it's inserted into the DOM
-const vFocus = {
-  mounted: (el) => el.focus()
-};
 
 export default {
   name: 'App',
@@ -736,7 +709,7 @@ export default {
     const sections = ref([]);
     const loading = ref(true);
     const availableFiles = ref([]);
-    const selectedFile = ref('');
+    const selectedFile = ref({ name: '', isCustom: false });
     const customFiles = ref([]);
     const parsingError = ref('');
     const fileInput = ref(null);
@@ -744,7 +717,6 @@ export default {
     const editSectionName = ref('');
     const editableTaskId = ref(null);
     const editTaskText = ref('');
-    const nextTaskId = ref(1);
     const taskPendingDelete = ref(null); // Store the ID of the task pending deletion
     const sectionPendingDelete = ref(null); // Store the name of the section pending deletion
     const tabPendingRemove = ref(null); // Store the path of the tab pending removal
@@ -776,16 +748,9 @@ export default {
         console.log('Available files:', availableFiles.value);
 
         // Check for saved file in localStorage
-        const savedFile = localStorage.getItem('selectedTodoFile');
-
-        // Set the selected file - first try localStorage, then first file in list
-        if (savedFile && availableFiles.value.some(file => file.name === savedFile)) {
-          // If we have a saved file and it still exists in the file list
-          selectedFile.value = savedFile;
-        } else if (!selectedFile.value && availableFiles.value.length > 0) {
-          // Otherwise default to first file
-          selectedFile.value = availableFiles.value[0].name;
-        }
+        const savedFile = JSON.parse(localStorage.getItem('selectedTodoFile'));
+        selectedFile.value = savedFile ? savedFile : availableFiles.value[0];
+        console.log('Set selected file to:', selectedFile.value);
       } catch (error) {
         console.error('Error loading file list:', error);
       }
@@ -798,53 +763,23 @@ export default {
         loading.value = true;
         parsingError.value = '';
 
-        // Check if the selected file is a custom file
-        if (selectedFile.value && selectedFile.value.startsWith('custom:')) {
-          // Find the custom file in the list
-          const customFile = customFiles.value.find(file => file.path === selectedFile.value);
-          if (customFile) {
-            // Parse the custom file content
-            try {
-              sections.value = parseTodoFile(customFile.content);
-              console.log('Loaded sections from custom file:', sections.value);
-            } catch (parseError) {
-              console.error('Error parsing custom todo file:', parseError);
-              parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
-              // Revert to the previously selected file if possible
-              const previousFile = localStorage.getItem('previousTodoFile');
-              if (previousFile && previousFile !== selectedFile.value) {
-                selectedFile.value = previousFile;
-                // Try loading the previous file
-                await loadTodoData();
-                return;
-              }
-            }
-          } else {
-            console.error('Custom file not found:', selectedFile.value);
-            parsingError.value = 'Custom file not found';
-            // Revert to the first available file if possible
-            if (availableFiles.value.length > 0) {
-              selectedFile.value = availableFiles.value[0].name;
-              localStorage.setItem('selectedTodoFile', selectedFile.value);
-            }
-          }
-        } else {
-          // Load from server
-          const params = selectedFile.value ? { filename: selectedFile.value } : {};
-          const response = await axios.get(`${API_BASE_URL}/todos`, { params });
+        // Load from server
+        const params = selectedFile.value.name ? { 
+          filename: selectedFile.value.name,
+          isCustom: selectedFile.value.isCustom
+        } : {};
 
-          try {
-            // Parse the todo text into sections
-            sections.value = parseTodoFile(response.data.content);
-            console.log('Loaded sections:', sections.value);
-          } catch (parseError) {
-            console.error('Error parsing server todo file:', parseError);
-            parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
-          }
+        const response = await axios.get(`${API_BASE_URL}/todos`, { params });
+
+        try {
+          // Parse the todo text into sections
+          sections.value = parseTodoFile(response.data.content);
+          console.log('Loaded sections:', sections.value);
+        } catch (parseError) {
+          console.error('Error parsing server todo file:', parseError);
+          parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
         }
 
-        // Save the current file as the previous file
-        localStorage.setItem('previousTodoFile', selectedFile.value);
         loading.value = false;
       } catch (error) {
         console.error('Error loading todo file:', error);
@@ -853,7 +788,7 @@ export default {
       }
     };
 
-    // Save todo data to the server or update custom file
+    // Save todo data to the server
     const persistTodoData = async () => {
       try {
         console.log('Persisting todo data...');
@@ -866,32 +801,21 @@ export default {
           return false;
         }
 
-        // Check if the selected file is a custom file
-        if (selectedFile.value && selectedFile.value.startsWith('custom:')) {
-          // Find the custom file in the list
-          const customFileIndex = customFiles.value.findIndex(file => file.path === selectedFile.value);
-          if (customFileIndex >= 0) {
-            // Update the custom file content
-            customFiles.value[customFileIndex].content = content;
-            // Save the updated custom files to localStorage
-            saveCustomFilesToStorage();
-            console.log('Custom todo file updated successfully');
-            return true;
-          } else {
-            console.error('Custom file not found for updating:', selectedFile.value);
-            return false;
-          }
-        } else {
-          // Send the content to the server, including the filename
-          const payload = { 
-            content,
-            filename: selectedFile.value 
-          };
+        // Send the content to the server, including the filename and isCustom flag
+        const payload = {
+          content,
+          filename: selectedFile.value.name,
+          isCustom: selectedFile.value.isCustom
+        };
 
-          const response = await axios.post(`${API_BASE_URL}/todos`, payload);
-          console.log('Todo data saved successfully to server', response.data);
-          return true;
-        }
+        console.log('Sending payload to server:', {
+          filename: payload.filename,
+          isCustom: payload.isCustom,
+        });
+
+        const response = await axios.post(`${API_BASE_URL}/todos`, payload);
+        console.log('Todo data saved successfully to server', response.data);
+        return true;
       } catch (error) {
         console.error('Error saving todo data:', error);
         parsingError.value = `Error saving file: ${error.message || 'Could not save file'}`;
@@ -981,15 +905,9 @@ export default {
       // Clear any previous parsing errors
       parsingError.value = '';
 
-      // Check if the user selected the "Select from device" option
-      if (selectedFile.value === '__select_from_device__') {
-        // Trigger the file input click
-        fileInput.value.click();
-        return;
-      }
-
       // Save selected file to localStorage
-      localStorage.setItem('selectedTodoFile', selectedFile.value);
+      localStorage.setItem('selectedTodoFile', JSON.stringify(selectedFile.value));
+
       await loadTodoData();
     };
 
@@ -997,98 +915,6 @@ export default {
     const handleFileInputChange = async (event) => {
       const file = event.target.files[0];
       if (!file) return;
-
-      try {
-        // Read the file content
-        const content = await readFileContent(file);
-
-        // Try to parse the file content
-        try {
-          // Parse the todo text into sections
-          sections.value = parseTodoFile(content);
-          console.log('Loaded sections from local file:', sections.value);
-
-          // Create a custom file object
-          const customFile = {
-            name: file.name,
-            path: `custom:${file.name}`,
-            content: content
-          };
-
-          // Check if this file is already in the custom files list
-          const existingIndex = customFiles.value.findIndex(f => f.path === customFile.path);
-          if (existingIndex >= 0) {
-            // Update the existing file
-            customFiles.value[existingIndex] = customFile;
-          } else {
-            // Add the new file to the custom files list
-            customFiles.value.push(customFile);
-          }
-
-          // Save the custom files to localStorage
-          saveCustomFilesToStorage();
-
-          // Select the custom file
-          selectedFile.value = customFile.path;
-          localStorage.setItem('selectedTodoFile', selectedFile.value);
-
-          loading.value = false;
-        } catch (parseError) {
-          console.error('Error parsing todo file:', parseError);
-          parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
-          // Reset the file input
-          event.target.value = '';
-          // Revert to the previously selected file
-          selectedFile.value = localStorage.getItem('selectedTodoFile') || '';
-          loading.value = false;
-        }
-      } catch (readError) {
-        console.error('Error reading file:', readError);
-        parsingError.value = `Error reading file: ${readError.message || 'Could not read file'}`;
-        // Reset the file input
-        event.target.value = '';
-        // Revert to the previously selected file
-        selectedFile.value = localStorage.getItem('selectedTodoFile') || '';
-        loading.value = false;
-      }
-    };
-
-    // Helper function to read file content
-    const readFileContent = (file) => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(new Error('Failed to read file'));
-        reader.readAsText(file);
-      });
-    };
-
-    // Save custom files to localStorage
-    const saveCustomFilesToStorage = () => {
-      const customFilesData = customFiles.value.map(file => ({
-        name: file.name,
-        path: file.path,
-        content: file.content
-      }));
-      localStorage.setItem('customTodoFiles', JSON.stringify(customFilesData));
-    };
-
-    // Load custom files from localStorage
-    const loadCustomFilesFromStorage = () => {
-      try {
-        const customFilesData = localStorage.getItem('customTodoFiles');
-        if (customFilesData) {
-          const parsedData = JSON.parse(customFilesData);
-          customFiles.value = parsedData.map(file => ({
-            name: file.name,
-            path: file.path,
-            content: file.content
-          }));
-          console.log('Loaded custom files from storage:', customFiles.value);
-        }
-      } catch (error) {
-        console.error('Error loading custom files from storage:', error);
-      }
     };
 
     // Format tab name by removing .txt extension and replacing underscores with spaces
@@ -1101,59 +927,6 @@ export default {
 
       return displayName;
     };
-
-    // Request to remove a custom file - first step that asks for confirmation
-    const requestRemoveCustomFile = (file) => {
-      tabPendingRemove.value = file.path;
-      // Auto-cancel after 3 seconds for better UX
-      setTimeout(() => {
-        if (tabPendingRemove.value === file.path) {
-          tabPendingRemove.value = null;
-        }
-      }, 3000);
-    };
-
-    // Cancel a tab removal request
-    const cancelRemoveCustomFile = () => {
-      tabPendingRemove.value = null;
-    };
-
-    // Confirm and execute the tab removal
-    const confirmRemoveCustomFile = (file) => {
-      // Find the index of the file in the customFiles array
-      const fileIndex = customFiles.value.findIndex(f => f.path === file.path);
-
-      if (fileIndex >= 0) {
-        // Remove the file from the array
-        customFiles.value.splice(fileIndex, 1);
-
-        // Save the updated custom files to localStorage
-        saveCustomFilesToStorage();
-
-        // If the removed file was the selected file, select another file
-        if (selectedFile.value === file.path) {
-          // Try to select another custom file first
-          if (customFiles.value.length > 0) {
-            selectedFile.value = customFiles.value[0].path;
-          } 
-          // Otherwise select a server file if available
-          else if (availableFiles.value.length > 0) {
-            selectedFile.value = availableFiles.value[0].name;
-          }
-          // Update localStorage and load the new file
-          localStorage.setItem('selectedTodoFile', selectedFile.value);
-          loadTodoData();
-        }
-
-        // Reset the pending remove state
-        tabPendingRemove.value = null;
-
-        console.log('Custom file removed:', file.name);
-      }
-    };
-
-    // Legacy function for backward compatibility
-    const removeCustomFile = confirmRemoveCustomFile;
 
     // Function to toggle task status
     const toggleTaskStatus = (item) => {
@@ -1535,10 +1308,7 @@ export default {
     };
 
     onMounted(async () => {
-      // First load custom files from localStorage
-      loadCustomFilesFromStorage();
-
-      // Then load available files from the server
+      // Load available files from the server
       await loadAvailableFiles();
 
       // Then load todo data for the selected file
@@ -1901,10 +1671,6 @@ export default {
       confirmDeleteSection,
       cancelDeleteSection,
       formatTabName,
-      removeCustomFile,
-      requestRemoveCustomFile,
-      confirmRemoveCustomFile,
-      cancelRemoveCustomFile,
       toggleNotes,
       isPast,
       isToday,
@@ -2028,11 +1794,31 @@ export default {
   opacity: 0.7;
 }
 
-/* Custom tab styles */
-.custom-tab {
-  border-left: 3px solid #2196F3;
-  position: relative;
-  padding-right: 25px; /* Make room for the close button */
+/* Custom file styles (from custom directory) */
+.server-tab.custom-file {
+  border-left: 3px solid #9c27b0;
+}
+
+.server-tab.custom-file.active {
+  border-left-width: 6px;
+}
+
+.server-tab.custom-file::after {
+  content: '•';
+  font-size: 14px;
+  color: #9c27b0;
+  margin-left: 8px;
+  opacity: 0.7;
+}
+
+.custom-badge {
+  font-size: 10px;
+  background-color: #9c27b0;
+  color: white;
+  padding: 2px 5px;
+  border-radius: 10px;
+  margin-left: 5px;
+  font-weight: normal;
 }
 
 .close-tab-btn {
@@ -2060,18 +1846,6 @@ export default {
   color: #f44336;
   background-color: rgba(0, 0, 0, 0.05);
   opacity: 1;
-}
-
-.custom-tab.active {
-  border-left-width: 6px;
-}
-
-.custom-tab::after {
-  content: '↑';
-  font-size: 12px;
-  color: #2196F3;
-  margin-left: 8px;
-  opacity: 0.7;
 }
 
 .tab-confirm-actions {

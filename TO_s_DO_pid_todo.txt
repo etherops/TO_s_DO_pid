@@ -18,6 +18,7 @@
 * [ ] shift click move bulk items
 * [ ] can't archive a section with incomplete tasks
 * [ ] Archivable Section badge improvement
+* [ ] DELETE - undo
 
 ### Quick Features
 * [ ] REFACT: why is there a separate style sheet from App.vue
@@ -27,7 +28,7 @@
 * [ ] BOTH: auto append "(DD/MM/YY)" on complete
 * [ ] add [-] for strikethrough/cancelled
 * [ ] add [>] for ON HOLD
-* [ ] VIEW: Auto sort sections
+* [ ] VIEW: Auto sort tasks by status
 * [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
 * [ ] Backup rotation
 * [ ] BUG: Compact "confirm delete" is truncated vertically
@@ -37,19 +38,21 @@
 #######
 # WIP #
 #######
-* [ ] BUG: custom tabs is BROKEN CRAP!
 * [ ] collapsible/hidable DONE
 * [ ] archive back in a tab, side drawer
 * [ ] Feature: Add Notes again
 * [ ] "move done to week" button in WIP
 * [ ] "archive week" instead of janky d&d
 * [ ] right left day arrows for date picker
+* [ ] re-order sections
 
 ###########
 # ARCHIVE #
 ###########
 
 ### Just done
+* [x] CUSTOM todo source folder in .env config
+* [x] BUG: custom tabs is BROKEN CRAP!
 * [x] SECTION - create/delete
 * [x] flash red overdue [May 16]
 * [x] VIEW: Truncated task, expand item with wrapping on hover instead of tool tip

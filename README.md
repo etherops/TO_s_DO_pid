@@ -19,3 +19,16 @@ This is a really really stupid to do list web app that shouldn't exist.
 
 1. Clone or download this repository to your local machine
 2. Navigate to the project directory in your terminal
+3. Run `npm install` to install dependencies
+4. Run `npm run dev` to start the development server
+5. Open your browser and navigate to `http://localhost:5173`
+
+## Custom Todo Files Directory
+
+You can configure a custom directory for todo files by setting the `TODO_CUSTOM_DIR` environment variable:
+
+1. Copy the `.env.example` file to `.env`
+2. Edit the `.env` file and set `TODO_CUSTOM_DIR` to the path of your custom todo files directory
+3. Restart the server
+
+Todo files in the custom directory will be displayed with a "Custom" badge in the file tabs.

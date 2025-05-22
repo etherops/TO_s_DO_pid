@@ -4,3 +4,5 @@
 * Due Date
 * Notes
 * Edit
+* Delete
+* 

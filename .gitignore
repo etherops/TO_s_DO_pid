@@ -12,3 +12,4 @@ dist/
 *todo*.txt
 todo.txt
 .TO_s_DO_pid.bak
+.env

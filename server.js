@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+// Add dotenv for environment variables
+require('dotenv').config();
 
 // Add a logger function to help with debugging
 const logger = {
@@ -19,6 +21,16 @@ const logger = {
     console.log(`[DEBUG] ${message}`, data || '');
   }
 };
+
+// Get the custom todo directory from environment variables
+const TODO_CUSTOM_DIR = process.env.TODO_CUSTOM_DIR;
+if (TODO_CUSTOM_DIR) {
+  logger.info('Custom todo directory configured:', TODO_CUSTOM_DIR);
+  // Check if the directory exists
+  if (!fs.existsSync(TODO_CUSTOM_DIR)) {
+    logger.error('Custom todo directory does not exist:', TODO_CUSTOM_DIR);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -44,30 +56,44 @@ const getDefaultTodoFilePath = () => {
 };
 
 // Function to create a backup of a todo file
-const createBackup = (filePath) => {
+const createBackup = (filePath, isCustom) => {
   try {
+    logger.info('createBackup called with', {filePath, isCustom});
     // Get the directory where the file is located
-    const fileDir = path.dirname(filePath);
+    let fileDir;
 
-    // Create backup directory path
+    // If it's a custom file, use the custom directory
+    fileDir = isCustom && TODO_CUSTOM_DIR ? TODO_CUSTOM_DIR : path.dirname(filePath)
+    logger.info('Using backupup directory: ', { path: fileDir });
+
+    // Create main backup directory path
     const backupDirName = '.TO_s_DO_pid.bak';
-    const backupDirPath = path.join(fileDir, backupDirName);
+    const mainBackupDirPath = path.join(fileDir, backupDirName);
 
-    // Create backup directory if it doesn't exist
-    if (!fs.existsSync(backupDirPath)) {
-      logger.info('Creating backup directory', { path: backupDirPath });
-      fs.mkdirSync(backupDirPath);
+    // Create main backup directory if it doesn't exist
+    if (!fs.existsSync(mainBackupDirPath)) {
+      logger.info('Creating main backup directory', { path: mainBackupDirPath });
+      fs.mkdirSync(mainBackupDirPath);
+    }
+
+    // Get the filename and create a file-specific backup directory
+    const fileName = path.basename(filePath);
+    // Extract filename without extension for the directory name
+    const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+    const fileBackupDirPath = path.join(mainBackupDirPath, fileNameWithoutExt);
+
+    // Create file-specific backup directory if it doesn't exist
+    if (!fs.existsSync(fileBackupDirPath)) {
+      logger.info('Creating file-specific backup directory', { path: fileBackupDirPath });
+      fs.mkdirSync(fileBackupDirPath);
     }
 
     // Get today's date in YYYY-MM-DD format
     const today = new Date().toISOString().split('T')[0];
 
     // Create backup filename with today's date
-    const fileName = path.basename(filePath);
-    // Extract filename without extension
-    const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
     const backupFileName = `${fileNameWithoutExt}.bak.${today}.txt`;
-    const backupFilePath = path.join(backupDirPath, backupFileName);
+    const backupFilePath = path.join(fileBackupDirPath, backupFileName);
 
     // Check if backup already exists for today
     if (fs.existsSync(backupFilePath)) {
@@ -86,20 +112,39 @@ const createBackup = (filePath) => {
 };
 
 // Get todo file path from filename or use default
-const getTodoFilePath = (filename) => {
-  if (filename) {
-    return path.join(__dirname, filename);
+const getTodoFilePath = (filename, isCustom = false) => {
+  logger.info('getTodoFilePath called with', {filename, isCustom});
+  if (!filename) {
+    return getDefaultTodoFilePath()
   }
-  return getDefaultTodoFilePath();
+
+  let thedir = isCustom && TODO_CUSTOM_DIR ? TODO_CUSTOM_DIR : __dirname
+  logger.info('Using directory for file path', { path: thedir });
+  return path.join(thedir, filename);
 };
 
-// Get all .txt files in the server directory
+// Get all .txt files in the server directory and custom directory
 app.get('/api/files', (req, res) => {
   try {
-    logger.info('Listing text files in directory');
-    const files = fs.readdirSync(__dirname)
+    logger.info('Listing text files in directories');
+    let files = [];
+
+    // Get files from local directory
+    const localFiles = fs.readdirSync(__dirname)
       .filter(file => file.endsWith('.txt'))
-      .map(file => ({ name: file }));
+      .map(file => ({ name: file, isCustom: false }));
+
+    files = [...localFiles];
+
+    // Get files from custom directory if configured
+    if (TODO_CUSTOM_DIR && fs.existsSync(TODO_CUSTOM_DIR)) {
+      logger.info('Listing text files in custom directory', TODO_CUSTOM_DIR);
+      const customFiles = fs.readdirSync(TODO_CUSTOM_DIR)
+        .filter(file => file.endsWith('.txt'))
+        .map(file => ({ name: file, isCustom: true }));
+
+      files = [...files, ...customFiles];
+    }
 
     res.json({ files });
   } catch (error) {
@@ -112,11 +157,17 @@ app.get('/api/files', (req, res) => {
 app.get('/api/todos', (req, res) => {
   try {
     const filename = req.query.filename;
-    const filePath = getTodoFilePath(filename);
+    const isCustom = req.query.isCustom === 'true';
 
-    logger.info('Reading todo file', { path: filePath });
+    logger.info('GET /api/todos received', {filename, isCustom,});
+    const filePath = getTodoFilePath(filename, isCustom);
+
+    logger.info('Reading todo file', { path: filePath, isCustom });
     const fileContent = fs.readFileSync(filePath, 'utf8');
-    res.json({ content: fileContent });
+    res.json({ 
+      content: fileContent,
+      isCustom: isCustom
+    });
   } catch (error) {
     logger.error('Error reading todo file:', error);
     res.status(500).json({ error: 'Failed to read todo file' });
@@ -126,22 +177,29 @@ app.get('/api/todos', (req, res) => {
 // Update todo file content - only endpoint for writing to file
 app.post('/api/todos', (req, res) => {
   try {
-    const { content, filename } = req.body;
+    const { content, filename, isCustom } = req.body;
+
+    logger.info('Received POST request to /api/todos', {filename, isCustom,
+      contentLength: content ? content.length : 0
+    });
 
     if (!content) {
       logger.error('Missing content in request');
       return res.status(400).json({ error: 'Content is required' });
     }
 
-    const filePath = getTodoFilePath(filename);
+    // Convert isCustom to boolean if it's a string
+    const isCustomBoolean = isCustom === 'true' ? true : Boolean(isCustom);
+    const filePath = getTodoFilePath(filename, isCustomBoolean);
 
     // Create backup before writing to file
-    createBackup(filePath);
+    logger.info('Creating backup for file', { filePath, isCustomBoolean });
+    createBackup(filePath, isCustomBoolean);
 
-    logger.info('Writing todo file', { path: filePath, contentLength: content.length });
+    logger.info('Writing todo file', { path: filePath, isCustomBoolean, contentLength: content.length });
     fs.writeFileSync(filePath, content, 'utf8');
     logger.info('Todo file successfully written');
-    res.json({ success: true });
+    res.json({ success: true, isCustom: isCustomBoolean });
   } catch (error) {
     logger.error('Error writing todo file:', error);
     res.status(500).json({ error: 'Failed to write todo file' });
