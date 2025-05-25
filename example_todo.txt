@@ -3,17 +3,17 @@
 ########
 * [ ] PROJECT - Mountain trip planning !!( Due May 16)
 
-### ROJECTS
+### PROJECTS
 * [~] SOCIAL - Event coordination for friends !!(Jun 1)
 * [ ] PROJECT - Outdoor activities
 
-### ODO
+### TODO
 * [ ] WORK - Follow up with client
 
-### OBBY
+### HOBBY
 * [~] HOBBY - RSVP for local event
 
-### ELPER
+### HELPER
 * [ ] HOME - Garden maintenance
 * [ ] HOME - Lawn care
 
@@ -32,10 +32,10 @@
 * [ ] WORK - Update software subscriptions !!(May 25)
 * [ ] HOBBY - Prepare for upcoming thing
 
-### OW-P
+### LOW-P
 * [ ] HEALTH - Research classes
 
-### ACKLOG
+### BACKLOG
 * [ ] HEALTH - Schedule appointment
 * [ ] WORK - Contact potential partner
 
