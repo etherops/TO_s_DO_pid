@@ -89,7 +89,7 @@ const createBackup = (filePath, isCustom) => {
     }
 
     // Get today's date in YYYY-MM-DD format
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
 
     // Create backup filename with today's date
     const backupFileName = `${fileNameWithoutExt}.bak.${today}.txt`;

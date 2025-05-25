@@ -21,8 +21,6 @@
 * [ ] DELETE - undo
 
 ### Quick Features
-* [ ] REFACT: why is there a separate style sheet from App.vue
-* [ ] archive-ghost: animates as it transitions
 * [ ] "add task" should be a an empty row ready
 * [ ] VIEW - sortable tabs
 * [ ] BOTH: auto append "(DD/MM/YY)" on complete
@@ -38,6 +36,8 @@
 #######
 # WIP #
 #######
+* [ ] re-order sections
+* [ ] Rebrand KindaBan
 * [ ] collapsible/hidable DONE
 * [ ] archive back in a tab, side drawer
 * [ ] Feature: Add Notes again
@@ -51,6 +51,9 @@
 ###########
 
 ### Just done
+* [x] bug: file backups today was in UTC instead of local
+* [x] modularize vue components
+* [x] remove section archive d&d for archive button
 * [x] Script setup and composition API
 * [x] CUSTOM todo source folder in .env config
 * [x] BUG: custom tabs is BROKEN CRAP!
