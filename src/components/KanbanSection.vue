@@ -35,7 +35,7 @@
           <button class="add-task-btn" @click="createNewTask">
             <span class="add-icon">+</span> Add Task
           </button>
-          <button v-if="section.archivable" class="edit-section-btn" @click="startEditingSection">
+          <button class="edit-section-btn" @click="startEditingSection">
             <span class="edit-icon">✎</span>
           </button>
           <!-- Archive button for archivable sections -->
@@ -338,7 +338,6 @@ const sectionNameInput = ref(null);
 }
 
 .edit-section-btn {
-  visibility: hidden;
   background: none;
   border: none;
   cursor: pointer;
@@ -350,10 +349,6 @@ const sectionNameInput = ref(null);
   transition: all 0.2s;
   border-radius: 3px;
   background-color: rgba(220, 220, 220, 0.3);
-}
-
-.section-header:hover .edit-section-btn {
-  visibility: visible;
 }
 
 .edit-section-btn:hover {

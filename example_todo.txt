@@ -2,13 +2,11 @@
 # TODO #
 ########
 * [ ] PROJECT - Mountain trip planning !!( Due May 16)
+* [ ] WORK - Follow up with client
 
 ### PROJECTS
 * [~] SOCIAL - Event coordination for friends !!(Jun 1)
 * [ ] PROJECT - Outdoor activities
-
-### TODO
-* [ ] WORK - Follow up with client
 
 ### HOBBY
 * [~] HOBBY - RSVP for local event
