@@ -26,6 +26,7 @@
 * [ ] VIEW: Auto sort tasks by status
 * [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
 * [ ] Backup rotation
+* [ ] add task no notes field
 
 ### Bugs
 * [ ] BUG: date should hide date !!(May 25)
@@ -35,6 +36,7 @@
 #######
 # WIP #
 #######
+* [ ] 4-th check box state a - dash incomplete grey
 * [ ] re-order sections
 * [ ] Rebrand KindaBan
 * [ ] collapsible/hidable DONE

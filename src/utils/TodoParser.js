@@ -1,3 +1,5 @@
+import { getStrippedDisplayText } from './noteHelpers';
+
 /**
  * Parses a todo text file into structured data
  * @param {string} fileContent - The content of the todo text file
@@ -111,7 +113,7 @@ export function parseTodoFile(fileContent) {
         foundIceSection = true;
         hidden = true
       } else if (foundWipSection && !foundArchiveSection && sectionHeaderStyle == 'SMALL') {
-      // } else if (sectionName.toUpperCase().startsWith('CURRENT')) {
+        // } else if (sectionName.toUpperCase().startsWith('CURRENT')) {
         // Sections that start with "CURRENT" (case insensitive) go to WIP column
         sectionColumn = 'WIP';
         archivable = true
@@ -152,6 +154,7 @@ export function parseTodoFile(fileContent) {
           id: itemId++,
           statusChar,
           text: todoText,
+          displayText: getStrippedDisplayText(todoText), // Generate display text
           lineIndex: i
         };
 
