@@ -1,32 +1,51 @@
 <!-- components/TaskCard.vue -->
 <template>
   <div class="task-card">
-    <div class="checkbox-wrapper">
-      <div
-          :class="['custom-checkbox', {
-          'unchecked': task.statusChar === ' ',
-          'in-progress': task.statusChar === '~',
-          'checked': task.statusChar === 'x'
-        }]"
-          @click="toggleTaskStatus"
-      ></div>
-    </div>
+    <div class="task-content-wrapper">
+      <div class="checkbox-wrapper">
+        <div
+            :class="['custom-checkbox', {
+            'unchecked': task.statusChar === ' ',
+            'in-progress': task.statusChar === '~',
+            'checked': task.statusChar === 'x'
+          }]"
+            @click="toggleTaskStatus"
+        ></div>
+      </div>
     <template v-if="isEditing">
-      <div class="task-edit-container">
-        <textarea
-            class="task-text-edit"
-            v-model="editTaskText"
-            @blur="saveEditedTask"
-            @keydown="handleTaskEditKeydown"
-            ref="taskTextInput"
-            placeholder="Enter task text..."
-        ></textarea>
-        <button class="confirm-task-btn" @click="saveEditedTask">
-          <span class="confirm-icon">✓</span>
-        </button>
-        <button class="cancel-task-btn" @click="cancelEditTask">
-          <span class="cancel-icon">×</span>
-        </button>
+      <div class="task-edit-wrapper">
+        <!-- Title editing row -->
+        <div class="task-edit-row">
+          <textarea
+              class="task-text-edit"
+              v-model="editTaskText"
+              @keydown="handleTaskEditKeydown"
+              ref="taskTextInput"
+              placeholder="Enter task text..."
+          ></textarea>
+        </div>
+        
+        <!-- Note editing row -->
+        <div class="note-edit-row">
+          <label class="note-label">Notes</label>
+          <textarea
+              class="note-text-edit"
+              v-model="editNoteText"
+              @keydown="handleNoteEditKeydown"
+              ref="noteTextInput"
+              placeholder="Enter note..."
+          ></textarea>
+        </div>
+        
+        <!-- Action buttons row -->
+        <div class="edit-actions-row">
+          <button class="confirm-edit-btn" @click="saveAllEdits">
+            <span class="confirm-icon">✓</span> Save
+          </button>
+          <button class="cancel-edit-btn" @click="cancelAllEdits">
+            <span class="cancel-icon">×</span> Cancel
+          </button>
+        </div>
       </div>
     </template>
     <template v-else>
@@ -40,7 +59,7 @@
             { 'due-soon': !task.statusChar.includes('x') && isSoon(task.text) }
           ]"
             :title="task.text"
-            @dblclick="startEditingTask"
+            @dblclick="startEditingAll"
         >
           {{ task.displayText || task.text }}
         </span>
@@ -56,18 +75,18 @@
             ⏰
           </button>
 
-          <!-- Notes button (placeholder for compatibility) -->
+          <!-- Notes button -->
           <button
               class="task-icon-btn notes-btn"
-              :class="{ 'has-notes': task.hasNotes }"
-              @click="toggleNotes"
-              :title="'Notes feature removed'"
+              :class="{ 'has-notes': hasNote(task.text) }"
+              @click.stop="startEditingAll"
+              :title="hasNote(task.text) ? extractNoteFromText(task.text) : 'Add note'"
           >
             📋
           </button>
 
           <!-- Edit button -->
-          <button class="task-icon-btn edit-btn" @click="startEditingTask">
+          <button class="task-icon-btn edit-btn" @click="startEditingAll">
             <span class="edit-icon">✎</span>
           </button>
 
@@ -88,6 +107,32 @@
         </div>
       </div>
     </template>
+    </div>
+    
+    <!-- Hover preview container (non-edit mode) -->
+    <div v-if="!isEditing && (hasDueDate(task.text) || hasNote(task.text))" class="hover-preview-container">
+      <div class="hover-preview-row">
+        <!-- Note preview aligned with title -->
+        <div v-if="hasNote(task.text) || hasDueDate(task.text)" class="note-preview">
+          <div class="preview-display-label">Notes</div>
+          <div class="note-display-text" :class="{ 'empty-note': !hasNote(task.text) }">
+            {{ hasNote(task.text) ? extractNoteFromText(task.text) : '' }}
+          </div>
+        </div>
+        <!-- Due date preview aligned with icons -->
+        <div class="due-date-preview">
+          <template v-if="hasDueDate(task.text)">
+            <div class="preview-display-label">Due Date</div>
+            <div class="mini-calendar">
+              <div class="calendar-header">{{ getMonthYear(task.text) }}</div>
+              <div class="calendar-day">{{ getDayNumber(task.text) }}</div>
+              <div class="calendar-weekday">{{ getWeekday(task.text) }}</div>
+            </div>
+          </template>
+          <div v-else class="due-date-placeholder"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -100,8 +145,16 @@ import {
   isSoon,
   getDueDateTooltip,
   extractDateFromText,
-  getDisplayTextWithoutDueDate
+  getMonthYear,
+  getDayNumber,
+  getWeekday
 } from '../utils/dateHelpers';
+import {
+  hasNote,
+  extractNoteFromText,
+  updateNoteInText,
+  getStrippedDisplayText
+} from '../utils/noteHelpers';
 
 const props = defineProps({
   task: {
@@ -120,9 +173,11 @@ const emit = defineEmits(['task-updated', 'show-date-picker']);
 const isEditing = ref(false);
 const editTaskText = ref('');
 const taskPendingDelete = ref(false);
+const editNoteText = ref('');
 
 // Template refs
 const taskTextInput = ref(null);
+const noteTextInput = ref(null);
 
 // Toggle task status
 const toggleTaskStatus = () => {
@@ -144,10 +199,16 @@ const toggleTaskStatus = () => {
   emit('task-updated');
 };
 
-// Start editing task
-const startEditingTask = () => {
+// Start editing all (both title and note)
+const startEditingAll = () => {
   isEditing.value = true;
-  editTaskText.value = props.task.text;
+  
+  // Extract clean title without note or due date
+  const cleanTitle = getStrippedDisplayText(props.task.text);
+  editTaskText.value = cleanTitle;
+  
+  // Extract existing note
+  editNoteText.value = extractNoteFromText(props.task.text) || '';
 
   nextTick(() => {
     if (taskTextInput.value) {
@@ -161,8 +222,9 @@ const startEditingTask = () => {
   });
 };
 
-// Save edited task
-const saveEditedTask = () => {
+
+// Save all edits (title and note)
+const saveAllEdits = () => {
   if (!editTaskText.value.trim()) {
     // If empty and this is a new task, remove it
     if (props.task.isNew) {
@@ -171,7 +233,7 @@ const saveEditedTask = () => {
         props.section.items.splice(index, 1);
       }
     }
-    cancelEditTask();
+    cancelAllEdits();
     return;
   }
 
@@ -180,19 +242,35 @@ const saveEditedTask = () => {
     delete props.task.isNew;
   }
 
-  const newText = editTaskText.value.trim();
+  // Build the new text with title, note, and preserved due date
+  let newText = editTaskText.value.trim();
+  
+  // Add note if present - escape newlines
+  if (editNoteText.value.trim()) {
+    const escapedNote = editNoteText.value.trim().replace(/\n/g, '\\n');
+    newText += ` (${escapedNote})`;
+  }
+  
+  // Preserve existing due date
+  const dueDateMatch = props.task.text.match(/!\!\s*\([^)]*\)/);
+  if (dueDateMatch) {
+    newText += ` ${dueDateMatch[0]}`;
+  }
+
   if (newText !== props.task.text) {
     props.task.text = newText;
-    props.task.displayText = getDisplayTextWithoutDueDate(newText);
+    props.task.displayText = getStrippedDisplayText(newText);
   }
 
   isEditing.value = false;
   editTaskText.value = '';
+  editNoteText.value = '';
   emit('task-updated');
 };
 
-// Cancel editing
-const cancelEditTask = () => {
+
+// Cancel all edits
+const cancelAllEdits = () => {
   // If this is a new task being canceled, remove it
   if (props.task.isNew || props.task.text === '') {
     const index = props.section.items.findIndex(item => item.id === props.task.id);
@@ -203,19 +281,20 @@ const cancelEditTask = () => {
 
   isEditing.value = false;
   editTaskText.value = '';
+  editNoteText.value = '';
 };
 
 // Handle keydown in task edit
 const handleTaskEditKeydown = (event) => {
-  if (event.key === 'Enter') {
-    if (event.shiftKey) {
-      return; // Allow new line
-    }
+  if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
-    saveEditedTask();
+    // Move focus to note field
+    if (noteTextInput.value) {
+      noteTextInput.value.focus();
+    }
   } else if (event.key === 'Escape') {
     event.preventDefault();
-    cancelEditTask();
+    cancelAllEdits();
   }
 };
 
@@ -257,22 +336,28 @@ const confirmDeleteTask = () => {
   }
 };
 
-// Placeholder for notes toggle (feature removed)
-const toggleNotes = () => {
-  console.log('Notes feature has been removed');
+
+// Handle keydown in note edit
+const handleNoteEditKeydown = (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    saveAllEdits();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    cancelAllEdits();
+  }
 };
 
 // Process display text on mount if the task is new
 onMounted(() => {
-  if (props.task.isNew) {
-    nextTick(() => {
-      startEditingTask();
-    });
-  }
+  if (props.task.isNew) nextTick(() => startEditingAll());
 });
 </script>
 
 <style scoped>
+/* ========================= */
+/* Base Task Card Structure  */
+/* ========================= */
 .task-card {
   background-color: white;
   border-radius: 5px;
@@ -280,7 +365,7 @@ onMounted(() => {
   margin-bottom: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   cursor: grab;
 }
 
@@ -288,6 +373,20 @@ onMounted(() => {
   cursor: grabbing;
 }
 
+.task-card:hover {
+  height: auto;
+  z-index: 10;
+}
+
+.task-content-wrapper {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+/* ========================= */
+/* Checkbox Styles           */
+/* ========================= */
 .checkbox-wrapper {
   display: flex;
   align-items: center;
@@ -321,7 +420,6 @@ onMounted(() => {
 .custom-checkbox.in-progress {
   background-color: #fff8e1;
   border-color: #ff9800;
-  position: relative;
 }
 
 .custom-checkbox.in-progress:after {
@@ -338,7 +436,6 @@ onMounted(() => {
 .custom-checkbox.checked {
   background-color: #e8f5e9;
   border-color: #4caf50;
-  position: relative;
 }
 
 .custom-checkbox.checked:after {
@@ -353,7 +450,9 @@ onMounted(() => {
   transform: rotate(45deg);
 }
 
-/* Task container and title */
+/* ========================= */
+/* Task Display Mode         */
+/* ========================= */
 .task-container {
   display: flex;
   flex-direction: row;
@@ -361,6 +460,10 @@ onMounted(() => {
   position: relative;
   align-items: flex-start;
   overflow: hidden;
+}
+
+.task-card:hover .task-container {
+  align-items: flex-start;
 }
 
 .task-title {
@@ -376,7 +479,15 @@ onMounted(() => {
   max-width: calc(100% - 110px);
 }
 
-/* Due date styles */
+.task-card:hover .task-title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: initial;
+}
+
+/* ========================= */
+/* Due Date Styling          */
+/* ========================= */
 .task-title.due-past {
   animation: pulse 1.5s infinite;
   color: #f44336;
@@ -391,35 +502,8 @@ onMounted(() => {
   color: #ff9800;
 }
 
-/* Task card hover effects */
-.task-card:hover {
-  height: auto;
-  z-index: 10;
-}
-
-.task-card:hover .task-title {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: initial;
-  max-width: calc(100% - 110px);
-  margin-top: 3px;
-}
-
-.task-card:hover .task-buttons-container {
-  align-self: flex-start;
-  margin-top: 0;
-}
-
-.task-card:hover .task-container {
-  align-items: flex-start;
-}
-
-/* Due date card styles */
-.task-card:has(.task-title.due-past) {
-  background-color: #ffebee;
-  box-shadow: 0 2px 5px rgba(255, 0, 0, 0.2);
-}
-
+/* Due date card backgrounds */
+.task-card:has(.task-title.due-past),
 .task-card:has(.task-title.due-today) {
   background-color: #ffebee;
   box-shadow: 0 2px 5px rgba(255, 0, 0, 0.2);
@@ -444,7 +528,9 @@ onMounted(() => {
   opacity: 0.3 !important;
 }
 
-/* Task buttons container */
+/* ========================= */
+/* Action Buttons            */
+/* ========================= */
 .task-buttons-container {
   display: flex;
   align-items: center;
@@ -454,7 +540,11 @@ onMounted(() => {
   margin-left: auto;
 }
 
-/* Task icon buttons */
+.task-card:hover .task-buttons-container {
+  align-self: flex-start;
+  margin-top: 0;
+}
+
 .task-icon-btn {
   background: none;
   border: none;
@@ -468,12 +558,8 @@ onMounted(() => {
   justify-content: center;
 }
 
-.clock-btn {
-  font-size: 14px;
-}
-
-.clock-btn.has-due-date {
-  opacity: 1;
+.task-icon-btn:hover {
+  transform: scale(1.1);
 }
 
 .task-card:hover .edit-btn,
@@ -481,87 +567,12 @@ onMounted(() => {
   opacity: 1;
 }
 
-.task-icon-btn:hover {
-  transform: scale(1.1);
+.clock-btn.has-due-date,
+.notes-btn.has-notes {
+  opacity: 1;
 }
 
-/* Task editing styles */
-.task-edit-container {
-  display: flex;
-  align-items: flex-start;
-  flex: 1;
-  margin-left: 8px;
-}
-
-.task-text-edit {
-  width: calc(100% - 30px);
-  padding: 5px;
-  font-size: inherit;
-  border: 1px solid #4caf50;
-  border-radius: 3px;
-  background-color: white;
-  outline: none;
-  flex: 1;
-  resize: vertical;
-  min-height: 30px;
-  max-height: 150px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-/* Confirm/Cancel buttons */
-.confirm-task-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #4caf50;
-  font-size: 20px;
-  margin-left: 5px;
-  margin-top: 2px;
-  padding: 0 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 26px;
-  width: 26px;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.confirm-task-btn:hover {
-  background-color: #e8f5e9;
-  transform: scale(1.1);
-}
-
-.cancel-task-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #e53935;
-  font-size: 20px;
-  margin-left: 5px;
-  margin-top: 2px;
-  padding: 0 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 26px;
-  width: 26px;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.cancel-task-btn:hover {
-  background-color: #ffebee;
-  transform: scale(1.1);
-}
-
-.confirm-icon, .cancel-icon {
-  font-weight: bold;
-}
-
-/* Delete button styles */
+/* Delete button specific */
 .delete-icon {
   fill: #e57373;
   transition: fill 0.2s;
@@ -571,6 +582,7 @@ onMounted(() => {
   fill: #e53935;
 }
 
+/* Delete confirmation */
 .confirm-delete-btn {
   background-color: rgba(229, 115, 115, 0.1);
   border: 1px solid rgba(229, 115, 115, 0.3);
@@ -628,7 +640,255 @@ onMounted(() => {
   transform: translateY(-50%) scale(1.1);
 }
 
-/* Animation */
+/* ========================= */
+/* Edit Mode                 */
+/* ========================= */
+.task-edit-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  margin-left: 8px;
+  gap: 8px;
+  padding: 5px 0;
+  width: calc(100% - 28px);
+}
+
+.task-edit-row {
+  display: flex;
+  width: 100%;
+}
+
+.task-text-edit {
+  width: 100%;
+  padding: 5px;
+  font-size: inherit;
+  border: 1px solid #4caf50;
+  border-radius: 3px;
+  background-color: white;
+  outline: none;
+  resize: vertical;
+  min-height: 30px;
+  max-height: 100px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.note-edit-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 4px;
+}
+
+.note-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.note-text-edit {
+  padding: 5px;
+  font-size: 14px;
+  border: 1px solid #2196f3;
+  border-radius: 3px;
+  background-color: #f5f5f5;
+  outline: none;
+  resize: vertical;
+  min-height: 50px;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.edit-actions-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-right: 10px;
+}
+
+.confirm-edit-btn,
+.cancel-edit-btn {
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 6px 16px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.confirm-edit-btn {
+  background-color: #4caf50;
+}
+
+.confirm-edit-btn:hover {
+  background-color: #45a049;
+  transform: scale(1.02);
+}
+
+.cancel-edit-btn {
+  background-color: #f44336;
+}
+
+.cancel-edit-btn:hover {
+  background-color: #da190b;
+  transform: scale(1.02);
+}
+
+.confirm-icon,
+.cancel-icon {
+  font-weight: bold;
+}
+
+/* ========================= */
+/* Hover Preview             */
+/* ========================= */
+.hover-preview-container {
+  display: none;
+  margin-left: 28px;
+  margin-top: 4px;
+  margin-bottom: 4px;
+  width: calc(100% - 28px);
+}
+
+.task-card:hover .hover-preview-container {
+  display: block;
+}
+
+.hover-preview-row {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.preview-display-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+/* Note preview section */
+.note-preview {
+  flex: 1;
+  margin-right: 0;
+}
+
+.note-display-text {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: #f5f5f5;
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 3px solid #2196f3;
+  box-sizing: border-box;
+  min-height: 60px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.note-display-text.empty-note {
+  background-color: #fafafa;
+  border-left-color: #e0e0e0;
+  color: #999;
+}
+
+/* Due date preview section */
+.due-date-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 83px;
+  flex-shrink: 0;
+  padding-left: 10px;
+  margin-left: 10px;
+}
+
+.due-date-preview .preview-display-label {
+  text-align: right;
+}
+
+.due-date-placeholder {
+  width: 100%;
+  height: 60px;
+}
+
+/* Mini calendar component */
+.mini-calendar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 4px 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  width: 60px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  align-self: flex-start;
+}
+
+.calendar-header {
+  font-size: 9px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+
+.calendar-day {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+  line-height: 1;
+  margin: 2px 0;
+}
+
+.calendar-weekday {
+  font-size: 10px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Calendar due date states */
+.task-card:has(.task-title.due-past) .mini-calendar,
+.task-card:has(.task-title.due-today) .mini-calendar {
+  background-color: #ffebee;
+  border-color: #f44336;
+}
+
+.task-card:has(.task-title.due-past) .calendar-day,
+.task-card:has(.task-title.due-today) .calendar-day {
+  color: #f44336;
+}
+
+.task-card:has(.task-title.due-soon) .mini-calendar {
+  background-color: #fff8e1;
+  border-color: #ff9800;
+}
+
+.task-card:has(.task-title.due-soon) .calendar-day {
+  color: #ff9800;
+}
+
+/* ========================= */
+/* Animations                */
+/* ========================= */
 @keyframes pulse {
   0% {
     transform: scale(1);

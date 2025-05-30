@@ -56,3 +56,25 @@ export function findTask(taskText) {
 export function findSection(sectionName) {
     return cy.contains('.section-header', sectionName).parent();
 }
+
+/**
+ * Test a condition before and after page refresh to ensure persistence
+ * @param {Function} testFn - Function containing the test assertions to run
+ * @param {string} [description] - Optional description for debugging
+ */
+export function withRefresh(testFn, description) {
+    // Run test before refresh
+    if (description) {
+        cy.log(`Testing before refresh: ${description}`);
+    }
+    testFn();
+    
+    // Refresh and wait
+    refreshAndWait();
+    
+    // Run test after refresh
+    if (description) {
+        cy.log(`Testing after refresh: ${description}`);
+    }
+    testFn();
+}

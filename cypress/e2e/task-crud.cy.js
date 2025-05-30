@@ -15,7 +15,7 @@ setupTestSuite('Task CRUD Operations', () => {
             // New task should appear with edit mode active
             cy.get('.task-text-edit').should('be.visible')
             cy.get('.task-text-edit').type(newTaskText)
-            cy.get('.confirm-task-btn').click()
+            cy.get('.confirm-edit-btn').click()
         })
 
         // Verify task created
@@ -31,7 +31,7 @@ setupTestSuite('Task CRUD Operations', () => {
         // Just find the textarea directly - there should only be one in edit mode
         cy.get('.task-text-edit').should('be.visible')
         cy.get('.task-text-edit').clear().type(editedTaskText)
-        cy.get('.confirm-task-btn').click()
+        cy.get('.confirm-edit-btn').click()
 
         // Verify task edited
         findTask(editedTaskText).should('exist')

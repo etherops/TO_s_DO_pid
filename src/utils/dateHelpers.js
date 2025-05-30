@@ -144,3 +144,48 @@ export const getDisplayTextWithoutDueDate = (text) => {
     // Remove the due date pattern and trim
     return text.replace(/!!\s*\([^)]*\)/g, '').trim();
 };
+
+/**
+ * Get month and year from task text for mini calendar
+ * @param {string} text - Task text with due date
+ * @returns {string} Formatted month and year (e.g., "May 2024")
+ */
+export const getMonthYear = (text) => {
+  const dateStr = extractDateFromText(text);
+  if (!dateStr) return '';
+  
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+};
+
+/**
+ * Get day number from task text for mini calendar
+ * @param {string} text - Task text with due date
+ * @returns {number|string} Day number or original string if invalid
+ */
+export const getDayNumber = (text) => {
+  const dateStr = extractDateFromText(text);
+  if (!dateStr) return '';
+  
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  
+  return date.getDate();
+};
+
+/**
+ * Get weekday from task text for mini calendar
+ * @param {string} text - Task text with due date
+ * @returns {string} Abbreviated weekday (e.g., "Mon", "Tue")
+ */
+export const getWeekday = (text) => {
+  const dateStr = extractDateFromText(text);
+  if (!dateStr) return '';
+  
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
+  
+  return date.toLocaleDateString('en-US', { weekday: 'short' });
+};
