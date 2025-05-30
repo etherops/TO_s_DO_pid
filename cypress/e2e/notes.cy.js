@@ -93,36 +93,51 @@ setupTestSuite('Notes Feature', () => {
   it('should handle keyboard shortcuts', () => {
     const taskText = 'Lawn care';
 
-    // Add note with Enter key from title field
+    // Test Enter key saves from title field
     findTask(taskText).within(() => {
       cy.get('.notes-btn').click();
     });
 
-    // Press Enter in title field to move to notes
+    // Add a note first
+    cy.get('.note-text-edit').type('Use REST conventions');
+    cy.get('.task-text-edit').clear().type('Lawn care - updated');
     cy.get('.task-text-edit').type('{enter}');
-    cy.get('.note-text-edit').should('have.focus');
 
-    // Type note and save with Enter
-    cy.get('.note-text-edit').type('Use REST conventions{enter}');
+    // Verify task was saved with Enter key from title field
+    findTask('Lawn care - updated').should('exist');
+    findTask('Lawn care - updated').within(() => {
+      cy.get('.notes-btn').should('have.class', 'has-notes');
+      cy.get('.notes-btn').should('have.attr', 'title', 'Use REST conventions');
+    });
 
-    // Verify note was saved and persists after refresh
-    withRefresh(() => {
-      findTask(taskText).within(() => {
-        cy.get('.notes-btn').should('have.class', 'has-notes');
-      });
-    }, 'Keyboard shortcut save persistence');
-
-    // Edit and cancel with Escape
-    findTask(taskText).within(() => {
+    // Test Enter key saves from notes field
+    findTask('Lawn care - updated').within(() => {
       cy.get('.notes-btn').click();
     });
 
-    cy.get('.note-text-edit').clear().type('This should not be saved');
+    cy.get('.note-text-edit').clear().type('Updated REST conventions');
+    cy.get('.note-text-edit').type('{enter}');
+
+    // Verify note was saved
+    withRefresh(() => {
+      findTask('Lawn care - updated').within(() => {
+        cy.get('.notes-btn').should('have.attr', 'title', 'Updated REST conventions');
+      });
+    }, 'Enter key save persistence');
+
+    // Test Escape cancels edits
+    findTask('Lawn care - updated').within(() => {
+      cy.get('.notes-btn').click();
+    });
+
+    cy.get('.task-text-edit').clear().type('This should not be saved');
+    cy.get('.note-text-edit').clear().type('This note should not be saved');
     cy.get('.note-text-edit').type('{esc}');
 
     // Verify changes were not saved
-    findTask(taskText).within(() => {
-      cy.get('.notes-btn').should('have.attr', 'title', 'Use REST conventions');
+    findTask('Lawn care - updated').within(() => {
+      cy.get('.task-title').should('have.text', 'Lawn care - updated');
+      cy.get('.notes-btn').should('have.attr', 'title', 'Updated REST conventions');
     });
   });
 

@@ -288,10 +288,10 @@ const cancelAllEdits = () => {
 const handleTaskEditKeydown = (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
-    // Move focus to note field
-    if (noteTextInput.value) {
-      noteTextInput.value.focus();
-    }
+    saveAllEdits();
+  } else if (event.key === 'Tab' && !event.shiftKey) {
+    // Tab key moves to notes field (default browser behavior)
+    // No need to prevent default here
   } else if (event.key === 'Escape') {
     event.preventDefault();
     cancelAllEdits();
