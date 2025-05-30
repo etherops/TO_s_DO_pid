@@ -36,8 +36,8 @@
 #######
 # WIP #
 #######
+* [~] 4-th check box state a - dash incomplete grey
 * [ ] re-order sections
-* [ ] 4-th check box state a - dash incomplete grey
 * [ ] Rebrand KindaBan
 * [ ] collapsible/hidable DONE
 * [ ] archive back in a tab, side drawer

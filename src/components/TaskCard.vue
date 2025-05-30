@@ -7,7 +7,8 @@
             :class="['custom-checkbox', {
             'unchecked': task.statusChar === ' ',
             'in-progress': task.statusChar === '~',
-            'checked': task.statusChar === 'x'
+            'checked': task.statusChar === 'x',
+            'cancelled': task.statusChar === '-'
           }]"
             @click="toggleTaskStatus"
         ></div>
@@ -53,10 +54,10 @@
         <span
             :class="[
             'task-title',
-            { 'due-date': !task.statusChar.includes('x') && hasDueDate(task.text) },
-            { 'due-past': !task.statusChar.includes('x') && isPast(task.text) },
-            { 'due-today': !task.statusChar.includes('x') && isToday(task.text) },
-            { 'due-soon': !task.statusChar.includes('x') && isSoon(task.text) }
+            { 'due-date': task.statusChar !== 'x' && task.statusChar !== '-' && hasDueDate(task.text) },
+            { 'due-past': task.statusChar !== 'x' && task.statusChar !== '-' && isPast(task.text) },
+            { 'due-today': task.statusChar !== 'x' && task.statusChar !== '-' && isToday(task.text) },
+            { 'due-soon': task.statusChar !== 'x' && task.statusChar !== '-' && isSoon(task.text) }
           ]"
             :title="task.text"
             @dblclick="startEditingAll"
@@ -68,7 +69,7 @@
           <!-- Clock button -->
           <button
               class="task-icon-btn clock-btn"
-              :class="{ 'has-due-date': !task.statusChar.includes('x') && hasDueDate(task.text) }"
+              :class="{ 'has-due-date': task.statusChar !== 'x' && task.statusChar !== '-' && hasDueDate(task.text) }"
               @click.stop="handleDueDateClick"
               :title="hasDueDate(task.text) ? getDueDateTooltip(task.text) : 'Add due date'"
           >
@@ -187,11 +188,13 @@ const toggleTaskStatus = () => {
     return;
   }
 
-  // Cycle through states
+  // Cycle through states: unchecked -> in-progress -> checked -> cancelled -> unchecked
   if (props.task.statusChar === ' ') {
     props.task.statusChar = '~';
   } else if (props.task.statusChar === '~') {
     props.task.statusChar = 'x';
+  } else if (props.task.statusChar === 'x') {
+    props.task.statusChar = '-';
   } else {
     props.task.statusChar = ' ';
   }
@@ -423,14 +426,15 @@ onMounted(() => {
 }
 
 .custom-checkbox.in-progress:after {
-  content: "";
+  content: "~";
   position: absolute;
   top: 50%;
-  left: 2px;
-  right: 2px;
-  height: 1px;
-  background-color: #ff9800;
-  transform: translateY(-50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ff9800;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
 }
 
 .custom-checkbox.checked {
@@ -448,6 +452,22 @@ onMounted(() => {
   border: solid #4caf50;
   border-width: 0 1px 1px 0;
   transform: rotate(45deg);
+}
+
+.custom-checkbox.cancelled {
+  background-color: #f5f5f5;
+  border-color: #757575;
+}
+
+.custom-checkbox.cancelled:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  background-color: #757575;
+  transform: translateY(-50%);
 }
 
 /* ========================= */
@@ -514,8 +534,9 @@ onMounted(() => {
   box-shadow: 0 2px 5px rgba(255, 193, 7, 0.2);
 }
 
-/* Cancel due date styling for completed tasks */
-.task-card:has(.custom-checkbox.checked) .task-title.has-due-date {
+/* Cancel due date styling for completed and cancelled tasks */
+.task-card:has(.custom-checkbox.checked) .task-title.has-due-date,
+.task-card:has(.custom-checkbox.cancelled) .task-title.has-due-date {
   color: inherit !important;
   font-weight: normal !important;
   font-size: 1em !important;
@@ -524,7 +545,8 @@ onMounted(() => {
   box-shadow: none !important;
 }
 
-.task-card:has(.custom-checkbox.checked) .clock-btn.has-due-date {
+.task-card:has(.custom-checkbox.checked) .clock-btn.has-due-date,
+.task-card:has(.custom-checkbox.cancelled) .clock-btn.has-due-date {
   opacity: 0.3 !important;
 }
 

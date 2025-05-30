@@ -45,6 +45,23 @@ setupTestSuite('Task Status Toggle', () => {
             cy.get('.custom-checkbox').should('have.class', 'checked')
         })
 
+        // Click to change to cancelled
+        findTask(taskText).within(() => {
+            cy.get('.custom-checkbox').click()
+        })
+
+        // Verify changed to cancelled
+        findTask(taskText).within(() => {
+            cy.get('.custom-checkbox').should('have.class', 'cancelled')
+        })
+
+        // Refresh and verify persisted
+        refreshAndWait()
+
+        findTask(taskText).within(() => {
+            cy.get('.custom-checkbox').should('have.class', 'cancelled')
+        })
+
         // Click to cycle back to unchecked
         findTask(taskText).within(() => {
             cy.get('.custom-checkbox').click()
