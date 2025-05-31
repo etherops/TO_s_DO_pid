@@ -14,7 +14,25 @@
         ></div>
       </div>
     <template v-if="isEditing">
-      <div class="task-edit-wrapper">
+      <!-- Simplified interface for new tasks -->
+      <div v-if="task.isNew" class="new-task-wrapper">
+        <input
+            type="text"
+            class="new-task-input"
+            v-model="editTaskText"
+            @keydown="handleNewTaskKeydown"
+            ref="taskTextInput"
+            placeholder="Enter task text..."
+        />
+        <button class="confirm-edit-btn" @click="saveAllEdits">
+          <span class="confirm-icon">✓</span>
+        </button>
+        <button class="cancel-edit-btn" @click="cancelAllEdits">
+          <span class="cancel-icon">×</span>
+        </button>
+      </div>
+      <!-- Full edit interface for existing tasks -->
+      <div v-else class="task-edit-wrapper">
         <!-- Title editing row -->
         <div class="task-edit-row">
           <textarea
@@ -351,6 +369,17 @@ const handleNoteEditKeydown = (event) => {
   }
 };
 
+// Handle keydown for new task input
+const handleNewTaskKeydown = (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    saveAllEdits();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    cancelAllEdits();
+  }
+};
+
 // Process display text on mount if the task is new
 onMounted(() => {
   if (props.task.isNew) nextTick(() => startEditingAll());
@@ -665,6 +694,38 @@ onMounted(() => {
 /* ========================= */
 /* Edit Mode                 */
 /* ========================= */
+.new-task-wrapper {
+  display: flex;
+  flex: 1;
+  margin-left: 8px;
+  gap: 8px;
+  align-items: center;
+  width: calc(100% - 28px);
+}
+
+.new-task-input {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: inherit;
+  border: 1px solid #4caf50;
+  border-radius: 3px;
+  background-color: white;
+  outline: none;
+  font-family: inherit;
+}
+
+.new-task-input:focus {
+  border-color: #45a049;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.new-task-wrapper .confirm-edit-btn,
+.new-task-wrapper .cancel-edit-btn {
+  padding: 4px 8px;
+  min-width: auto;
+  font-size: 12px;
+}
+
 .task-edit-wrapper {
   display: flex;
   flex-direction: column;

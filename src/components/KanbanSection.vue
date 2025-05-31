@@ -98,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, onMounted } from 'vue';
 import draggable from 'vuedraggable';
 import TaskCard from './TaskCard.vue';
 
@@ -119,6 +119,9 @@ const emit = defineEmits(['task-updated', 'section-updated', 'show-date-picker']
 const isEditingSection = ref(false);
 const editSectionName = ref('');
 const sectionPendingDelete = ref(false);
+
+// Template refs
+const sectionNameInput = ref(null);
 
 // Start editing section name
 const startEditingSection = () => {
@@ -143,6 +146,11 @@ const saveEditedSection = () => {
   if (editSectionName.value.trim() !== props.section.name) {
     props.section.name = editSectionName.value.trim();
     emit('section-updated');
+  }
+
+  // Remove isNew flag after saving
+  if (props.section.isNew) {
+    delete props.section.isNew;
   }
 
   isEditingSection.value = false;
@@ -221,8 +229,20 @@ const onDragEnd = () => {
   emit('task-updated');
 };
 
-// Template refs
-const sectionNameInput = ref(null);
+// Check if section is new and enter edit mode
+onMounted(() => {
+  if (props.section.isNew) {
+    nextTick(() => {
+      startEditingSection();
+      // Select all text for easy replacement
+      nextTick(() => {
+        if (sectionNameInput.value) {
+          sectionNameInput.value.select();
+        }
+      });
+    });
+  }
+});
 </script>
 
 <style scoped>

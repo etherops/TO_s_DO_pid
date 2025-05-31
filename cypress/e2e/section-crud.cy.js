@@ -12,12 +12,10 @@ setupTestSuite('WIP Section CRUD Operations', () => {
             cy.get('.section').first().as('newSection')
         })
 
-        // New section should appear
-        cy.contains('.section-header', 'New Section').should('exist')
-
-        // Edit the section name
+        // New section should appear in edit mode automatically
         cy.get('@newSection').within(() => {
-            cy.get('.edit-section-btn').click()
+            cy.get('.section-name-edit').should('be.visible')
+            cy.get('.section-name-edit').should('have.focus')
             cy.get('.section-name-edit').clear().type(newSectionName)
             cy.get('.confirm-section-btn').click()
         })
@@ -64,12 +62,10 @@ setupTestSuite('TODO Section CRUD Operations', () => {
             cy.get('.section').last().as('newSection')
         })
 
-        // New section should appear
-        cy.contains('.section-header', 'New Section').should('exist')
-
-        // Edit the name
+        // New section should appear in edit mode automatically
         cy.get('@newSection').within(() => {
-            cy.get('.edit-section-btn').click()
+            cy.get('.section-name-edit').should('be.visible')
+            cy.get('.section-name-edit').should('have.focus')
             cy.get('.section-name-edit').clear().type(newSectionName)
             cy.get('.confirm-section-btn').click()
         })

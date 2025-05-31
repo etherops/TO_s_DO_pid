@@ -272,22 +272,30 @@ setupTestSuite('Notes Feature', () => {
 
   it('should handle creating new tasks with notes', () => {
     const sectionName = 'BACKLOG';
-    const newTaskText = 'New task with note from start';
+    const taskTitle = 'New task with note from start';
     const noteText = 'Important implementation detail';
+    const fullTaskText = `${taskTitle} (${noteText})`;
 
-    // Create new task
+    // Create new task with note in parentheses format
     findSection(sectionName).within(() => {
       cy.get('.add-task-btn').click();
-      cy.get('.task-text-edit').type(newTaskText);
-      cy.get('.note-text-edit').type(noteText);
+      cy.get('.new-task-input').type(fullTaskText);
       cy.get('.confirm-edit-btn').click();
     });
 
-    // Verify task was created with note and persists after refresh
+    // Verify task was created with note parsed correctly
+    findTask(taskTitle).should('exist');
+    findTask(taskTitle).within(() => {
+      cy.get('.task-title').should('have.text', taskTitle); // Title without note
+      cy.get('.notes-btn').should('have.class', 'has-notes');
+      cy.get('.notes-btn').should('have.attr', 'title', noteText);
+    });
+
+    // Verify persistence after refresh
     withRefresh(() => {
-      findTask(newTaskText).should('exist');
-      findTask(newTaskText).within(() => {
-        cy.get('.task-title').should('have.text', newTaskText);
+      findTask(taskTitle).should('exist');
+      findTask(taskTitle).within(() => {
+        cy.get('.task-title').should('have.text', taskTitle);
         cy.get('.notes-btn').should('have.class', 'has-notes');
         cy.get('.notes-btn').should('have.attr', 'title', noteText);
       });

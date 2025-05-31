@@ -16,6 +16,7 @@
 * [ ] can't archive a section with incomplete tasks
 * [ ] Archivable Section badge improvement
 * [ ] DELETE - undo
+* [ ] Rebrand KindaBan
 
 ### Quick Features
 * [ ] "add task" should be a an empty row ready
@@ -36,25 +37,24 @@
 #######
 # WIP #
 #######
-* [~] 4-th check box state a - dash incomplete grey
+* [~] add task/section improvements
+* [ ] debug edit mode
 * [ ] re-order sections
-* [ ] Rebrand KindaBan
+* [ ] right left day arrows for date picker
 * [ ] collapsible/hidable DONE
 * [ ] archive back in a tab, side drawer
-* [ ] Feature: Add Notes again
-* [ ] "move done to week" button in WIP
-* [ ] "archive week" instead of janky d&d
-* [ ] right left day arrows for date picker
 
 ###########
 # ARCHIVE #
 ###########
 
 ### Just done
+* [x] 4-th check box state a - dash incomplete grey
 * [x] bug: enter/tab in edit mode
-* [x] TESTS
+* [x] re-add notes, TESTS
 * [x] bug: file backups today was in UTC instead of local
 * [x] modularize vue components
+* [x] "archive week" instead of janky d&d
 * [x] remove section archive d&d for archive button
 * [x] Script setup and composition API
 * [x] CUSTOM todo source folder in .env config

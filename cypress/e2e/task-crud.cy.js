@@ -12,9 +12,10 @@ setupTestSuite('Task CRUD Operations', () => {
         findSection(sectionName).within(() => {
             cy.get('.add-task-btn').click()
 
-            // New task should appear with edit mode active
-            cy.get('.task-text-edit').should('be.visible')
-            cy.get('.task-text-edit').type(newTaskText)
+            // New task should appear with simplified edit mode active
+            cy.get('.new-task-input').should('be.visible')
+            cy.get('.new-task-input').should('have.focus')
+            cy.get('.new-task-input').type(newTaskText)
             cy.get('.confirm-edit-btn').click()
         })
 
@@ -67,10 +68,10 @@ setupTestSuite('Task CRUD Operations', () => {
 
                 // Start creating new task
                 cy.get('.add-task-btn').click()
-                cy.get('.task-text-edit').type('Task to cancel')
+                cy.get('.new-task-input').type('Task to cancel')
 
                 // Press escape to cancel
-                cy.get('.task-text-edit').type('{esc}')
+                cy.get('.new-task-input').type('{esc}')
 
                 // Verify task count unchanged
                 cy.get('.task-card').should('have.length', initialCount)

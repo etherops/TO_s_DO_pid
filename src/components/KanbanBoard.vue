@@ -99,7 +99,8 @@ const createNewSection = (column) => {
     archivable: column === 'WIP',
     hidden: false,
     on_ice: false,
-    items: []
+    items: [],
+    isNew: true
   };
 
   // Insert the section at the appropriate position
