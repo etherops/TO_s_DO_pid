@@ -1,7 +1,6 @@
 import { refreshAndWait, findTask } from '../support/helpers'
-import { setupTestSuite } from '../support/test-base'
 
-setupTestSuite('Task Status Toggle', () => {
+describe('Task Status Toggle', () => {
     it('should toggle task status and persist after refresh', () => {
         // Find a known task in TODO state - using actual task from PROJECTS section
         const taskText = 'PROJECT - Outdoor activities'

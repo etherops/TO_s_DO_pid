@@ -1,7 +1,6 @@
-import { setupTestSuite } from '../support/test-base';
 import { refreshAndWait, findSection, findTask, withRefresh } from '../support/helpers';
 
-setupTestSuite('Notes Feature', () => {
+describe('Notes Feature', () => {
 
   it('should add and edit notes on existing tasks', () => {
     // Find a task without a note

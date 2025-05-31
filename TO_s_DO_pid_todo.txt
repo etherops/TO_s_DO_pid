@@ -1,3 +1,17 @@
+### Quick Features
+* [ ] "add task" should be a an empty row ready
+* [ ] VIEW - sortable tabs
+* [ ] BOTH: auto append date completed DD/MM/YY on complete
+* [ ] VIEW: Auto sort tasks by status
+* [ ] Backup rotation
+* [ ] FEATURE: "Today, Tomorrow" as due dates
+* [ ] counts in tabs
+* [ ] shift click move bulk items
+* [ ] can't archive a section with incomplete tasks
+
+### Bugs
+* [ ] BUG: Compact "confirm delete" is truncated vertically
+
 ### Bigger Features
 * [ ] PARSE: non destructive write-backj
 * [ ] DYNAMIC: dynamic re-render/watch on file change
@@ -5,34 +19,11 @@
 * [ ] MARKDOWN: 3# = column, 1# = section
 * [ ] LARGE: iPhone app
 * [ ] LARGE: Host on Lightwire
-* [ ] VIEW - diff revisions !!(May 26)
-* [ ] FEATURE: calendar view! !!(Jun 18)
-* [ ] SERVER: git push integration
-* [ ] FEATURE: "Today, Tomorrow" as due dates
-* [ ] feature: add the preceeding folder name in custom tabs
-* [ ] counts in tabs
-* [ ] feature: clock date picker to change due date
-* [ ] shift click move bulk items
-* [ ] can't archive a section with incomplete tasks
-* [ ] Archivable Section badge improvement
-* [ ] DELETE - undo
 * [ ] Rebrand KindaBan
-
-### Quick Features
-* [ ] "add task" should be a an empty row ready
-* [ ] VIEW - sortable tabs
-* [ ] BOTH: auto append "(DD/MM/YY)" on complete
-* [ ] add [-] for strikethrough/cancelled
-* [ ] add [>] for ON HOLD
-* [ ] VIEW: Auto sort tasks by status
-* [ ] Archive drag and drop need to disable ghost preview b/c we always insert at top of backlog
-* [ ] Backup rotation
-* [ ] add task no notes field
-
-### Bugs
-* [ ] BUG: date should hide date !!(May 25)
-* [ ] BUG: Compact "confirm delete" is truncated vertically
-* [ ] BUG: expland centers checkbox and text top-bottom. also it should show overtop instead of pushing down
+* [ ] VIEW - diff revisions !!(May 26)
+* [ ] SERVER: git push integration
+* [ ] feature: add the preceeding folder name in custom tabs
+* [ ] DELETE - undo
 
 #######
 # WIP #
@@ -41,6 +32,8 @@
 * [ ] right left day arrows for date picker
 * [ ] collapsible/hidable DONE
 * [ ] archive back in a tab, side drawer
+* [ ] details is a pop up instead of "expand card"
+* [ ] consolidated date picker/edit mode
 
 ###########
 # ARCHIVE #
@@ -60,6 +53,7 @@
 * [x] CUSTOM todo source folder in .env config
 * [x] BUG: custom tabs is BROKEN CRAP!
 * [x] SECTION - create/delete
+* [x] feature: clock date picker to change due date
 * [x] flash red overdue [May 16]
 * [x] VIEW: Truncated task, expand item with wrapping on hover instead of tool tip
 * [x] kill ghost DONE

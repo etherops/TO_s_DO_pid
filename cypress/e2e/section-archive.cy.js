@@ -1,7 +1,6 @@
 import { refreshAndWait, findSection } from '../support/helpers'
-import { setupTestSuite } from '../support/test-base'
 
-setupTestSuite('Section Archiving', () => {
+describe('Section Archiving', () => {
     it('should archive WIP section to DONE column', () => {
         // Using actual archivable section from WIP
         const sectionName = 'CURRENT WEEK (Week of May 1'

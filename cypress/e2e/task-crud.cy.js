@@ -1,7 +1,6 @@
 import { refreshAndWait, findSection, findTask } from '../support/helpers'
-import { setupTestSuite } from '../support/test-base'
 
-setupTestSuite('Task CRUD Operations', () => {
+describe('Task CRUD Operations', () => {
     it('should create new task, edit it, and delete it', () => {
         // Using actual section from the file
         const sectionName = 'PROJECTS'

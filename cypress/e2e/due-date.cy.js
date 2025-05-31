@@ -1,7 +1,6 @@
 import { refreshAndWait, findTask } from '../support/helpers'
-import { setupTestSuite } from '../support/test-base'
 
-setupTestSuite('Due Date Management', () => {
+describe('Due Date Management', () => {
     it('should add due date to task and persist', () => {
         // Using actual task without due date from HELPER section
         const taskText = 'HOME - Lawn care'

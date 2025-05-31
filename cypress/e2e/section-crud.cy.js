@@ -1,7 +1,6 @@
 import { refreshAndWait, findSection } from '../support/helpers'
-import { setupTestSuite } from '../support/test-base'
 
-setupTestSuite('WIP Section CRUD Operations', () => {
+describe('WIP Section CRUD Operations', () => {
     it('should create new section in TODO column, edit name, and delete', () => {
         const newSectionName = 'Test Section'
         const editedSectionName = 'Edited Test Section'
@@ -52,7 +51,7 @@ setupTestSuite('WIP Section CRUD Operations', () => {
     })
 })
 
-setupTestSuite('TODO Section CRUD Operations', () => {
+describe('TODO Section CRUD Operations', () => {
     it('should create new section in WIP column', () => {
         const newSectionName = 'WIP Test Section'
 
@@ -84,7 +83,7 @@ setupTestSuite('TODO Section CRUD Operations', () => {
     })
 })
 
-setupTestSuite('Section DELETE protection', () => {
+describe('Section DELETE protection', () => {
     it('should not allow deleting section with tasks', () => {
         // Using actual section that has tasks
         const sectionWithTasks = 'PROJECTS' // We know this has tasks

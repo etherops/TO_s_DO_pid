@@ -1,7 +1,6 @@
 import { refreshAndWait, findTask, findSection } from '../support/helpers'
-import { setupTestSuite } from '../support/test-base'
 
-setupTestSuite('Drag and Drop Tasks', () => {
+describe('Drag and Drop Tasks', () => {
     it('should move task between sections and persist', () => {
         const taskText = 'HOME - Garden maintenance'
 
