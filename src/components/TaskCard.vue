@@ -14,8 +14,8 @@
         ></div>
       </div>
     <template v-if="isEditing">
-      <!-- Simplified interface for new tasks -->
-      <div v-if="task.isNew" class="new-task-wrapper">
+      <!-- Simplified interface for new tasks or simple edit mode -->
+      <div v-if="task.isNew || isSimpleEdit" class="new-task-wrapper">
         <input
             type="text"
             class="new-task-input"
@@ -105,7 +105,7 @@
           </button>
 
           <!-- Edit button -->
-          <button class="task-icon-btn edit-btn" @click="startEditingAll">
+          <button class="task-icon-btn edit-btn" @click="handleEditClick" title="Edit task (Shift+click for simple edit)">
             <span class="edit-icon">✎</span>
           </button>
 
@@ -190,6 +190,7 @@ const emit = defineEmits(['task-updated', 'show-date-picker']);
 
 // Task state
 const isEditing = ref(false);
+const isSimpleEdit = ref(false);
 const editTaskText = ref('');
 const taskPendingDelete = ref(false);
 const editNoteText = ref('');
@@ -220,9 +221,35 @@ const toggleTaskStatus = () => {
   emit('task-updated');
 };
 
+// Handle edit button click (check for shift key)
+const handleEditClick = (event) => {
+  if (event.shiftKey) {
+    startSimpleEdit();
+  } else {
+    startEditingAll();
+  }
+};
+
+// Start simple edit mode (shows full text)
+const startSimpleEdit = () => {
+  isEditing.value = true;
+  isSimpleEdit.value = true;
+  
+  // Use the full raw text
+  editTaskText.value = props.task.text;
+
+  nextTick(() => {
+    if (taskTextInput.value) {
+      taskTextInput.value.focus();
+      taskTextInput.value.select();
+    }
+  });
+};
+
 // Start editing all (both title and note)
 const startEditingAll = () => {
   isEditing.value = true;
+  isSimpleEdit.value = false;
   
   // Extract clean title without note or due date
   const cleanTitle = getStrippedDisplayText(props.task.text);
@@ -263,19 +290,26 @@ const saveAllEdits = () => {
     delete props.task.isNew;
   }
 
-  // Build the new text with title, note, and preserved due date
-  let newText = editTaskText.value.trim();
+  let newText;
   
-  // Add note if present - escape newlines
-  if (editNoteText.value.trim()) {
-    const escapedNote = editNoteText.value.trim().replace(/\n/g, '\\n');
-    newText += ` (${escapedNote})`;
-  }
-  
-  // Preserve existing due date
-  const dueDateMatch = props.task.text.match(/!\!\s*\([^)]*\)/);
-  if (dueDateMatch) {
-    newText += ` ${dueDateMatch[0]}`;
+  if (isSimpleEdit.value || props.task.isNew) {
+    // In simple edit mode or for new tasks, use the text as-is
+    newText = editTaskText.value.trim();
+  } else {
+    // In full edit mode, build the text from components
+    newText = editTaskText.value.trim();
+    
+    // Add note if present - escape newlines
+    if (editNoteText.value.trim()) {
+      const escapedNote = editNoteText.value.trim().replace(/\n/g, '\\n');
+      newText += ` (${escapedNote})`;
+    }
+    
+    // Preserve existing due date
+    const dueDateMatch = props.task.text.match(/!\!\s*\([^)]*\)/);
+    if (dueDateMatch) {
+      newText += ` ${dueDateMatch[0]}`;
+    }
   }
 
   if (newText !== props.task.text) {
@@ -284,6 +318,7 @@ const saveAllEdits = () => {
   }
 
   isEditing.value = false;
+  isSimpleEdit.value = false;
   editTaskText.value = '';
   editNoteText.value = '';
   emit('task-updated');
@@ -301,6 +336,7 @@ const cancelAllEdits = () => {
   }
 
   isEditing.value = false;
+  isSimpleEdit.value = false;
   editTaskText.value = '';
   editNoteText.value = '';
 };

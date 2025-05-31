@@ -78,4 +78,74 @@ setupTestSuite('Task CRUD Operations', () => {
             })
         })
     })
+
+    it('should support shift+click for simple edit mode', () => {
+        // Find a task with notes
+        const fullTaskText = 'BILLS - Phone bill really really really really really really really really really really really really really really really really really long'
+        const displayText = 'Phone bill really really really really really really really really really really really really really really really really really long'
+        const noteText = 'Jan 14, follow up about refund'
+        
+        // First verify the task exists and has notes
+        findTask(displayText).should('exist')
+        findTask(displayText).within(() => {
+            cy.get('.notes-btn').should('have.class', 'has-notes')
+        })
+
+        // Click edit button with shift key for simple edit mode
+        findTask(displayText).within(() => {
+            cy.get('.edit-btn').click({ shiftKey: true })
+        })
+
+        // Should show simple edit interface with full text
+        cy.get('.new-task-input').should('be.visible')
+        cy.get('.new-task-input').invoke('val').should('equal', `${fullTaskText} (${noteText})`)
+        
+        // Cancel to exit edit mode
+        cy.get('.cancel-edit-btn').click()
+
+        // Now try regular edit mode for comparison
+        findTask(displayText).within(() => {
+            cy.get('.edit-btn').click({ shiftKey: false })
+        })
+
+        // Should show full edit interface with separate fields
+        cy.get('.task-text-edit').should('be.visible')
+        cy.get('.note-text-edit').should('be.visible')
+        cy.get('.task-text-edit').should('have.value', fullTaskText)
+        cy.get('.note-text-edit').should('have.value', noteText)
+        
+        // Cancel
+        cy.get('.cancel-edit-btn').click()
+    })
+
+    it('should save changes from simple edit mode', () => {
+        const sectionName = 'PROJECTS'
+        const originalText = 'PROJECT - Outdoor activities'
+        const newFullText = 'Updated outdoor project (with a new note) !!(2024-12-25)'
+        
+        // Find the task
+        findTask(originalText).should('exist')
+        
+        // Shift+click to enter simple edit mode
+        findTask(originalText).within(() => {
+            cy.get('.edit-btn').click({ shiftKey: true })
+        })
+        
+        // Edit the full text
+        cy.get('.new-task-input').clear().type(newFullText)
+        cy.get('.confirm-edit-btn').click()
+        
+        // Verify the task was updated correctly
+        findTask('Updated outdoor project').should('exist')
+        findTask('Updated outdoor project').within(() => {
+            cy.get('.task-title').should('have.text', 'Updated outdoor project')
+            cy.get('.notes-btn').should('have.class', 'has-notes')
+            cy.get('.notes-btn').should('have.attr', 'title', 'with a new note')
+            cy.get('.clock-btn').should('have.class', 'has-due-date')
+        })
+        
+        // Verify persistence
+        refreshAndWait()
+        findTask('Updated outdoor project').should('exist')
+    })
 })

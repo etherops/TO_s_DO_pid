@@ -37,8 +37,6 @@
 #######
 # WIP #
 #######
-* [~] add task/section improvements
-* [ ] debug edit mode
 * [ ] re-order sections
 * [ ] right left day arrows for date picker
 * [ ] collapsible/hidable DONE
@@ -49,6 +47,8 @@
 ###########
 
 ### Just done
+* [x] debug edit mode
+* [x] add task/section improvements
 * [x] 4-th check box state a - dash incomplete grey
 * [x] bug: enter/tab in edit mode
 * [x] re-add notes, TESTS
