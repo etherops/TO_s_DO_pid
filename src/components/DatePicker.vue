@@ -12,11 +12,11 @@
         v-model="selectedDateValue"
     />
     <div class="date-picker-actions">
-      <button class="date-picker-confirm-btn" @click="confirmDateSelection" title="Confirm (Enter)">
-        <span class="confirm-icon">✓</span> Set
+      <button class="date-picker-confirm-btn" @click="confirmDateSelection" title="Set date (Enter)">
+        <span class="confirm-icon">✓</span>
       </button>
       <button class="date-picker-clear-btn" @click="clearDateSelection" title="Clear date">
-        <span class="clear-icon">✗</span> Clear
+        <span class="clear-icon">✗</span>
       </button>
       <button class="date-picker-close-btn" @click="closeDatePicker" title="Cancel (Esc)">
         <span class="cancel-icon">×</span>

@@ -44,16 +44,27 @@
           ></textarea>
         </div>
         
-        <!-- Note editing row -->
-        <div class="note-edit-row">
-          <label class="note-label">Notes</label>
-          <textarea
-              class="note-text-edit"
-              v-model="editNoteText"
-              @keydown="handleNoteEditKeydown"
-              ref="noteTextInput"
-              placeholder="Enter note..."
-          ></textarea>
+        <!-- Note and Date row -->
+        <div class="note-date-row">
+          <!-- Note editing section -->
+          <div class="note-edit-section">
+            <label class="note-label">Notes</label>
+            <textarea
+                class="note-text-edit"
+                v-model="editNoteText"
+                @keydown="handleNoteEditKeydown"
+                ref="noteTextInput"
+                placeholder="Enter note..."
+            ></textarea>
+          </div>
+          
+          <!-- Date picker section -->
+          <div class="date-edit-section">
+            <CompactDatePicker
+                v-model="editDateValue"
+                ref="datePickerRef"
+            />
+          </div>
         </div>
         
         <!-- Action buttons row -->
@@ -88,7 +99,7 @@
           <button
               class="task-icon-btn clock-btn"
               :class="{ 'has-due-date': task.statusChar !== 'x' && task.statusChar !== '-' && hasDueDate(task.text) }"
-              @click.stop="handleDueDateClick"
+              @click.stop="handleDateClick"
               :title="hasDueDate(task.text) ? getDueDateTooltip(task.text) : 'Add due date'"
           >
             ⏰
@@ -98,7 +109,7 @@
           <button
               class="task-icon-btn notes-btn"
               :class="{ 'has-notes': hasNote(task.text) }"
-              @click.stop="startEditingAll"
+              @click.stop="handleNotesClick"
               :title="hasNote(task.text) ? extractNoteFromText(task.text) : 'Add note'"
           >
             📋
@@ -157,6 +168,7 @@
 
 <script setup>
 import { ref, nextTick, onMounted, computed } from 'vue';
+import CompactDatePicker from './CompactDatePicker.vue';
 import {
   hasDueDate,
   isPast,
@@ -186,7 +198,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['task-updated', 'show-date-picker']);
+const emit = defineEmits(['task-updated']);
 
 // Task state
 const isEditing = ref(false);
@@ -194,10 +206,12 @@ const isSimpleEdit = ref(false);
 const editTaskText = ref('');
 const taskPendingDelete = ref(false);
 const editNoteText = ref('');
+const editDateValue = ref('');
 
 // Template refs
 const taskTextInput = ref(null);
 const noteTextInput = ref(null);
+const datePickerRef = ref(null);
 
 // Toggle task status
 const toggleTaskStatus = () => {
@@ -230,6 +244,16 @@ const handleEditClick = (event) => {
   }
 };
 
+// Handle date click - start edit mode with focus on date
+const handleDateClick = () => {
+  startEditingAll('date');
+};
+
+// Handle notes click - start edit mode with focus on notes
+const handleNotesClick = () => {
+  startEditingAll('notes');
+};
+
 // Start simple edit mode (shows full text)
 const startSimpleEdit = () => {
   isEditing.value = true;
@@ -247,7 +271,7 @@ const startSimpleEdit = () => {
 };
 
 // Start editing all (both title and note)
-const startEditingAll = () => {
+const startEditingAll = (focusTarget = '') => {
   isEditing.value = true;
   isSimpleEdit.value = false;
   
@@ -257,9 +281,24 @@ const startEditingAll = () => {
   
   // Extract existing note
   editNoteText.value = extractNoteFromText(props.task.text) || '';
+  
+  // Extract existing date
+  const existingDate = extractDateFromText(props.task.text);
+  if (existingDate) {
+    const year = existingDate.getFullYear();
+    const month = String(existingDate.getMonth() + 1).padStart(2, '0');
+    const day = String(existingDate.getDate()).padStart(2, '0');
+    editDateValue.value = `${year}-${month}-${day}`;
+  } else {
+    editDateValue.value = '';
+  }
 
   nextTick(() => {
-    if (taskTextInput.value) {
+    if (focusTarget === 'date' && datePickerRef.value) {
+      datePickerRef.value.focus();
+    } else if (focusTarget === 'notes' && noteTextInput.value) {
+      noteTextInput.value.focus();
+    } else if (taskTextInput.value) {
       taskTextInput.value.focus();
 
       // If this is a new task, select all text
@@ -305,10 +344,13 @@ const saveAllEdits = () => {
       newText += ` (${escapedNote})`;
     }
     
-    // Preserve existing due date
-    const dueDateMatch = props.task.text.match(/!\!\s*\([^)]*\)/);
-    if (dueDateMatch) {
-      newText += ` ${dueDateMatch[0]}`;
+    // Add date if present
+    if (editDateValue.value) {
+      // Parse the date value
+      const [year, month, day] = editDateValue.value.split('-');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const formattedDate = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}`;
+      newText += ` !!(${formattedDate})`;
     }
   }
 
@@ -321,6 +363,7 @@ const saveAllEdits = () => {
   isSimpleEdit.value = false;
   editTaskText.value = '';
   editNoteText.value = '';
+  editDateValue.value = '';
   emit('task-updated');
 };
 
@@ -339,6 +382,7 @@ const cancelAllEdits = () => {
   isSimpleEdit.value = false;
   editTaskText.value = '';
   editNoteText.value = '';
+  editDateValue.value = '';
 };
 
 // Handle keydown in task edit
@@ -355,20 +399,6 @@ const handleTaskEditKeydown = (event) => {
   }
 };
 
-// Handle due date click
-const handleDueDateClick = (event) => {
-  const rect = event.target.getBoundingClientRect();
-  const currentDate = extractDateFromText(props.task.text);
-
-  emit('show-date-picker', {
-    taskId: props.task.id,
-    position: {
-      top: rect.bottom + window.scrollY + 5,
-      left: rect.left + window.scrollX - 100
-    },
-    currentDate
-  });
-};
 
 // Delete task functions
 const requestDeleteTask = () => {
@@ -793,6 +823,27 @@ onMounted(() => {
   word-wrap: break-word;
 }
 
+.note-date-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  align-items: flex-start;
+}
+
+.note-edit-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.date-edit-section {
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
 .note-edit-row {
   display: flex;
   flex-direction: column;
@@ -827,7 +878,6 @@ onMounted(() => {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  padding-right: 10px;
 }
 
 .confirm-edit-btn,
