@@ -1,4 +1,4 @@
-import { refreshAndWait, findTask, findSection } from '../support/helpers'
+import { refreshAndWait, findTask, findSection } from '../support/helpers.js'
 
 describe('Drag and Drop Tasks', () => {
     it('should move task between sections and persist', () => {

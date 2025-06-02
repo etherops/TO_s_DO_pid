@@ -10,7 +10,8 @@ module.exports = defineConfig({
         video: false,
         screenshotOnRunFailure: true,
         defaultCommandTimeout: 2000,
-        supportFile: 'cypress/support/e2e.js',
+        specPattern: 'tests/cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
+        supportFile: 'tests/cypress/support/e2e.js',
         chromeWebSecurity: false,
         watchForFileChanges: false,
         setupNodeEvents(on, config) {

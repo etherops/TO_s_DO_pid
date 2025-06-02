@@ -98,7 +98,7 @@
           <!-- Clock button -->
           <button
               class="task-icon-btn clock-btn"
-              :class="{ 'has-due-date': task.statusChar !== 'x' && task.statusChar !== '-' && hasDueDate(task.text) }"
+              :class="{ 'has-due-date': hasDueDate(task.text) }"
               @click.stop="handleDateClick"
               :title="hasDueDate(task.text) ? getDueDateTooltip(task.text) : 'Add due date'"
           >
@@ -640,10 +640,7 @@ onMounted(() => {
   box-shadow: none !important;
 }
 
-.task-card:has(.custom-checkbox.checked) .clock-btn.has-due-date,
-.task-card:has(.custom-checkbox.cancelled) .clock-btn.has-due-date {
-  opacity: 0.3 !important;
-}
+/* Clock button remains visible for completed tasks with due dates */
 
 /* ========================= */
 /* Action Buttons            */

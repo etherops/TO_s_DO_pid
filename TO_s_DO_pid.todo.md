@@ -1,7 +1,8 @@
-### Quick Features
-* [ ] "add task" should be a an empty row ready
+# TODO
+## Quick Features
+* [ ] details is a pop up instead of "expand card"
 * [ ] VIEW - sortable tabs
-* [ ] BOTH: auto append date completed DD/MM/YY on complete
+* [ ] "add task" should be a an empty row ready
 * [ ] VIEW: Auto sort tasks by status
 * [ ] Backup rotation
 * [ ] FEATURE: "Today, Tomorrow" as due dates
@@ -9,14 +10,12 @@
 * [ ] shift click move bulk items
 * [ ] can't archive a section with incomplete tasks
 
-### Bugs
+## Bugs
 * [ ] BUG: Compact "confirm delete" is truncated vertically
 
-### Bigger Features
-* [ ] PARSE: non destructive write-backj
+## Bigger Features
 * [ ] DYNAMIC: dynamic re-render/watch on file change
 * [ ] SUBTASKS: Support subtasks
-* [ ] MARKDOWN: 3# = column, 1# = section
 * [ ] LARGE: iPhone app
 * [ ] LARGE: Host on Lightwire
 * [ ] Rebrand KindaBan
@@ -25,21 +24,25 @@
 * [ ] feature: add the preceeding folder name in custom tabs
 * [ ] DELETE - undo
 
-#######
-# WIP #
-#######
+
+# WIP
+### In Progress
+* [~] MARKDOWN: 3# = column, 1# = section
+* [ ] BOTH: auto append date completed DD/MM/YY on complete
+* [ ] MARKDOWN.1: More dynamic columns.  Columns can have multiple statuses.
 * [ ] re-order sections
-* [ ] right left day arrows for date picker
 * [ ] collapsible/hidable DONE
 * [ ] archive back in a tab, side drawer
-* [ ] details is a pop up instead of "expand card"
-* [ ] consolidated date picker/edit mode
+* [ ] PARSE: non destructive write-backj aka save unparsed lines
+* [ ] hover preview is a tool tip
 
-###########
-# ARCHIVE #
-###########
+
+# ARCHIVE
+### New Section 1
 
 ### Just done
+* [x] consolidated date picker/edit mode
+* [x] right left day arrows for date picker
 * [x] debug edit mode
 * [x] add task/section improvements
 * [x] 4-th check box state a - dash incomplete grey

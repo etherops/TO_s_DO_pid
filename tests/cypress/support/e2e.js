@@ -1,10 +1,10 @@
 // Import commands
-import './commands'
+import './commands.js'
 import '@4tw/cypress-drag-drop'
 import 'cypress-real-events'
 
 // Import helpers to make them globally available
-import * as helpers from './helpers'
+import * as helpers from './helpers.js'
 
 // Make helpers available globally
 window.todoHelpers = helpers;
@@ -20,7 +20,7 @@ beforeEach(() => {
   // Visit the app and load example todo
   cy.visit('/');
   cy.contains('TO_s_DO_pid').should('be.visible');
-  cy.contains('.file-tab', 'example todo').click();
+  cy.contains('.file-tab', 'example').click();
   cy.wait(500); // Allow data to load
 });
 

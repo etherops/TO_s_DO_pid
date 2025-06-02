@@ -1,9 +1,9 @@
 // Helper functions for todo tests
 
-export const TODO_FILE_PATH = '../example_todo.txt';
-export const BACKUP_FILE_PATH = '../example_todo.backup.txt';
+export const TODO_FILE_PATH = '../example.todo.md';
+export const BACKUP_FILE_PATH = '../example.backup.todo.md';
 
-// Known items from example_todo.txt for assertions
+// Known items from example.todo.md for assertions
 export const KNOWN_ITEMS = {
     todo: {
         mainTodo: 'PROJECT - Mountain trip planning',
@@ -43,7 +43,7 @@ export const KNOWN_SECTIONS = {
 export function refreshAndWait() {
     cy.reload();
     cy.contains('TO_s_DO_pid').should('be.visible');
-    cy.contains('.file-tab', 'example todo').click();
+    cy.contains('.file-tab', 'example').click();
     cy.wait(500); // Give time for data to load
 }
 

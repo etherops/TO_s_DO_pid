@@ -1,4 +1,4 @@
-import { refreshAndWait, findSection, findTask, withRefresh } from '../support/helpers';
+import { refreshAndWait, findSection, findTask, withRefresh } from '../support/helpers.js';
 
 describe('Notes Feature', () => {
 
@@ -33,8 +33,8 @@ describe('Notes Feature', () => {
   });
 
   it('should edit existing notes', () => {
-    // First add a note to a task
-    const taskText = 'Outdoor activities';
+    // Use a task without an existing note
+    const taskText = 'Follow up with client';
 
     findTask(taskText).within(() => {
       cy.get('.notes-btn').click();

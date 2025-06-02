@@ -42,15 +42,15 @@ app.use(express.static('dist'));
 
 // Function to get the default todo file path
 const getDefaultTodoFilePath = () => {
-  const todoFilePath = path.join(__dirname, 'todo.txt');
-  const exampleTodoFilePath = path.join(__dirname, 'example_todo.txt');
+  const todoFilePath = path.join(__dirname, 'todo.todo.md');
+  const exampleTodoFilePath = path.join(__dirname, 'example.todo.md');
 
-  // Check if todo.txt exists, if not fallback to example_todo.txt
+  // Check if todo.todo.md exists, if not fallback to example.todo.md
   if (fs.existsSync(todoFilePath)) {
-    logger.info('Using todo.txt as default file');
+    logger.info('Using todo.todo.md as default file');
     return todoFilePath;
   } else {
-    logger.info('Fallback to example_todo.txt as default file');
+    logger.info('Fallback to example.todo.md as default file');
     return exampleTodoFilePath;
   }
 };
@@ -91,8 +91,9 @@ const createBackup = (filePath, isCustom) => {
     // Get today's date in YYYY-MM-DD format
     const today = new Date().toLocaleDateString('en-CA');
 
-    // Create backup filename with today's date
-    const backupFileName = `${fileNameWithoutExt}.bak.${today}.txt`;
+    // Create backup filename with today's date, preserving original extension
+    const fileExt = path.extname(fileName);
+    const backupFileName = `${fileNameWithoutExt}.bak.${today}${fileExt}`;
     const backupFilePath = path.join(fileBackupDirPath, backupFileName);
 
     // Check if backup already exists for today
@@ -123,24 +124,24 @@ const getTodoFilePath = (filename, isCustom = false) => {
   return path.join(thedir, filename);
 };
 
-// Get all .txt files in the server directory and custom directory
+// Get all .todo.md files in the server directory and custom directory
 app.get('/api/files', (req, res) => {
   try {
-    logger.info('Listing text files in directories');
+    logger.info('Listing todo.md files in directories');
     let files = [];
 
     // Get files from local directory
     const localFiles = fs.readdirSync(__dirname)
-      .filter(file => file.endsWith('.txt'))
+      .filter(file => file.endsWith('.todo.md'))
       .map(file => ({ name: file, isCustom: false }));
 
     files = [...localFiles];
 
     // Get files from custom directory if configured
     if (TODO_CUSTOM_DIR && fs.existsSync(TODO_CUSTOM_DIR)) {
-      logger.info('Listing text files in custom directory', TODO_CUSTOM_DIR);
+      logger.info('Listing todo.md files in custom directory', TODO_CUSTOM_DIR);
       const customFiles = fs.readdirSync(TODO_CUSTOM_DIR)
-        .filter(file => file.endsWith('.txt'))
+        .filter(file => file.endsWith('.todo.md'))
         .map(file => ({ name: file, isCustom: true }));
 
       files = [...files, ...customFiles];
@@ -148,8 +149,8 @@ app.get('/api/files', (req, res) => {
 
     res.json({ files });
   } catch (error) {
-    logger.error('Error listing text files:', error);
-    res.status(500).json({ error: 'Failed to list text files' });
+    logger.error('Error listing todo.md files:', error);
+    res.status(500).json({ error: 'Failed to list todo.md files' });
   }
 });
 

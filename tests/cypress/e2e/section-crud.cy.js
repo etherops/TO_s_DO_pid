@@ -1,4 +1,4 @@
-import { refreshAndWait, findSection } from '../support/helpers'
+import { refreshAndWait, findSection } from '../support/helpers.js'
 
 describe('WIP Section CRUD Operations', () => {
     it('should create new section in TODO column, edit name, and delete', () => {

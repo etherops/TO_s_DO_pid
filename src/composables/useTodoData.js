@@ -1,7 +1,7 @@
 // composables/useTodoData.js
 import { ref } from 'vue';
 import axios from 'axios';
-import { parseTodoFile, renderTodoFile } from '../utils/TodoParser';
+import { parseTodoMdFile, renderTodoMdFile } from '../utils/TodoMdParser';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -41,8 +41,8 @@ export function useTodoData() {
             const response = await axios.get(`${API_BASE_URL}/todos`, { params });
 
             try {
-                // Parse the todo text into sections
-                sections.value = parseTodoFile(response.data.content);
+                // Parse the todo markdown file
+                sections.value = parseTodoMdFile(response.data.content);
             } catch (parseError) {
                 console.error('Error parsing server todo file:', parseError);
                 parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
@@ -59,8 +59,8 @@ export function useTodoData() {
     // Save todo data to the server
     const persistTodoData = async () => {
         try {
-            // Render the sections into text content
-            const content = renderTodoFile(sections.value);
+            // Render the sections into markdown format
+            const content = renderTodoMdFile(sections.value);
 
             if (!content) {
                 console.error('No content generated for saving');
