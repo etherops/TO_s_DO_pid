@@ -64,3 +64,8 @@
 ### APRIL Week 2
 * [x] HOME - Purchase supplies
 * [x] TRAVEL - Book rental car
+
+
+# DONE
+### A section in done
+* [x] BUG: "Archive" button doesn't work

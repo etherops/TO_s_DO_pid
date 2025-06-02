@@ -8,7 +8,7 @@ module.exports = defineConfig({
         viewportWidth: 1280,
         viewportHeight: 720,
         video: false,
-        screenshotOnRunFailure: true,
+        screenshotOnRunFailure: false,
         defaultCommandTimeout: 2000,
         specPattern: 'tests/cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
         supportFile: 'tests/cypress/support/e2e.js',

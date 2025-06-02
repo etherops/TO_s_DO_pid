@@ -12,6 +12,15 @@
         @close="closeDatePicker"
     />
 
+    <!-- Archive Column Picker Modal -->
+    <ArchiveColumnPicker
+        v-if="archiveChoice"
+        :section-name="archiveChoice.sectionName"
+        :available-columns="archiveChoice.availableColumns"
+        @select="handleArchiveColumnSelect"
+        @cancel="cancelArchiveChoice"
+    />
+
     <!-- TODO Column -->
     <KanbanColumn
         column-type="TODO"
@@ -53,7 +62,7 @@
 import { ref, computed } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
 import DatePicker from './DatePicker.vue';
-import { extractDateFromText } from '../utils/dateHelpers';
+import ArchiveColumnPicker from './ArchiveColumnPicker.vue';
 
 const props = defineProps({
   sections: {
@@ -68,6 +77,9 @@ const emit = defineEmits(['update']);
 const datePickerTaskId = ref(null);
 const datePickerPosition = ref({ top: 0, left: 0 });
 const datePickerInitialDate = ref(null);
+
+// Archive choice state
+const archiveChoice = ref(null);
 
 // Computed properties to filter sections by column
 const todoSections = computed(() => {
@@ -133,6 +145,41 @@ const handleTaskUpdate = () => {
   emit('update');
 };
 
+// Get all unique DONE-type file columns
+const getDoneFileColumns = () => {
+  const doneColumns = new Set();
+  props.sections.forEach(section => {
+    if (section.column === 'DONE' && section.fileColumn) {
+      doneColumns.add(section.fileColumn);
+    }
+  });
+  return Array.from(doneColumns);
+};
+
+// Archive a section to a specific column
+const archiveSection = (sectionIndex, targetColumn) => {
+  const section = props.sections[sectionIndex];
+  if (!section) return;
+  
+  // Remove from current position first
+  props.sections.splice(sectionIndex, 1);
+  
+  // Update section properties
+  section.column = 'DONE';
+  section.fileColumn = targetColumn;
+  
+  // Find where to insert - look for first section of target column
+  const targetIndex = props.sections.findIndex(s => s.fileColumn === targetColumn);
+  
+  if (targetIndex !== -1) {
+    // Insert before the first section of the target column
+    props.sections.splice(targetIndex, 0, section);
+  } else {
+    // No existing sections for this column, append to end
+    props.sections.push(section);
+  }
+};
+
 // Handle section updates from columns
 const handleSectionUpdate = (payload) => {
   if (payload && payload.action === 'delete') {
@@ -145,16 +192,42 @@ const handleSectionUpdate = (payload) => {
     // Handle section archiving
     const sectionIndex = props.sections.findIndex(s => s.name === payload.sectionName);
     if (sectionIndex !== -1) {
-      const section = props.sections[sectionIndex];
-      // Change the column to DONE
-      section.column = 'DONE';
-      // Update fileColumn to ensure it's saved under ARCHIVE column in the file
-      section.fileColumn = 'ARCHIVE';
+      // Get all DONE-type file columns
+      const doneColumns = getDoneFileColumns();
+      
+      let targetColumn;
+      if (doneColumns.length > 1) {
+        // Multiple DONE columns, show picker
+        archiveChoice.value = {
+          sectionName: payload.sectionName,
+          availableColumns: doneColumns,
+          sectionIndex: sectionIndex
+        };
+        return; // Don't update yet, wait for user choice
+      }
+
+      // Determine target column based on existing DONE columns
+      targetColumn = (doneColumns.length === 0) ? doneColumns[0] : 'ARCHIVE';
+      archiveSection(sectionIndex, targetColumn);
     }
   }
 
   // Always emit update to trigger save
   emit('update');
+};
+
+// Handle archive column selection
+const handleArchiveColumnSelect = (targetColumn) => {
+  if (archiveChoice.value && archiveChoice.value.sectionIndex !== undefined) {
+    archiveSection(archiveChoice.value.sectionIndex, targetColumn);
+    emit('update');
+  }
+  archiveChoice.value = null;
+};
+
+// Cancel archive choice
+const cancelArchiveChoice = () => {
+  archiveChoice.value = null;
 };
 
 // Show date picker for a task
