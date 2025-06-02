@@ -51,7 +51,27 @@ export function useTodoData() {
             loading.value = false;
         } catch (error) {
             console.error('Error loading todo file:', error);
-            parsingError.value = `Error loading file: ${error.message || 'Could not load file'}`;
+            
+            // Handle 404 errors specifically
+            if (error.response && error.response.status === 404) {
+                parsingError.value = 'File no longer exists. Please select a different file.';
+                sections.value = [];
+                
+                // Clear the saved file from localStorage if it no longer exists
+                localStorage.removeItem('selectedTodoFile');
+                
+                // Try to load the first available file instead
+                if (availableFiles.value.length > 0) {
+                    selectedFile.value = availableFiles.value[0];
+                    localStorage.setItem('selectedTodoFile', JSON.stringify(selectedFile.value));
+                    // Reload with the new file
+                    await loadTodoData();
+                    return;
+                }
+            } else {
+                parsingError.value = `Error loading file: ${error.message || 'Could not load file'}`;
+            }
+            
             loading.value = false;
         }
     };

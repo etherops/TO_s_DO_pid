@@ -164,6 +164,17 @@ app.get('/api/todos', (req, res) => {
     const filePath = getTodoFilePath(filename, isCustom);
 
     logger.info('Reading todo file', { path: filePath, isCustom });
+    
+    // Check if file exists before trying to read it
+    if (!fs.existsSync(filePath)) {
+      logger.info('Todo file not found', { path: filePath });
+      res.status(404).json({ 
+        error: 'Todo file not found',
+        message: 'The requested file no longer exists'
+      });
+      return;
+    }
+    
     const fileContent = fs.readFileSync(filePath, 'utf8');
     res.json({ 
       content: fileContent,

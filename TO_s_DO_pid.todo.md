@@ -27,8 +27,7 @@
 
 # WIP
 ### In Progress
-* [~] MARKDOWN: 3# = column, 1# = section
-* [ ] BOTH: auto append date completed DD/MM/YY on complete
+* [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
 * [ ] MARKDOWN.1: More dynamic columns.  Columns can have multiple statuses.
 * [ ] re-order sections
 * [ ] collapsible/hidable DONE
@@ -38,9 +37,9 @@
 
 
 # ARCHIVE
-### New Section 1
-
 ### Just done
+* [x] gracefully handle todo file missing
+* [x] MARKDOWN: 3# = column, 1# = section
 * [x] consolidated date picker/edit mode
 * [x] right left day arrows for date picker
 * [x] debug edit mode
