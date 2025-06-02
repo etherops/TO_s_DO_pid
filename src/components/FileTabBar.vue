@@ -32,9 +32,9 @@ defineProps({
 
 defineEmits(['file-selected']);
 
-// Format tab name by removing .txt extension and replacing underscores with spaces
+// Format tab name by removing .todo.md extension and replacing underscores with spaces
 const formatTabName = (filename) => {
-  let displayName = filename.replace(/\.txt$/i, '');
+  let displayName = filename.replace(/\.todo\.md$/i, '');
   displayName = displayName.replace(/_/g, ' ');
   return displayName;
 };

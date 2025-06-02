@@ -41,14 +41,15 @@ export const extractDateFromText = (text) => {
         return null; // No recognized date format
     }
 
-    // Create a date object
-    const date = new Date(`${month} ${day}, ${new Date().getFullYear()}`);
-
-    // If the date is in the past (e.g., "May 1" when it's already December),
-    // assume it's for next year
-    if (date < new Date() && date.getMonth() < new Date().getMonth()) {
-        date.setFullYear(date.getFullYear() + 1);
-    }
+    // Create a date object - always use current year when no year is specified
+    const year = new Date().getFullYear();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthIndex = monthNames.findIndex(m => m.toLowerCase() === month.substring(0, 3).toLowerCase());
+    
+    if (monthIndex === -1) return null;
+    
+    const date = new Date(year, monthIndex, day);
+    date.setHours(0, 0, 0, 0);
 
     return date;
 };
@@ -76,9 +77,9 @@ export const isToday = (text) => {
     if (!date) return false;
 
     const today = new Date();
-    return (date.getDate() === today.getDate() &&
-        date.getMonth() === today.getMonth() &&
-        date.getFullYear() === today.getFullYear());
+    today.setHours(0, 0, 0, 0);
+    
+    return date.getTime() === today.getTime();
 };
 
 /**
@@ -91,12 +92,14 @@ export const isSoon = (text) => {
     if (!date) return false;
 
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
 
     const threeDaysFromNow = new Date(today);
     threeDaysFromNow.setDate(today.getDate() + 3);
+    threeDaysFromNow.setHours(23, 59, 59, 999);
 
     // Only include future dates within the next 3 days, excluding today and past dates
     return date >= tomorrow && date <= threeDaysFromNow;

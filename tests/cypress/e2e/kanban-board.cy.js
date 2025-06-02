@@ -8,11 +8,11 @@ describe('Kanban Board', () => {
         // Wait for the app to load
         cy.contains('TO_s_DO_pid').should('be.visible')
 
-        // Click on the "example todo" tab
-        cy.contains('.file-tab', 'example todo').click()
+        // Click on the "example" tab
+        cy.contains('.file-tab', 'example').click()
 
         // Verify the tab is active
-        cy.contains('.file-tab', 'example todo').should('have.class', 'active')
+        cy.contains('.file-tab', 'example').should('have.class', 'active')
 
         // Verify all three columns exist
         cy.contains('.column-header', 'TODO').should('be.visible')

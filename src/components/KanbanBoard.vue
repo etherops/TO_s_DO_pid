@@ -146,16 +146,10 @@ const handleSectionUpdate = (payload) => {
     const sectionIndex = props.sections.findIndex(s => s.name === payload.sectionName);
     if (sectionIndex !== -1) {
       const section = props.sections[sectionIndex];
-      // Find the ARCHIVE section
-      const archiveSectionIndex = props.sections.findIndex(s => s.name === 'ARCHIVE');
-      if (archiveSectionIndex !== -1) {
-        // Remove from current position
-        props.sections.splice(sectionIndex, 1);
-        // Insert right after ARCHIVE section
-        props.sections.splice(archiveSectionIndex, 0, section);
-        // Update column
-        section.column = 'DONE';
-      }
+      // Change the column to DONE
+      section.column = 'DONE';
+      // Update fileColumn to ensure it's saved under ARCHIVE column in the file
+      section.fileColumn = 'ARCHIVE';
     }
   }
 

@@ -1,7 +1,7 @@
 // Custom commands for todo tests
 
-const TODO_FILE_PATH = './example_todo.txt'
-const BACKUP_FILE_PATH = './example_backup.txt'
+const TODO_FILE_PATH = './example.todo.md'
+const BACKUP_FILE_PATH = './example_backup.todo.md'
 
 Cypress.Commands.add('backupTodoFile', () => {
     return cy.task('copyFile', {

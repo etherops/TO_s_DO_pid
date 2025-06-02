@@ -1,4 +1,4 @@
-import { refreshAndWait, findSection } from '../support/helpers'
+import { refreshAndWait, findSection } from '../support/helpers.js'
 
 describe('Section Archiving', () => {
     it('should archive WIP section to DONE column', () => {

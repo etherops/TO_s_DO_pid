@@ -1,4 +1,4 @@
-import { refreshAndWait, findTask } from '../support/helpers'
+import { refreshAndWait, findTask } from '../support/helpers.js'
 
 describe('Task Status Toggle', () => {
     it('should toggle task status and persist after refresh', () => {

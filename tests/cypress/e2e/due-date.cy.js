@@ -1,4 +1,4 @@
-import { refreshAndWait, findTask } from '../support/helpers'
+import { refreshAndWait, findTask } from '../support/helpers.js'
 
 describe('Due Date Management', () => {
     it('should add due date to task and persist', () => {
@@ -80,6 +80,59 @@ describe('Due Date Management', () => {
 
         findTask(taskText).within(() => {
             cy.get('.clock-btn').should('not.have.class', 'has-due-date')
+        })
+    })
+
+    it('should show past due styling for overdue tasks', () => {
+        const taskText = 'HOME - Lawn care'
+
+        // Find task and add a past due date
+        findTask(taskText).within(() => {
+            cy.get('.clock-btn').click()
+        })
+
+        // Set a date 5 days in the past
+        const pastDate = new Date()
+        pastDate.setDate(pastDate.getDate() - 5)
+        const dateString = pastDate.toISOString().split('T')[0]
+
+        cy.get('.date-input').clear().type(dateString)
+        cy.get('.confirm-edit-btn').click()
+
+        // Verify past due styling is applied
+        findTask(taskText).within(() => {
+            cy.get('.clock-btn').should('have.class', 'has-due-date')
+            cy.get('.task-title').should('have.class', 'due-past')
+            // Past due tasks should have animation (may include hash suffix)
+            cy.get('.task-title')
+                .should('have.css', 'animation-name')
+                .and('match', /pulse/)
+        })
+
+        // Test with a date from earlier this year (e.g., May 1 when it's June)
+        findTask(taskText).within(() => {
+            cy.get('.clock-btn').click()
+        })
+
+        // Set May 1 of current year
+        const may1 = new Date()
+        may1.setMonth(4) // May is month 4 (0-indexed)
+        may1.setDate(1)
+        const may1String = may1.toISOString().split('T')[0]
+
+        cy.get('.date-input').clear().type(may1String)
+        cy.get('.confirm-edit-btn').click()
+
+        // Verify it still shows as past due (not interpreted as next year)
+        findTask(taskText).within(() => {
+            cy.get('.task-title').should('have.class', 'due-past')
+        })
+
+        // Refresh and verify persistence
+        refreshAndWait()
+
+        findTask(taskText).within(() => {
+            cy.get('.task-title').should('have.class', 'due-past')
         })
     })
 

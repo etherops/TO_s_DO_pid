@@ -1,4 +1,4 @@
-import { refreshAndWait, findSection, findTask } from '../support/helpers'
+import { refreshAndWait, findSection, findTask } from '../support/helpers.js'
 
 describe('Task CRUD Operations', () => {
     it('should create new task, edit it, and delete it', () => {
