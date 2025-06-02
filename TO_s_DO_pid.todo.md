@@ -1,5 +1,6 @@
 # TODO
 ## Quick Features
+* [ ] collapsible/hidable DONE
 * [ ] details is a pop up instead of "expand card"
 * [ ] VIEW - sortable tabs
 * [ ] "add task" should be a an empty row ready
@@ -27,17 +28,16 @@
 
 # WIP
 ### In Progress
-* [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
-* [ ] MARKDOWN.1: More dynamic columns.  Columns can have multiple statuses.
+* [ ] MARKDOWN.1: archive - dymanic archive picker if multiple
 * [ ] re-order sections
-* [ ] collapsible/hidable DONE
-* [ ] archive back in a tab, side drawer
+* [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
 * [ ] PARSE: non destructive write-backj aka save unparsed lines
 * [ ] hover preview is a tool tip
 
 
 # ARCHIVE
 ### Just done
+* [x] purge drag& drop archive code
 * [x] gracefully handle todo file missing
 * [x] MARKDOWN: 3# = column, 1# = section
 * [x] consolidated date picker/edit mode

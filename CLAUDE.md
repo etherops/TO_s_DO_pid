@@ -27,7 +27,6 @@ This is a Vue.js 3 Kanban board application that intentionally uses plain text f
 - Vue 3 with Composition API and `<script setup>` syntax
 - State management via composables in `src/composables/`:
   - `useTodoData.js` - Central data management, API calls, and state
-  - `useDragDrop.js` - Drag/drop logic with visual feedback
   - `useTaskDisplay.js` - Task filtering and display logic
 
 **Backend Architecture:**
