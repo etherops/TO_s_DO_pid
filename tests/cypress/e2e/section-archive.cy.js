@@ -6,8 +6,8 @@ describe('Section Archiving', () => {
         // CURRENT WEEK is an archivable section in WIP
         const sectionName = 'CURRENT WEEK (Week of May 1'
 
-        // Verify section starts in WIP column
-        cy.get('.wip-column').within(() => {
+        // Verify section starts in WIP column (SCHEDULED column)
+        cy.get('.column-stack').eq(1).find('.wip-column').within(() => {
             findSection(sectionName).should('exist')
         })
 
@@ -32,20 +32,20 @@ describe('Section Archiving', () => {
         // Modal should close
         cy.get('.modal-backdrop').should('not.exist')
 
-        // Section should be in DONE column
-        cy.get('.done-column').within(() => {
+        // Section should be in DONE column stack
+        cy.get('.column-stack').eq(2).within(() => {
             findSection(sectionName).should('exist')
         })
 
         // Section should no longer be in WIP column
-        cy.get('.wip-column').within(() => {
+        cy.get('.column-stack').eq(1).find('.wip-column').within(() => {
             cy.contains('.section-header', sectionName).should('not.exist')
         })
 
         // Refresh and verify persistence
         refreshAndWait()
 
-        cy.get('.done-column').within(() => {
+        cy.get('.column-stack').eq(2).within(() => {
             findSection(sectionName).should('exist')
         })
     })

@@ -14,28 +14,34 @@ describe('Kanban Board', () => {
         // Verify the tab is active
         cy.contains('.file-tab', 'example').should('have.class', 'active')
 
-        // Verify all three columns exist
-        cy.contains('.column-header', 'TODO').should('be.visible')
-        cy.contains('.column-header', 'WIP').should('be.visible')
-        cy.contains('.column-header', 'DONE').should('be.visible')
-
-        // Verify each column has at least one section with items
-        // TODO column
-        cy.get('.todo-column').within(() => {
-            cy.get('.section').should('have.length.at.least', 1)
-            cy.get('.task-card').should('have.length.at.least', 1)
+        // Verify file columns exist within each column stack
+        // TODO stack should have multiple TODO columns
+        cy.get('.column-stack').eq(0).within(() => {
+            cy.get('.todo-column').should('have.length.at.least', 1)
+            cy.contains('.column-header', 'TODO').should('be.visible')
         })
 
-        // WIP column
-        cy.get('.wip-column').within(() => {
-            cy.get('.section').should('have.length.at.least', 1)
-            cy.get('.task-card').should('have.length.at.least', 1)
+        // WIP stack should have SCHEDULED column
+        cy.get('.column-stack').eq(1).within(() => {
+            cy.get('.wip-column').should('have.length.at.least', 1)
+            cy.contains('.column-header', 'SCHEDULED').should('be.visible')
         })
 
-        // DONE column
-        cy.get('.done-column').within(() => {
-            cy.get('.section').should('have.length.at.least', 1)
-            cy.get('.task-card').should('have.length.at.least', 1)
+        // DONE stack should have ARCHIVE and/or DONE columns
+        cy.get('.column-stack').eq(2).within(() => {
+            cy.get('.done-column').should('have.length.at.least', 1)
+            // Check that at least one header contains ARCHIVE or DONE
+            cy.get('.column-header').then($headers => {
+                const headerTexts = Array.from($headers).map(el => el.textContent)
+                const hasValidHeader = headerTexts.some(text => 
+                    text.includes('ARCHIVE') || text.includes('DONE')
+                )
+                expect(hasValidHeader).to.be.true
+            })
         })
+
+        // Verify sections and tasks exist
+        cy.get('.section').should('have.length.at.least', 3)
+        cy.get('.task-card').should('have.length.at.least', 3)
     })
 })

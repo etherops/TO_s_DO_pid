@@ -29,15 +29,15 @@
 # WIP
 ### In Progress
 * [ ] re-order sections
-* [ ] hover preview is a tool tip
-* [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
 * [ ] PARSE: non destructive write-backj aka save unparsed lines
-* [ ] bug: new sections get inserted above column TODO in file
-* [ ] show different sections in TODO column
+* [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
+* [ ] hover preview is a tool tip
 
 
 # ARCHIVE
 ### Just done
+* [x] show different sections in TODO column
+* [x] bug: new sections get inserted above column TODO in file
 * [x] MARKDOWN.1: archive - dymanic archive picker if multiple
 * [x] purge drag& drop archive code
 * [x] gracefully handle todo file missing

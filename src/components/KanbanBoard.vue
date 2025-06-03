@@ -21,40 +21,52 @@
         @cancel="cancelArchiveChoice"
     />
 
-    <!-- TODO Column -->
-    <KanbanColumn
-        column-type="TODO"
-        title="TODO"
-        :sections="todoSections"
-        :can-add-section="true"
-        @add-section="createNewSection('TODO')"
-        @task-updated="handleTaskUpdate"
-        @section-updated="handleSectionUpdate"
-        @show-date-picker="showDatePicker"
-    />
+    <!-- TODO Columns -->
+    <div class="column-stack">
+      <KanbanColumn
+          v-for="group in todoGroups"
+          :key="`todo-${group.fileColumn}`"
+          column-type="TODO"
+          :title="group.fileColumn"
+          :sections="group.sections"
+          :can-add-section="true"
+          @add-section="createNewSection('TODO')"
+          @task-updated="handleTaskUpdate"
+          @section-updated="handleSectionUpdate"
+          @show-date-picker="showDatePicker"
+      />
+    </div>
 
-    <!-- WIP Column -->
-    <KanbanColumn
-        column-type="WIP"
-        title="WIP"
-        :sections="wipSections"
-        :can-add-section="true"
-        @add-section="createNewSection('WIP')"
-        @task-updated="handleTaskUpdate"
-        @section-updated="handleSectionUpdate"
-        @show-date-picker="showDatePicker"
-    />
+    <!-- WIP Columns -->
+    <div class="column-stack">
+      <KanbanColumn
+          v-for="group in wipGroups"
+          :key="`wip-${group.fileColumn}`"
+          column-type="WIP"
+          :title="group.fileColumn"
+          :sections="group.sections"
+          :can-add-section="true"
+          @add-section="createNewSection('WIP')"
+          @task-updated="handleTaskUpdate"
+          @section-updated="handleSectionUpdate"
+          @show-date-picker="showDatePicker"
+      />
+    </div>
 
-    <!-- DONE Column -->
-    <KanbanColumn
-        column-type="DONE"
-        title="DONE"
-        :sections="doneSections"
-        :can-add-section="false"
-        @task-updated="handleTaskUpdate"
-        @section-updated="handleSectionUpdate"
-        @show-date-picker="showDatePicker"
-    />
+    <!-- DONE Columns -->
+    <div class="column-stack">
+      <KanbanColumn
+          v-for="group in doneGroups"
+          :key="`done-${group.fileColumn}`"
+          column-type="DONE"
+          :title="group.fileColumn"
+          :sections="group.sections"
+          :can-add-section="false"
+          @task-updated="handleTaskUpdate"
+          @section-updated="handleSectionUpdate"
+          @show-date-picker="showDatePicker"
+      />
+    </div>
   </div>
 </template>
 
@@ -81,21 +93,58 @@ const datePickerInitialDate = ref(null);
 // Archive choice state
 const archiveChoice = ref(null);
 
-// Computed properties to filter sections by column
-const todoSections = computed(() => {
-  return props.sections.filter(section => section.column === 'TODO' && !section.hidden);
+// Helper function to group sections by file column occurrences
+const groupSectionsByFileColumn = (sections) => {
+  const groups = [];
+  let currentGroup = null;
+  let lastSectionIndex = -1;
+  
+  // Process sections in order to maintain file structure
+  sections.forEach(section => {
+    const fileColumn = section.fileColumn || 'UNKNOWN';
+    
+    // Get the original index in props.sections to detect gaps
+    const originalIndex = props.sections.indexOf(section);
+    
+    // Start a new group if:
+    // 1. It's the first section
+    // 2. The fileColumn changes
+    // 3. There's a gap in the original sections (indicating a new occurrence of the same column)
+    const hasGap = lastSectionIndex !== -1 && (originalIndex - lastSectionIndex > 1);
+    
+    if (!currentGroup || currentGroup.fileColumn !== fileColumn || hasGap) {
+      currentGroup = {
+        fileColumn,
+        sections: []
+      };
+      groups.push(currentGroup);
+    }
+    
+    currentGroup.sections.push(section);
+    lastSectionIndex = originalIndex;
+  });
+  
+  return groups;
+};
+
+// Computed properties to filter and group sections by column
+const todoGroups = computed(() => {
+  const sections = props.sections.filter(section => section.column === 'TODO' && !section.hidden);
+  return groupSectionsByFileColumn(sections);
 });
 
-const wipSections = computed(() => {
-  return props.sections.filter(section => section.column === 'WIP' && !section.hidden);
+const wipGroups = computed(() => {
+  const sections = props.sections.filter(section => section.column === 'WIP' && !section.hidden);
+  return groupSectionsByFileColumn(sections);
 });
 
-const doneSections = computed(() => {
-  return props.sections.filter(section => section.column === 'DONE' && !section.hidden);
+const doneGroups = computed(() => {
+  const sections = props.sections.filter(section => section.column === 'DONE' && !section.hidden);
+  return groupSectionsByFileColumn(sections);
 });
 
 // Create a new section in the specified column
-const createNewSection = (column) => {
+const createNewSection = (column, fileColumn = null) => {
   let sectionNumber = 1;
   let sectionName = `New Section ${sectionNumber}`;
 
@@ -104,9 +153,18 @@ const createNewSection = (column) => {
     sectionName = `New Section ${sectionNumber}`;
   }
 
+  // If no fileColumn specified, use the first one for this column type
+  if (!fileColumn) {
+    const groups = column === 'TODO' ? todoGroups.value : 
+                   column === 'WIP' ? wipGroups.value : 
+                   doneGroups.value;
+    fileColumn = groups.length > 0 ? groups[0].fileColumn : column;
+  }
+
   const newSection = {
     name: sectionName,
     column: column,
+    fileColumn: fileColumn,
     headerStyle: column === 'WIP' ? 'SMALL' : 'LARGE',
     archivable: column === 'WIP',
     hidden: false,
@@ -313,6 +371,18 @@ const handleDateClear = ({ taskId }) => {
   gap: 10px;
   padding: 10px;
   overflow-x: auto;
+  position: relative;
+}
+
+.column-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-width: 300px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
 }
 </style>

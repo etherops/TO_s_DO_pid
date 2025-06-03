@@ -55,13 +55,11 @@ defineEmits([
 
 <style scoped>
 .kanban-column {
-  flex: 1;
-  min-width: 300px;
+  width: 100%;
   background-color: #ebecf0;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
-  max-height: 100%;
 }
 
 .column-header {
@@ -73,6 +71,10 @@ defineEmits([
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .todo-column .column-header {
@@ -88,8 +90,6 @@ defineEmits([
 }
 
 .column-content {
-  flex: 1;
-  overflow-y: auto;
   padding: 5px;
 }
 

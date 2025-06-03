@@ -5,8 +5,8 @@ describe('WIP Section CRUD Operations', () => {
         const newSectionName = 'Test Section'
         const editedSectionName = 'Edited Test Section'
 
-        // Create new section in TODO column
-        cy.get('.todo-column').within(() => {
+        // Create new section in TODO column (first one in the stack)
+        cy.get('.column-stack').eq(0).find('.todo-column').first().within(() => {
             cy.get('.add-section-btn').click()
             cy.get('.section').first().as('newSection')
         })
@@ -26,18 +26,21 @@ describe('WIP Section CRUD Operations', () => {
         refreshAndWait()
         findSection(newSectionName).should('exist')
 
-        // Edit again
-        cy.get('@newSection').within(() => {
-            cy.get('.edit-section-btn').click()
-            cy.get('.section-name-edit').clear().type(editedSectionName)
-            cy.get('.confirm-section-btn').click()
-        })
+        // Edit again - click edit button
+        findSection(newSectionName).find('.edit-section-btn').click()
+        
+        // Wait for edit mode to be active
+        cy.get('.section-name-edit').should('be.visible').and('have.focus')
+        
+        // Type new name and confirm
+        cy.get('.section-name-edit').clear().type(editedSectionName)
+        cy.get('.confirm-section-btn').click()
 
         // Verify edited
-        cy.get('@newSection').should('exist')
+        findSection(editedSectionName).should('exist')
 
         // Delete the section (only works if empty)
-        cy.get('@newSection').within(() => {
+        findSection(editedSectionName).within(() => {
             cy.get('.delete-section-btn').click()
             cy.get('.confirm-delete-btn').click()
         })
@@ -55,8 +58,8 @@ describe('TODO Section CRUD Operations', () => {
     it('should create new section in WIP column', () => {
         const newSectionName = 'WIP Test Section'
 
-        // Create new section in WIP column
-        cy.get('.wip-column').within(() => {
+        // Create new section in WIP column (first one in the stack)
+        cy.get('.column-stack').eq(1).find('.wip-column').first().within(() => {
             cy.get('.add-section-btn').click()
             cy.get('.section').last().as('newSection')
         })
@@ -70,7 +73,7 @@ describe('TODO Section CRUD Operations', () => {
         })
 
         // Verify in WIP column and has archive button
-        cy.get('.wip-column').within(() => {
+        cy.get('.column-stack').eq(1).find('.wip-column').first().within(() => {
             cy.get('@newSection').should('exist')
             cy.get('@newSection').find('.archive-section-btn').should('exist')
         })
