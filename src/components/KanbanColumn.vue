@@ -8,25 +8,33 @@
       </button>
     </div>
     <div class="column-content">
-      <div class="section-list">
-        <KanbanSection
-            v-for="section in sections"
-            :key="section.name"
-            :section="section"
-            :column-type="columnType"
-            @task-updated="$emit('task-updated')"
-            @section-updated="$emit('section-updated', $event)"
-            @show-date-picker="$emit('show-date-picker', $event)"
-        />
-      </div>
+      <draggable
+          :list="sections"
+          :group="'sections'"
+          item-key="name"
+          class="section-list"
+          ghost-class="ghost-section"
+          @end="$emit('update')"
+      >
+        <template #item="{ element: section }">
+          <KanbanSection
+              :section="section"
+              :column-type="columnType"
+              @task-updated="$emit('task-updated')"
+              @section-updated="$emit('section-updated', $event)"
+              @show-date-picker="$emit('show-date-picker', $event)"
+          />
+        </template>
+      </draggable>
     </div>
   </div>
 </template>
 
 <script setup>
+import draggable from 'vuedraggable';
 import KanbanSection from './KanbanSection.vue';
 
-defineProps({
+const props = defineProps({
   columnType: {
     type: String,
     required: true
@@ -42,10 +50,14 @@ defineProps({
   canAddSection: {
     type: Boolean,
     default: false
+  },
+  fileColumn: {
+    type: String,
+    default: null
   }
 });
 
-defineEmits([
+const emit = defineEmits([
   'add-section',
   'task-updated',
   'section-updated',
@@ -95,6 +107,14 @@ defineEmits([
 
 .section-list {
   min-height: 100px;
+}
+
+/* Ghost class for dragging sections */
+.ghost-section {
+  opacity: 0.5;
+  background: #c8e6c9;
+  border: 2px dashed #4caf50;
+  border-radius: 5px;
 }
 
 /* Add Section button styles */

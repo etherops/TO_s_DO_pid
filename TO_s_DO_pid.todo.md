@@ -25,17 +25,21 @@
 * [ ] feature: add the preceeding folder name in custom tabs
 * [ ] DELETE - undo
 
-
 # WIP
 ### In Progress
-* [ ] re-order sections
 * [ ] PARSE: non destructive write-backj aka save unparsed lines
 * [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
 * [ ] hover preview is a tool tip
-
+* [ ] purge existing hidden and on-ice feature, but bring it back
+* [ ] refactor column, fileColumn -> columnStack, column
+* [ ] display note preview inline
 
 # ARCHIVE
 ### Just done
+* [x] drop and drop conflation between task/section
+* [x] refactor: move creating visual column in parser
+* [x] get rid of section.column and section.filecolumn?
+* [x] re-order sections
 * [x] show different sections in TODO column
 * [x] bug: new sections get inserted above column TODO in file
 * [x] MARKDOWN.1: archive - dymanic archive picker if multiple

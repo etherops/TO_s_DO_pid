@@ -17,7 +17,7 @@
 
     <KanbanBoard
         v-else
-        :sections="sections"
+        :todo-data="todoData"
         @update="persistTodoData"
     />
   </div>
@@ -30,7 +30,7 @@ import KanbanBoard from './components/KanbanBoard.vue';
 import { useTodoData } from './composables/useTodoData';
 
 const {
-  sections,
+  todoData,
   loading,
   availableFiles,
   selectedFile,

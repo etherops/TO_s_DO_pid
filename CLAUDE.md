@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Important Development Notes
+
+**ALWAYS ASSUME THE DEV SERVER IS RUNNING** - Never attempt to start the development server. The user runs it separately in another terminal.
+
 ## Common Development Commands
 
 ```bash

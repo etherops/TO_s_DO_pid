@@ -14,7 +14,6 @@
 * [ ] HOME - Garden maintenance
 * [ ] HOME - Lawn care
 
-
 # SCHEDULED
 ### WIP
 * [~] BILLS - Phone bill really really really really really really really really really really really really really really really really really long (Jan 14, follow up about refund)
@@ -29,6 +28,8 @@
 * [ ] WORK - Update software subscriptions !!(May 25)
 * [ ] HOBBY - Prepare for upcoming thing
 
+### New Section 1
+* [ ] test
 
 # TODO
 ## LOW-P
@@ -45,7 +46,6 @@
 ## ON HOLD
 * [ ] PAUSED - Waiting for external input
 * [ ] PAUSED - Pending decision
-
 
 # ARCHIVE
 ### MAY Week 4
@@ -64,7 +64,6 @@
 ### APRIL Week 2
 * [x] HOME - Purchase supplies
 * [x] TRAVEL - Book rental car
-
 
 # DONE
 ### A section in done

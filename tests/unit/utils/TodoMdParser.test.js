@@ -12,15 +12,29 @@ describe('TodoMdParser', () => {
     sampleContent = readFileSync(fixturePath, 'utf-8')
   })
 
+  // Helper function to extract all sections from the nested structure
+  const getAllSections = (data) => {
+    const allSections = []
+    if (data && data.columns) {
+      Object.values(data.columns).forEach(columnData => {
+        if (columnData.sections) {
+          allSections.push(...columnData.sections)
+        }
+      })
+    }
+    return allSections
+  }
+
+
   describe('parseTodoMdFile', () => {
     it('should parse empty content gracefully', () => {
       const result = parseTodoMdFile('')
-      expect(result).toEqual([])
+      expect(result).toEqual({ fileColumnOrder: [], columns: {} })
     })
 
     it('should parse null content gracefully', () => {
       const result = parseTodoMdFile(null)
-      expect(result).toEqual([])
+      expect(result).toEqual({ fileColumnOrder: [], columns: {} })
     })
 
     it('should parse H1 column headers correctly', () => {
@@ -36,16 +50,19 @@ describe('TodoMdParser', () => {
 ## Section 3
 * [x] Task 3`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       
       // Check that sections are assigned to correct columns
-      const section1 = sections.find(s => s.name === 'Section 1')
-      const section2 = sections.find(s => s.name === 'Section 2')
-      const section3 = sections.find(s => s.name === 'Section 3')
+      expect(data.columns.TODO.sections[0].name).toBe('Section 1')
+      expect(data.columns.SCHEDULED.sections[0].name).toBe('Section 2')
+      expect(data.columns.ARCHIVE.sections[0].name).toBe('Section 3')
       
-      expect(section1.column).toBe('TODO')
-      expect(section2.column).toBe('WIP') // SCHEDULED maps to WIP
-      expect(section3.column).toBe('DONE') // ARCHIVE maps to DONE
+      // Check the structure organization
+      expect(data.fileColumnOrder).toEqual(['TODO', 'SCHEDULED', 'ARCHIVE'])
+      expect(data.columns.TODO.visualColumn).toBe('TODO')
+      expect(data.columns.SCHEDULED.visualColumn).toBe('WIP')
+      expect(data.columns.ARCHIVE.visualColumn).toBe('DONE')
     })
 
     it('should handle special H1 format with brackets', () => {
@@ -53,11 +70,11 @@ describe('TodoMdParser', () => {
 ## Tasks
 * [ ] Task 1`
 
-      const sections = parseTodoMdFile(content)
-      const section = sections.find(s => s.name === 'Tasks')
+      const data = parseTodoMdFile(content)
       
-      expect(section.fileColumn).toBe('[ ] TODO')  // H1 column name
-      expect(section.column).toBe('TODO')  // Visual column
+      expect(data.fileColumnOrder).toContain('[ ] TODO')  // H1 column name in structure
+      expect(data.columns['[ ] TODO'].visualColumn).toBe('TODO')  // Visual column
+      expect(data.columns['[ ] TODO'].sections[0].name).toBe('Tasks')  // Section in correct column
     })
 
     it('should parse H2 large sections correctly', () => {
@@ -69,7 +86,8 @@ describe('TodoMdParser', () => {
 ## PLANNING
 * [x] Task 3`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       
       expect(sections).toHaveLength(2)
       expect(sections[0].name).toBe('BACKLOG')
@@ -88,7 +106,8 @@ describe('TodoMdParser', () => {
 ### Week: May 4 / June 1
 * [x] Task 2`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       
       expect(sections).toHaveLength(2)
       expect(sections[0].name).toBe('In Progress')
@@ -105,7 +124,8 @@ describe('TodoMdParser', () => {
 * [x] Completed task
 * [-] Cancelled task`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       const items = sections[0].items
       
       expect(items).toHaveLength(4)
@@ -126,7 +146,8 @@ describe('TodoMdParser', () => {
 * [ ] Task with due date !!(June 2)
 * [ ] Complex task (note here) !!(May 30)`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       const items = sections[0].items
       
       expect(items[0].text).toBe('Task with note (this is a note)')
@@ -139,7 +160,8 @@ describe('TodoMdParser', () => {
 ## Tasks
 * [~] Task with multiline note (line 1\\nline 2\\nline 3)`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       const item = sections[0].items[0]
       
       expect(item.text).toContain('\\n')
@@ -151,12 +173,14 @@ describe('TodoMdParser', () => {
 ### Old Tasks
 * [x] Completed task`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       const section = sections[0]
       
-      // New parser doesn't use hidden property
-      expect(section.fileColumn).toBe('ARCHIVE')
-      expect(section.column).toBe('DONE')
+      // Check that ARCHIVE column maps to DONE visual column
+      expect(data.fileColumnOrder).toContain('ARCHIVE')
+      expect(data.columns.ARCHIVE.visualColumn).toBe('DONE')
+      expect(data.columns.ARCHIVE.sections[0]).toBe(section)
     })
 
     it('should map ICE H1 sections to TODO column', () => {
@@ -168,12 +192,15 @@ describe('TodoMdParser', () => {
 ## After Ice
 * [ ] Task 2`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       
       // New parser doesn't use on_ice property, ICE maps to TODO
-      expect(sections[0].column).toBe('TODO')
-      expect(sections[1].column).toBe('TODO')
-      expect(sections[1].fileColumn).toBe('ICE')
+      expect(data.columns.ICE.visualColumn).toBe('TODO')
+      expect(data.columns.ICE.sections).toHaveLength(1)
+      expect(data.columns.TODO.sections).toHaveLength(1)
+      expect(data.fileColumnOrder).toContain('ICE')
+      expect(data.fileColumnOrder).toContain('TODO')
     })
 
     it('should mark small sections in WIP column as archivable', () => {
@@ -181,16 +208,18 @@ describe('TodoMdParser', () => {
 ### Week Tasks
 * [x] Task 1`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       const section = sections[0]
       
-      expect(section.column).toBe('WIP')
+      expect(data.columns.SCHEDULED.visualColumn).toBe('WIP')
       expect(section.headerStyle).toBe('SMALL')
       expect(section.archivable).toBe(true)
     })
 
     it('should parse the sample fixture file correctly', () => {
-      const sections = parseTodoMdFile(sampleContent)
+      const data = parseTodoMdFile(sampleContent)
+      const sections = getAllSections(data)
       
       // Verify we have sections
       expect(sections.length).toBeGreaterThan(0)
@@ -198,16 +227,22 @@ describe('TodoMdParser', () => {
       // Check for specific sections from the fixture
       const backlogSection = sections.find(s => s.name === 'BACKLOG')
       expect(backlogSection).toBeDefined()
-      expect(backlogSection.column).toBe('TODO')
       expect(backlogSection.items.length).toBeGreaterThan(0)
       
       const inProgressSection = sections.find(s => s.name === 'In Progress')
       expect(inProgressSection).toBeDefined()
-      expect(inProgressSection.column).toBe('WIP')
       
       const archiveSection = sections.find(s => s.name.includes('Sprint'))
       expect(archiveSection).toBeDefined()
-      expect(archiveSection.column).toBe('DONE')
+      
+      // Check that we have sections in different visual columns
+      const todoColumns = data.fileColumnOrder.filter(col => data.columns[col].visualColumn === 'TODO')
+      const wipColumns = data.fileColumnOrder.filter(col => data.columns[col].visualColumn === 'WIP')
+      const doneColumns = data.fileColumnOrder.filter(col => data.columns[col].visualColumn === 'DONE')
+      
+      expect(todoColumns.length).toBeGreaterThan(0)
+      expect(wipColumns.length).toBeGreaterThan(0)
+      expect(doneColumns.length).toBeGreaterThan(0)
     })
 
     it('should handle sections with same name in different columns', () => {
@@ -219,14 +254,19 @@ describe('TodoMdParser', () => {
 ## BACKLOG
 * [x] Task 2`
 
-      const sections = parseTodoMdFile(content)
+      const data = parseTodoMdFile(content)
+      const sections = getAllSections(data)
       
       // Both sections should exist separately
       expect(sections).toHaveLength(2)
       expect(sections[0].name).toBe('BACKLOG')
-      expect(sections[0].column).toBe('TODO')
       expect(sections[1].name).toBe('BACKLOG')
-      expect(sections[1].column).toBe('DONE')
+      
+      // Check they're in the correct columns by structure
+      expect(data.columns.TODO.sections[0].name).toBe('BACKLOG')
+      expect(data.columns.ARCHIVE.sections[0].name).toBe('BACKLOG')
+      expect(data.columns.TODO.visualColumn).toBe('TODO')
+      expect(data.columns.ARCHIVE.visualColumn).toBe('DONE')
     })
 
     it('should categorize columns correctly', () => {
@@ -250,15 +290,15 @@ describe('TodoMdParser', () => {
 ## Section
 * [ ] Task`
 
-        const sections = parseTodoMdFile(content)
-        expect(sections[0].column).toBe(expected)
+        const data = parseTodoMdFile(content)
+        expect(data.columns[name].visualColumn).toBe(expected)
       })
     })
   })
 
   describe('renderTodoMdFile', () => {
     it('should handle empty sections array', () => {
-      const result = renderTodoMdFile([])
+      const result = renderTodoMdFile({ fileColumnOrder: [], columns: {} })
       expect(result).toBe('')
     })
 
@@ -268,31 +308,42 @@ describe('TodoMdParser', () => {
     })
 
     it('should render sections with correct markdown format', () => {
-      const sections = [
-        {
-          name: 'BACKLOG',
-          column: 'TODO',
-          headerStyle: 'LARGE',
-          fileColumn: 'TODO',
-          items: [
-            { statusChar: ' ', text: 'Task 1' },
-            { statusChar: '~', text: 'Task 2' }
-          ]
-        },
-        {
-          name: 'In Progress',
-          column: 'WIP',
-          headerStyle: 'SMALL',
-          fileColumn: 'SCHEDULED',
-          items: [
-            { statusChar: 'x', text: 'Task 3' }
-          ]
+      const data = {
+        fileColumnOrder: ['TODO', 'SCHEDULED'],
+        columns: {
+          TODO: {
+            visualColumn: 'TODO',
+            sections: [
+              {
+                name: 'BACKLOG',
+                column: 'TODO',
+                headerStyle: 'LARGE',
+                items: [
+                  { statusChar: ' ', text: 'Task 1' },
+                  { statusChar: '~', text: 'Task 2' }
+                ]
+              }
+            ]
+          },
+          SCHEDULED: {
+            visualColumn: 'WIP',
+            sections: [
+              {
+                name: 'In Progress',
+                column: 'WIP',
+                headerStyle: 'SMALL',
+                items: [
+                  { statusChar: 'x', text: 'Task 3' }
+                ]
+              }
+            ]
+          }
         }
-      ]
+      }
 
-      const result = renderTodoMdFile(sections)
+      const result = renderTodoMdFile(data)
       
-      // New parser includes H1 headers when fileColumn is set
+      // New parser includes H1 headers
       expect(result).toContain('# TODO')
       expect(result).toContain('## BACKLOG')
       expect(result).toContain('* [ ] Task 1')
@@ -303,46 +354,58 @@ describe('TodoMdParser', () => {
     })
 
     it('should preserve special bracket format for TODO column', () => {
-      const sections = [
-        {
-          name: 'Tasks',
-          column: 'TODO',
-          headerStyle: 'LARGE',
-          fileColumn: '[ ] TODO',
-          items: [{ statusChar: ' ', text: 'Task 1' }]
+      const data = {
+        fileColumnOrder: ['[ ] TODO'],
+        columns: {
+          '[ ] TODO': {
+            visualColumn: 'TODO',
+            sections: [
+              {
+                name: 'Tasks',
+                column: 'TODO',
+                headerStyle: 'LARGE',
+                items: [{ statusChar: ' ', text: 'Task 1' }]
+              }
+            ]
+          }
         }
-      ]
+      }
 
-      const result = renderTodoMdFile(sections)
+      const result = renderTodoMdFile(data)
       expect(result).toContain('# [ ] TODO')
     })
 
     it('should maintain section order as provided in array', () => {
-      const sections = [
-        {
-          name: 'Section 1',
-          column: 'TODO',
-          headerStyle: 'LARGE',
-          fileColumn: 'TODO',
-          items: []
-        },
-        {
-          name: 'Section 2',
-          column: 'TODO',
-          headerStyle: 'LARGE',
-          fileColumn: 'TODO',
-          items: []
-        },
-        {
-          name: 'Section 3',
-          column: 'TODO',
-          headerStyle: 'LARGE',
-          fileColumn: 'TODO',
-          items: []
+      const data = {
+        fileColumnOrder: ['TODO'],
+        columns: {
+          TODO: {
+            visualColumn: 'TODO',
+            sections: [
+              {
+                name: 'Section 1',
+                column: 'TODO',
+                headerStyle: 'LARGE',
+                items: []
+              },
+              {
+                name: 'Section 2',
+                column: 'TODO',
+                headerStyle: 'LARGE',
+                items: []
+              },
+              {
+                name: 'Section 3',
+                column: 'TODO',
+                headerStyle: 'LARGE',
+                items: []
+              }
+            ]
+          }
         }
-      ]
+      }
 
-      const result = renderTodoMdFile(sections)
+      const result = renderTodoMdFile(data)
       const lines = result.split('\n').filter(l => l.startsWith('##'))
       
       // New parser renders sections in array order
@@ -352,26 +415,30 @@ describe('TodoMdParser', () => {
     })
 
     it('should add proper spacing between sections', () => {
-      const sections = [
-        {
-          name: 'Section 1',
-          column: 'TODO',
-          headerStyle: 'LARGE',
-          parentColumn: 'TODO',
-          items: [{ statusChar: ' ', text: 'Task 1' }],
-          originalIndex: 0
-        },
-        {
-          name: 'Section 2',
-          column: 'TODO',
-          headerStyle: 'LARGE',
-          parentColumn: 'TODO',
-          items: [{ statusChar: ' ', text: 'Task 2' }],
-          originalIndex: 1
+      const data = {
+        fileColumnOrder: ['TODO'],
+        columns: {
+          TODO: {
+            visualColumn: 'TODO',
+            sections: [
+              {
+                name: 'Section 1',
+                column: 'TODO',
+                headerStyle: 'LARGE',
+                items: [{ statusChar: ' ', text: 'Task 1' }]
+              },
+              {
+                name: 'Section 2',
+                column: 'TODO',
+                headerStyle: 'LARGE',
+                items: [{ statusChar: ' ', text: 'Task 2' }]
+              }
+            ]
+          }
         }
-      ]
+      }
 
-      const result = renderTodoMdFile(sections)
+      const result = renderTodoMdFile(data)
       
       // Check for blank line between sections
       expect(result).toMatch(/Task 1\n\n## Section 2/)
@@ -391,11 +458,13 @@ describe('TodoMdParser', () => {
 ## In Progress
 * [ ] Task 4`
 
-      const sections = parseTodoMdFile(originalContent)
-      const rendered = renderTodoMdFile(sections)
+      const data = parseTodoMdFile(originalContent)
+      const rendered = renderTodoMdFile(data)
       
       // Re-parse the rendered content
-      const reparsedSections = parseTodoMdFile(rendered)
+      const reparsedData = parseTodoMdFile(rendered)
+      const sections = getAllSections(data)
+      const reparsedSections = getAllSections(reparsedData)
       
       // Compare section counts and names
       expect(reparsedSections.length).toBe(sections.length)

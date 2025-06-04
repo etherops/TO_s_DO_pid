@@ -74,7 +74,7 @@
     <div class="section-items">
       <draggable
           v-model="section.items"
-          :group="{ name: 'tasks', pull: true, put: true }"
+          :group="'tasks'"
           item-key="id"
           class="task-list"
           ghost-class="ghost-card"

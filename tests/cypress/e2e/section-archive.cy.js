@@ -37,16 +37,33 @@ describe('Section Archiving', () => {
             findSection(sectionName).should('exist')
         })
 
+        // Find the ARCHIVE column specifically and check section order
+        cy.get('.column-stack').eq(2).within(() => {
+            // Look for the column with title "ARCHIVE"  
+            cy.contains('.column-header', 'ARCHIVE').parent().within(() => {
+                // Get all sections in this column and verify our section is first
+                cy.get('.section').first().within(() => {
+                    cy.get('.section-header').should('contain', sectionName)
+                })
+            })
+        })
+
         // Section should no longer be in WIP column
         cy.get('.column-stack').eq(1).find('.wip-column').within(() => {
             cy.contains('.section-header', sectionName).should('not.exist')
         })
 
-        // Refresh and verify persistence
+        // Refresh and verify persistence and correct ordering
         refreshAndWait()
 
         cy.get('.column-stack').eq(2).within(() => {
             findSection(sectionName).should('exist')
+            // Verify it's still the first section after refresh
+            cy.contains('.column-header', 'ARCHIVE').parent().within(() => {
+                cy.get('.section').first().within(() => {
+                    cy.get('.section-header').should('contain', sectionName)
+                })
+            })
         })
     })
 })

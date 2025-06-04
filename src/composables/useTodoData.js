@@ -6,7 +6,7 @@ import { parseTodoMdFile, renderTodoMdFile } from '../utils/TodoMdParser';
 const API_BASE_URL = 'http://localhost:3001/api';
 
 export function useTodoData() {
-    const sections = ref([]);
+    const todoData = ref({ fileColumnOrder: [], columns: {} });
     const loading = ref(true);
     const availableFiles = ref([]);
     const selectedFile = ref({ name: '', isCustom: false });
@@ -42,7 +42,7 @@ export function useTodoData() {
 
             try {
                 // Parse the todo markdown file
-                sections.value = parseTodoMdFile(response.data.content);
+                todoData.value = parseTodoMdFile(response.data.content);
             } catch (parseError) {
                 console.error('Error parsing server todo file:', parseError);
                 parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
@@ -55,7 +55,7 @@ export function useTodoData() {
             // Handle 404 errors specifically
             if (error.response && error.response.status === 404) {
                 parsingError.value = 'File no longer exists. Please select a different file.';
-                sections.value = [];
+                todoData.value = { fileColumnOrder: [], columns: {} };
                 
                 // Clear the saved file from localStorage if it no longer exists
                 localStorage.removeItem('selectedTodoFile');
@@ -79,8 +79,8 @@ export function useTodoData() {
     // Save todo data to the server
     const persistTodoData = async () => {
         try {
-            // Render the sections into markdown format
-            const content = renderTodoMdFile(sections.value);
+            // Render using nested structure
+            const content = renderTodoMdFile(todoData.value);
 
             if (!content) {
                 console.error('No content generated for saving');
@@ -118,7 +118,7 @@ export function useTodoData() {
     };
 
     return {
-        sections,
+        todoData,
         loading,
         availableFiles,
         selectedFile,

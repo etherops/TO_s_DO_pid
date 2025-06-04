@@ -25,7 +25,7 @@ function mapColumnToVisualColumn(columnName) {
 /**
  * Parses a todo markdown file into structured data
  * @param {string} fileContent - The content of the todo markdown file
- * @returns {Array} Array of sections with their items
+ * @returns {Object} Nested structure with fileColumnOrder and columns
  * 
  * File format:
  * - H1 (#) defines columns (e.g., # TODO, # SCHEDULED, # ARCHIVE)
@@ -39,14 +39,17 @@ export function parseTodoMdFile(fileContent) {
 
   if (!fileContent) {
     console.error('Empty file content provided to parser');
-    return [];
+    return { fileColumnOrder: [], columns: {} };
   }
 
   const lines = fileContent.split('\n');
   console.log('Number of lines:', lines.length);
 
-  // Array to store all sections (not columns - columns are H1 markers)
-  const sections = [];
+  // Object to store sections organized by file column
+  const fileColumns = new Map();  // Map<columnName, {visualColumn, sections}>
+  
+  // Track seen column names to handle duplicates
+  const seenColumns = new Set();
 
   // Track current parsing context
   let currentColumn = null;  // Current H1 column we're in
@@ -54,14 +57,11 @@ export function parseTodoMdFile(fileContent) {
   let itemId = 1;
 
   // Helper to create a section (H2 or H3 in the markdown)
-  const createSection = (name, visualColumn, headerStyle, fileColumn = null) => {
+  const createSection = (name, headerStyle) => {
     const newSection = {
       name,
-      column: visualColumn,  // Which visual column (TODO/WIP/DONE) this section appears in
       headerStyle,           // 'LARGE' for H2, 'SMALL' for H3
-      fileColumn,          // The H1 column this section belongs to in the file
       archivable: false,
-      hidden: false,
       on_ice: false,  // Not used in new format
       items: []
     };
@@ -71,7 +71,11 @@ export function parseTodoMdFile(fileContent) {
       newSection.archivable = true;
     }
     
-    sections.push(newSection);
+    // Add section to current column
+    if (currentColumn && fileColumns.has(currentColumn)) {
+      fileColumns.get(currentColumn).sections.push(newSection);
+    }
+    
     return newSection;
   };
 
@@ -89,7 +93,28 @@ export function parseTodoMdFile(fileContent) {
 
     // H1 - Column header (# COLUMN_NAME)
     if (trimmedLine.match(/^# /)) {
-      currentColumn = trimmedLine.substring(2).trim();
+      let columnName = trimmedLine.substring(2).trim();
+      
+      // Handle duplicate column names
+      if (seenColumns.has(columnName)) {
+        let counter = 2;
+        while (seenColumns.has(`${columnName}-${counter}`)) {
+          counter++;
+        }
+        columnName = `${columnName}-${counter}`;
+        console.log(`Duplicate column renamed: ${trimmedLine.substring(2).trim()} -> ${columnName}`);
+      }
+      seenColumns.add(columnName);
+      
+      currentColumn = columnName;
+      
+      // Initialize the file column if it doesn't exist
+      if (!fileColumns.has(currentColumn)) {
+        fileColumns.set(currentColumn, {
+          visualColumn: mapColumnToVisualColumn(currentColumn),
+          sections: []
+        });
+      }
       
       // H1 headers are column markers, not sections
       // Reset current section
@@ -101,10 +126,7 @@ export function parseTodoMdFile(fileContent) {
     if (trimmedLine.match(/^## [^#]/)) {
       const sectionName = trimmedLine.substring(3).trim();
       
-      // If we have a current column, use its visual column, otherwise determine from section name
-      const visualColumn = currentColumn ? mapColumnToVisualColumn(currentColumn) : mapColumnToVisualColumn(sectionName);
-      
-      currentSection = createSection(sectionName, visualColumn, 'LARGE', currentColumn);
+      currentSection = createSection(sectionName, 'LARGE');
       continue;
     }
 
@@ -112,10 +134,7 @@ export function parseTodoMdFile(fileContent) {
     if (trimmedLine.match(/^### [^#]/)) {
       const sectionName = trimmedLine.substring(4).trim();
       
-      // Small sections inherit the visual column from the current H1 column
-      const visualColumn = currentColumn ? mapColumnToVisualColumn(currentColumn) : 'TODO';
-      
-      currentSection = createSection(sectionName, visualColumn, 'SMALL', currentColumn);
+      currentSection = createSection(sectionName, 'SMALL');
       continue;
     }
 
@@ -146,63 +165,78 @@ export function parseTodoMdFile(fileContent) {
   }
 
 
-  console.log('Parsed sections:', sections.map(s => `${s.name} (${s.column})`));
-  return sections;
+  console.log('Parsed file columns:', Array.from(fileColumns.keys()));
+  
+  // Convert Map to the expected structure
+  const fileColumnOrder = Array.from(fileColumns.keys());
+  const columns = {};
+  
+  fileColumns.forEach((columnData, columnName) => {
+    columns[columnName] = columnData;
+  });
+  
+  console.log('Generated structure:', { fileColumnOrder, columns });
+  
+  // Return nested structure
+  return {
+    fileColumnOrder,
+    columns
+  };
 }
 
 /**
  * Renders sections and items back into todo markdown format
- * @param {Array} sections - Array of section objects with items
+ * @param {Object} data - Nested structure with fileColumnOrder and columns
  * @returns {string} The formatted text content of the todo markdown file
  */
-export function renderTodoMdFile(sections) {
+export function renderTodoMdFile(data) {
   console.log('==== RENDERING TODO MD FILE ====');
   
-  if (!sections) {
-    console.error('No sections provided to render');
+  if (!data || !data.fileColumnOrder || !data.columns) {
+    console.error('Invalid data provided to render - must have fileColumnOrder and columns');
     return '';
   }
   
-  console.log('Sections count:', sections.length);
-
-  if (!sections.length) {
-    console.error('No sections provided to render');
-    return '';
-  }
+  const { fileColumnOrder, columns } = data;
+  console.log('File columns:', fileColumnOrder);
 
   let outputContent = '';
-  let currentColumn = null;
-
-  // Sections are already in order from parsing
-  sections.forEach((section, index) => {
-    // Add spacing between sections
-    if (index > 0) {
-      outputContent += '\n';
-    }
-
-    // Check if we need to render an H1 column header
-    if (section.fileColumn && section.fileColumn !== currentColumn) {
-      if (currentColumn !== null) {
+  
+  // Render from nested structure
+    fileColumnOrder.forEach((columnName, columnIndex) => {
+      const columnData = columns[columnName];
+      if (!columnData) return;
+      
+      // Add spacing between columns
+      if (columnIndex > 0) {
         outputContent += '\n';
       }
-      outputContent += `# ${section.fileColumn}\n`;
-      currentColumn = section.fileColumn;
-    }
-
-    // Render section header based on style
-    if (section.headerStyle === 'LARGE') {
-      outputContent += `## ${section.name}\n`;
-    } else if (section.headerStyle === 'SMALL') {
-      outputContent += `### ${section.name}\n`;
-    }
-
-    // Render items in this section
-    if (section.items && section.items.length > 0) {
-      section.items.forEach(item => {
-        outputContent += `* [${item.statusChar}] ${item.text}\n`;
+      
+      // Render H1 column header
+      outputContent += `# ${columnName}\n`;
+      
+      // Render sections in this column
+      columnData.sections.forEach((section, sectionIndex) => {
+        // Add spacing between sections
+        if (sectionIndex > 0) {
+          outputContent += '\n';
+        }
+        
+        // Render section header based on style
+        if (section.headerStyle === 'LARGE') {
+          outputContent += `## ${section.name}\n`;
+        } else if (section.headerStyle === 'SMALL') {
+          outputContent += `### ${section.name}\n`;
+        }
+        
+        // Render items in this section
+        if (section.items && section.items.length > 0) {
+          section.items.forEach(item => {
+            outputContent += `* [${item.statusChar}] ${item.text}\n`;
+          });
+        }
       });
-    }
-  });
+    });
 
   console.log('Generated content length:', outputContent.length);
   return outputContent;
