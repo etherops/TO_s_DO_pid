@@ -1,36 +1,45 @@
 <!-- components/KanbanColumn.vue -->
 <template>
-  <div :class="['kanban-column', `${columnType.toLowerCase()}-column`]">
-    <div class="column-header">
-      {{ title }}
-      <button v-if="canAddSection" class="add-section-btn" @click="$emit('add-section')">
-        <span class="add-icon">+</span> Add Section
-      </button>
+  <div :class="['kanban-column', `${columnType.toLowerCase()}-column`, { 'raw-text-column': isRawTextColumn }]">
+    <!-- Raw-text column content (text only) -->
+    <div v-if="isRawTextColumn" class="raw-text-column-content">
+      <div class="raw-text-column-text">{{ columnData.displayText || columnData.text }}</div>
     </div>
-    <div class="column-content">
-      <draggable
-          :list="sections"
-          :group="'sections'"
-          item-key="name"
-          class="section-list"
-          ghost-class="ghost-section"
-          @end="$emit('update')"
-      >
-        <template #item="{ element: section }">
-          <KanbanSection
-              :section="section"
-              :column-type="columnType"
-              @task-updated="$emit('task-updated')"
-              @section-updated="$emit('section-updated', $event)"
-              @show-date-picker="$emit('show-date-picker', $event)"
-          />
-        </template>
-      </draggable>
-    </div>
+    
+    <!-- Regular column content -->
+    <template v-else>
+      <div class="column-header">
+        {{ title }}
+        <button v-if="canAddSection" class="add-section-btn" @click="$emit('add-section')">
+          <span class="add-icon">+</span> Add Section
+        </button>
+      </div>
+      <div class="column-content">
+        <draggable
+            :list="sections"
+            :group="'sections'"
+            :item-key="getSectionKey"
+            class="section-list"
+            ghost-class="ghost-section"
+            @end="$emit('update')"
+        >
+          <template #item="{ element: section }">
+            <KanbanSection
+                :section="section"
+                :column-type="columnType"
+                @task-updated="$emit('task-updated')"
+                @section-updated="$emit('section-updated', $event)"
+                @show-date-picker="$emit('show-date-picker', $event)"
+            />
+          </template>
+        </draggable>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import draggable from 'vuedraggable';
 import KanbanSection from './KanbanSection.vue';
 
@@ -54,6 +63,10 @@ const props = defineProps({
   fileColumn: {
     type: String,
     default: null
+  },
+  columnData: {
+    type: Object,
+    default: () => ({})
   }
 });
 
@@ -63,6 +76,19 @@ const emit = defineEmits([
   'section-updated',
   'show-date-picker'
 ]);
+
+// Computed properties
+const isRawTextColumn = computed(() => props.columnData?.type === 'raw-text');
+
+// Generate unique key for sections (including raw-text sections)
+const getSectionKey = (section) => {
+  if (section.type === 'raw-text') {
+    // For raw-text sections, use a combination of type and the text content
+    return `raw-text-${section.id || section.text?.substring(0, 20) || 'empty'}`;
+  }
+  // For regular sections, use name
+  return section.name || 'unnamed';
+};
 </script>
 
 <style scoped>
@@ -141,5 +167,35 @@ const emit = defineEmits([
   font-size: 14px;
   margin-right: 5px;
   font-weight: bold;
+}
+
+/* Raw-text column styles */
+.raw-text-column {
+  background-color: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.raw-text-column-content {
+  padding: 12px;
+  width: 100%;
+}
+
+.raw-text-column-text {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  color: #2d3748;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  text-align: center;
+  background-color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
 }
 </style>

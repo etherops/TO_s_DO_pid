@@ -32,6 +32,7 @@ function mapColumnToVisualColumn(columnName) {
  * - H2 (##) defines large sections within columns
  * - H3 (###) defines small sections within columns
  * - Columns are mapped to visual columns (TODO/WIP/DONE) based on keywords
+ * - Any unparsable lines become "raw-text" items within sections
  */
 export function parseTodoMdFile(fileContent) {
   console.log('==== PARSING TODO MD FILE ====');
@@ -60,6 +61,7 @@ export function parseTodoMdFile(fileContent) {
   const createSection = (name, headerStyle) => {
     const newSection = {
       name,
+      type: 'section',       // Regular section
       headerStyle,           // 'LARGE' for H2, 'SMALL' for H3
       archivable: false,
       on_ice: false,  // Not used in new format
@@ -78,15 +80,52 @@ export function parseTodoMdFile(fileContent) {
     
     return newSection;
   };
+  
+  // Helper to create a raw-text section from a single line
+  const createRawTextSection = (line, lineIndex) => {
+    const rawTextSection = {
+      name: '', // RawText sections don't have names
+      type: 'raw-text',
+      headerStyle: 'RAW-TEXT',
+      archivable: false,
+      on_ice: false,
+      text: line,  // Store the full line including indentation
+      displayText: line.trim(),  // For display purposes
+      lineIndex: lineIndex,
+      id: itemId++
+    };
+    
+    // Add to current column
+    if (currentColumn && fileColumns.has(currentColumn)) {
+      fileColumns.get(currentColumn).sections.push(rawTextSection);
+    }
+    
+    return rawTextSection;
+  };
 
-  // No default section - items must be in a section
+  // Helper to create a raw-text column from a single line (for lines before first H1)
+  const createRawTextColumn = (line, lineIndex) => {
+    const columnName = `raw-text-${itemId++}`;
+    
+    // Create a raw-text column - the COLUMN itself is raw-text, not containing sections
+    fileColumns.set(columnName, {
+      visualColumn: 'TODO', // Raw-text columns display in TODO stack
+      type: 'raw-text', // The column itself is raw-text
+      text: line,  // Store the full line including indentation
+      displayText: line.trim(),  // For display purposes
+      lineIndex: lineIndex,
+      sections: [] // Raw-text columns have no sections
+    });
+    
+    return columnName;
+  };
 
   // Parse the lines
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmedLine = line.trim();
 
-    // Skip empty lines
+    // Skip empty lines - we'll add standard spacing when rendering
     if (trimmedLine === '') {
       continue;
     }
@@ -142,28 +181,49 @@ export function parseTodoMdFile(fileContent) {
     if (trimmedLine.startsWith('* ')) {
       const statusMatch = trimmedLine.match(/\* \[([ x~-])\]/);
 
-      if (statusMatch) {
+      if (statusMatch && currentSection) {
         const statusChar = statusMatch[1];
         const todoText = trimmedLine.substring(statusMatch[0].length).trim();
 
         const todoItem = {
           id: itemId++,
+          type: 'task',
           statusChar,
           text: todoText,
           displayText: getStrippedDisplayText(todoText),
           lineIndex: i
         };
 
-        // Add item to the current section (items must be in a section)
-        if (currentSection) {
-          currentSection.items.push(todoItem);
-        } else {
-          console.warn(`Skipping item at line ${i + 1}: "${todoText}" - items must be inside a section`);
-        }
+        currentSection.items.push(todoItem);
+        continue;
       }
     }
-  }
 
+    // Any line that doesn't match our expected format becomes an raw-text item
+    if (!currentSection) {
+      // If we have a current column but no section, this is a column-level raw-text section
+      if (currentColumn) {
+        createRawTextSection(line, i);
+        console.log(`Added column-level raw-text section at line ${i + 1}: "${line.trim()}"`);
+      } else {
+        // No current column - this is a raw-text line before the first column
+        createRawTextColumn(line, i);
+        console.log(`Added raw-text column for line ${i + 1}: "${line.trim()}"`);
+      }
+      continue;
+    }
+
+    const rawTextItem = {
+      id: itemId++,
+      type: 'raw-text',
+      text: line,  // Store the full line including indentation
+      displayText: line.trim(),  // For display purposes
+      lineIndex: i
+    };
+    
+    currentSection.items.push(rawTextItem);
+    console.log(`Added section-level raw-text at line ${i + 1}: "${line.trim()}"`);
+  }
 
   console.log('Parsed file columns:', Array.from(fileColumns.keys()));
   
@@ -200,44 +260,66 @@ export function renderTodoMdFile(data) {
   const { fileColumnOrder, columns } = data;
   console.log('File columns:', fileColumnOrder);
 
-  let outputContent = '';
+  const outputLines = [];
   
-  // Render from nested structure
-    fileColumnOrder.forEach((columnName, columnIndex) => {
-      const columnData = columns[columnName];
-      if (!columnData) return;
-      
-      // Add spacing between columns
+  fileColumnOrder.forEach((columnName, columnIndex) => {
+    const columnData = columns[columnName];
+    if (!columnData) return;
+    
+    // Handle raw-text columns (the column itself is raw-text)
+    if (columnData.type === 'raw-text') {
+      // For raw-text columns, just output the text without any header
       if (columnIndex > 0) {
-        outputContent += '\n';
+        outputLines.push('');
       }
-      
-      // Render H1 column header
-      outputContent += `# ${columnName}\n`;
-      
-      // Render sections in this column
-      columnData.sections.forEach((section, sectionIndex) => {
-        // Add spacing between sections
+      outputLines.push(columnData.text);
+      return;
+    }
+    
+    // Regular columns - add spacing between columns
+    if (columnIndex > 0) {
+      outputLines.push('');
+    }
+    
+    // Render H1 column header
+    outputLines.push(`# ${columnName}`);
+    
+    // Render sections in this column
+    columnData.sections.forEach((section, sectionIndex) => {
+      if (section.type === 'raw-text') {
+        // raw-text section - render text directly without section header
+        outputLines.push(section.text);
+      } else {
+        // Regular section
+        // Add spacing between sections (but not before the first section in a column)
         if (sectionIndex > 0) {
-          outputContent += '\n';
+          outputLines.push('');
         }
         
         // Render section header based on style
         if (section.headerStyle === 'LARGE') {
-          outputContent += `## ${section.name}\n`;
+          outputLines.push(`## ${section.name}`);
         } else if (section.headerStyle === 'SMALL') {
-          outputContent += `### ${section.name}\n`;
+          outputLines.push(`### ${section.name}`);
         }
         
         // Render items in this section
         if (section.items && section.items.length > 0) {
           section.items.forEach(item => {
-            outputContent += `* [${item.statusChar}] ${item.text}\n`;
+            if (item.type === 'raw-text') {
+              // Render raw-text items as-is
+              outputLines.push(item.text);
+            } else {
+              // Render task items
+              outputLines.push(`* [${item.statusChar}] ${item.text}`);
+            }
           });
         }
-      });
+      }
     });
+  });
 
+  const outputContent = outputLines.join('\n');
   console.log('Generated content length:', outputContent.length);
   return outputContent;
 }

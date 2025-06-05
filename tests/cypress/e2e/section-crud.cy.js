@@ -1,56 +1,79 @@
 import { refreshAndWait, findSection } from '../support/helpers.js'
 
 describe('WIP Section CRUD Operations', () => {
-    it('should create new section in TODO column, edit name, and delete', () => {
-        const newSectionName = 'Test Section'
-        const editedSectionName = 'Edited Test Section'
+    it.only('should create new section in TODO column, validate raw-text inheritance, and test deletion with second section', () => {
+        const firstSectionName = 'First Test Section'
+        const secondSectionName = 'Second Test Section'
+        const editedSecondSectionName = 'Edited Second Section'
 
-        // Create new section in TODO column (first one in the stack)
-        cy.get('.column-stack').eq(0).find('.todo-column').first().within(() => {
+        // Create first new section in TODO column (first non-raw-text one in the stack)
+        cy.get('.column-stack').eq(0).find('.todo-column').not('.raw-text-column').first().within(() => {
             cy.get('.add-section-btn').click()
-            cy.get('.section').first().as('newSection')
+            cy.get('.section').first().as('firstNewSection')
         })
 
-        // New section should appear in edit mode automatically
-        cy.get('@newSection').within(() => {
+        // First section should appear in edit mode automatically
+        cy.get('@firstNewSection').within(() => {
             cy.get('.section-name-edit').should('be.visible')
             cy.get('.section-name-edit').should('have.focus')
-            cy.get('.section-name-edit').clear().type(newSectionName)
+            cy.get('.section-name-edit').clear().type(firstSectionName)
             cy.get('.confirm-section-btn').click()
         })
 
-        // Verify section renamed
-        findSection(newSectionName).should('exist')
+        // Verify first section was created
+        findSection(firstSectionName).should('exist')
 
-        // Refresh and verify persistence
+        // Refresh and verify persistence - this will cause the section to inherit raw-text items
+        // it will not be delete-able because of the raw-text item, so we now create a second section to delete...
+        //  annoying, i know.
         refreshAndWait()
-        findSection(newSectionName).should('exist')
+        findSection(firstSectionName).should('exist')
 
-        // Edit again - click edit button
-        findSection(newSectionName).find('.edit-section-btn').click()
+        // Create second section that should remain empty and deletable
+        cy.get('.column-stack').eq(0).find('.todo-column').not('.raw-text-column').first().within(() => {
+            cy.get('.add-section-btn').click()
+            cy.get('.section').first().as('secondNewSection')
+        })
+
+        // Second section should appear in edit mode automatically
+        cy.get('@secondNewSection').within(() => {
+            cy.get('.section-name-edit').should('be.visible')
+            cy.get('.section-name-edit').should('have.focus')
+            cy.get('.section-name-edit').clear().type(secondSectionName)
+            cy.get('.confirm-section-btn').click()
+        })
+
+        // Verify second section was created
+        findSection(secondSectionName).should('exist')
+
+        // Edit the second section name
+        findSection(secondSectionName).find('.edit-section-btn').click()
         
         // Wait for edit mode to be active
         cy.get('.section-name-edit').should('be.visible').and('have.focus')
         
         // Type new name and confirm
-        cy.get('.section-name-edit').clear().type(editedSectionName)
+        cy.get('.section-name-edit').clear().type(editedSecondSectionName)
         cy.get('.confirm-section-btn').click()
 
         // Verify edited
-        findSection(editedSectionName).should('exist')
+        findSection(editedSecondSectionName).should('exist')
 
-        // Delete the section (only works if empty)
-        findSection(editedSectionName).within(() => {
-            cy.get('.delete-section-btn').click()
-            cy.get('.confirm-delete-btn').click()
+        // Delete the second section (should work since it's empty)
+        findSection(editedSecondSectionName).within(() => {
+            cy.get('.delete-section-btn').should('be.visible').click()
+            cy.get('.confirm-delete-btn', { timeout: 10000 }).should('be.visible').click()
         })
 
-        // Verify deleted
-        cy.contains('.section-header', editedSectionName).should('not.exist')
+        // Verify second section was deleted
+        cy.contains('.section-header', editedSecondSectionName).should('not.exist')
 
         // Refresh and verify deletion persisted
         refreshAndWait()
-        cy.contains('.section-header', editedSectionName).should('not.exist')
+        cy.contains('.section-header', editedSecondSectionName).should('not.exist')
+        
+        // Verify first section still exists with its raw-text item
+        findSection(firstSectionName).should('exist')
     })
 })
 

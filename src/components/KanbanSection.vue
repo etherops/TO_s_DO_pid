@@ -3,10 +3,12 @@
   <div
       :class="['section', {
       'archivable-section': section.archivable,
-      'on-ice-section': section.on_ice
+      'on-ice-section': section.on_ice,
+      'raw-text-section': isRawTextSection
     }]"
   >
     <div
+        v-if="!isRawTextSection"
         :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
         @dblclick="section.archivable && startEditingSection()"
     >
@@ -71,7 +73,7 @@
         </div>
       </template>
     </div>
-    <div class="section-items">
+    <div v-if="!isRawTextSection" class="section-items">
       <draggable
           v-model="section.items"
           :group="'tasks'"
@@ -94,11 +96,16 @@
         No items
       </div>
     </div>
+    
+    <!-- raw-text section content (text only) -->
+    <div v-if="isRawTextSection" class="raw-text-section-content">
+      <div class="raw-text-section-text">{{ section.displayText || section.text }}</div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue';
+import { ref, nextTick, onMounted, computed } from 'vue';
 import draggable from 'vuedraggable';
 import TaskCard from './TaskCard.vue';
 
@@ -114,6 +121,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['task-updated', 'section-updated', 'show-date-picker']);
+
+// Computed properties
+const isRawTextSection = computed(() => props.section.type === 'raw-text');
 
 // Section editing state
 const isEditingSection = ref(false);
@@ -182,6 +192,7 @@ const createNewTask = () => {
   // For now, we'll use a timestamp-based ID
   const newTask = {
     id: Date.now(),
+    type: 'task',
     statusChar: ' ',
     text: '',
     displayText: '',
@@ -300,6 +311,37 @@ onMounted(() => {
 
 /* Archivable section styles */
 
+
+/* raw-text section styles */
+.raw-text-section {
+  background-color: rgba(248, 249, 250, 0.8);
+  border: 1px solid rgba(224, 224, 224, 0.5);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.raw-text-section .section-items {
+  padding: 4px 8px 8px;
+}
+
+.raw-text-section-content {
+  padding: 8px 12px;
+}
+
+.raw-text-section-text {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  color: #2d3748;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background-color: #f7fafc;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  margin: 0;
+}
 
 /* On Ice section styles */
 .on-ice-section {

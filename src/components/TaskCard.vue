@@ -1,7 +1,13 @@
 <!-- components/TaskCard.vue -->
 <template>
-  <div class="task-card">
-    <div class="task-content-wrapper">
+  <div class="task-card" :class="{ 'raw-text-card': isRawText }">
+    <!-- raw-text display (simple, uneditable) -->
+    <div v-if="isRawText" class="raw-text-content">
+      <div class="raw-text-text">{{ task.displayText || task.text }}</div>
+    </div>
+    
+    <!-- Task display (interactive) -->
+    <div v-else class="task-content-wrapper">
       <div class="checkbox-wrapper">
         <div
             :class="['custom-checkbox', {
@@ -140,7 +146,7 @@
     </div>
     
     <!-- Hover preview container (non-edit mode) -->
-    <div v-if="!isEditing && (hasDueDate(task.text) || hasNote(task.text))" class="hover-preview-container">
+    <div v-if="!isEditing && !isRawText && (hasDueDate(task.text) || hasNote(task.text))" class="hover-preview-container">
       <div class="hover-preview-row">
         <!-- Note preview aligned with title -->
         <div v-if="hasNote(task.text) || hasDueDate(task.text)" class="note-preview">
@@ -199,6 +205,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['task-updated']);
+
+// Computed properties
+const isRawText = computed(() => props.task.type === 'raw-text');
 
 // Task state
 const isEditing = ref(false);
@@ -474,6 +483,30 @@ onMounted(() => {
 .task-card:hover {
   height: auto;
   z-index: 10;
+}
+
+/* ========================= */
+/* raw-text Card Styles       */
+/* ========================= */
+.raw-text-card {
+  background-color: #f7fafc;
+  border: 1px solid #e2e8f0;
+  cursor: default;
+}
+
+.raw-text-content {
+  padding: 8px 12px;
+  min-height: 22px; /* Match task card height */
+}
+
+.raw-text-text {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  color: #2d3748;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
 }
 
 .task-content-wrapper {

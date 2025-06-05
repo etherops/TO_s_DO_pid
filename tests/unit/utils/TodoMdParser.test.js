@@ -294,6 +294,148 @@ describe('TodoMdParser', () => {
         expect(data.columns[name].visualColumn).toBe(expected)
       })
     })
+    it('should preserve unparsable lines as rawText items', () => {
+      const content = `# TODO
+## Regular Section
+<!-- This is a comment -->
+* [ ] Normal task
+* This is malformed without brackets
+Random text line
+* [x] Another task`
+
+      const data = parseTodoMdFile(content)
+      const section = data.columns.TODO.sections[0]
+
+      // Check that we parsed the valid structure
+      expect(section.name).toBe('Regular Section')
+
+      // Check all items in order
+      const items = section.items
+      expect(items).toHaveLength(5)
+
+      expect(items[0].type).toBe('raw-text')
+      expect(items[0].text).toBe('<!-- This is a comment -->')
+
+      expect(items[1].type).toBe('task')
+      expect(items[1].text).toBe('Normal task')
+
+      expect(items[2].type).toBe('raw-text')
+      expect(items[2].text).toBe('* This is malformed without brackets')
+
+      expect(items[3].type).toBe('raw-text')
+      expect(items[3].text).toBe('Random text line')
+
+      expect(items[4].type).toBe('task')
+      expect(items[4].text).toBe('Another task')
+    })
+
+    it('should preserve column-level info items as rawText sections', () => {
+      const content = `# TODO
+<!-- Column level comment -->
+Random text before first section
+Another line
+## First Section
+* [ ] Task 1
+## Second Section
+* [ ] Task 2`
+
+      const data = parseTodoMdFile(content)
+      const sections = data.columns.TODO.sections
+
+      // Should have 5 sections: 3 rawText sections + 2 regular sections
+      expect(sections).toHaveLength(5)
+
+      // First three should be rawText sections
+      expect(sections[0].type).toBe('raw-text')
+      expect(sections[0].headerStyle).toBe('RAW-TEXT')
+      expect(sections[0].name).toBe('')
+      expect(sections[0].text).toBe('<!-- Column level comment -->')
+
+      expect(sections[1].type).toBe('raw-text')
+      expect(sections[1].text).toBe('Random text before first section')
+
+      expect(sections[2].type).toBe('raw-text')
+      expect(sections[2].text).toBe('Another line')
+
+      // Next should be regular sections
+      expect(sections[3].type).toBe('section')
+      expect(sections[3].name).toBe('First Section')
+      expect(sections[3].items.filter(item => item.type === 'task')).toHaveLength(1)
+
+      expect(sections[4].type).toBe('section')
+      expect(sections[4].name).toBe('Second Section')
+      expect(sections[4].items.filter(item => item.type === 'task')).toHaveLength(1)
+    })
+
+    it('should handle multiple column-level rawText sections', () => {
+      const content = `# TODO
+First column comment
+## Section A
+* [ ] Task A
+
+# WIP
+Second column comment
+### Section B
+* [~] Task B`
+
+      const data = parseTodoMdFile(content)
+
+      // Check TODO column
+      const todoSections = data.columns.TODO.sections
+      expect(todoSections).toHaveLength(2) // rawText section + regular section
+      expect(todoSections[0].type).toBe('raw-text')
+      expect(todoSections[0].text).toBe('First column comment')
+      expect(todoSections[1].name).toBe('Section A')
+
+      // Check WIP column
+      const wipSections = data.columns.WIP.sections
+      expect(wipSections).toHaveLength(2) // rawText section + regular section
+      expect(wipSections[0].type).toBe('raw-text')
+      expect(wipSections[0].text).toBe('Second column comment')
+      expect(wipSections[1].name).toBe('Section B')
+    })
+
+    it('should create raw-text columns for lines before first H1', () => {
+      const content = `raw text line before any columns
+another raw text line
+# TODO
+## Section
+* [ ] Task 1`
+
+      const data = parseTodoMdFile(content)
+      
+      // Should have 3 columns: 2 raw-text columns + 1 TODO column
+      expect(data.fileColumnOrder).toHaveLength(3)
+      
+      // First two should be raw-text columns
+      const firstColumnName = data.fileColumnOrder[0]
+      const secondColumnName = data.fileColumnOrder[1]
+      
+      expect(firstColumnName).toMatch(/^raw-text-\d+$/)
+      expect(secondColumnName).toMatch(/^raw-text-\d+$/)
+      
+      // Check the raw-text columns have the correct structure
+      const firstColumn = data.columns[firstColumnName]
+      expect(firstColumn.type).toBe('raw-text')
+      expect(firstColumn.visualColumn).toBe('TODO')
+      expect(firstColumn.text).toBe('raw text line before any columns')
+      expect(firstColumn.displayText).toBe('raw text line before any columns')
+      expect(firstColumn.sections).toEqual([])
+      
+      const secondColumn = data.columns[secondColumnName]
+      expect(secondColumn.type).toBe('raw-text')
+      expect(secondColumn.visualColumn).toBe('TODO')
+      expect(secondColumn.text).toBe('another raw text line')
+      expect(secondColumn.displayText).toBe('another raw text line')
+      expect(secondColumn.sections).toEqual([])
+      
+      // Third should be regular TODO column
+      expect(data.fileColumnOrder[2]).toBe('TODO')
+      expect(data.columns.TODO.visualColumn).toBe('TODO')
+      expect(data.columns.TODO.sections).toHaveLength(1)
+      expect(data.columns.TODO.sections[0].name).toBe('Section')
+    })
+
   })
 
   describe('renderTodoMdFile', () => {
@@ -474,6 +616,50 @@ describe('TodoMdParser', () => {
       const originalItemCount = sections.reduce((sum, s) => sum + s.items.length, 0)
       const reparsedItemCount = reparsedSections.reduce((sum, s) => sum + s.items.length, 0)
       expect(reparsedItemCount).toBe(originalItemCount)
+    })
+
+    it('should render raw-text columns correctly', () => {
+      const data = {
+        fileColumnOrder: ['raw-text-1', 'raw-text-2', 'TODO'],
+        columns: {
+          'raw-text-1': {
+            type: 'raw-text',
+            visualColumn: 'TODO',
+            text: 'first raw line',
+            displayText: 'first raw line',
+            sections: []
+          },
+          'raw-text-2': {
+            type: 'raw-text',
+            visualColumn: 'TODO',
+            text: 'second raw line',
+            displayText: 'second raw line',
+            sections: []
+          },
+          'TODO': {
+            visualColumn: 'TODO',
+            sections: [
+              {
+                name: 'Tasks',
+                headerStyle: 'LARGE',
+                items: [{ statusChar: ' ', text: 'Task 1' }]
+              }
+            ]
+          }
+        }
+      }
+
+      const result = renderTodoMdFile(data)
+      const lines = result.split('\n')
+      
+      // Raw-text columns should be rendered without headers
+      expect(lines[0]).toBe('first raw line')
+      expect(lines[1]).toBe('') // blank line
+      expect(lines[2]).toBe('second raw line')
+      expect(lines[3]).toBe('') // blank line
+      expect(lines[4]).toBe('# TODO')
+      expect(lines[5]).toBe('## Tasks') // no blank line after column header
+      expect(lines[6]).toBe('* [ ] Task 1')
     })
   })
 })

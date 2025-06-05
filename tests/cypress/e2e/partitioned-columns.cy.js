@@ -13,15 +13,15 @@ describe('Partitioned File Columns', () => {
     it('should render partitioned TODO columns as separate visual columns', () => {
         // The TODO stack should have multiple columns
         cy.get('.column-stack').eq(0).within(() => {
-            // Should have exactly 2 TODO columns
-            cy.get('.todo-column').should('have.length', 2)
+            // Should have exactly 2 TODO columns (excluding raw-text columns)
+            cy.get('.todo-column').not('.raw-text-column').should('have.length', 2)
             
             // Both should have "TODO" as header
             cy.get('.column-header').eq(0).should('contain.text', 'TODO')
             cy.get('.column-header').eq(1).should('contain.text', 'TODO')
             
             // First TODO column should contain the first set of sections
-            cy.get('.todo-column').eq(0).within(() => {
+            cy.get('.todo-column').not('.raw-text-column').eq(0).within(() => {
                 cy.contains('.section-header', 'TO DO').should('exist')
                 cy.contains('.section-header', 'PROJECTS').should('exist')
                 cy.contains('.section-header', 'HOBBY').should('exist')
@@ -33,7 +33,7 @@ describe('Partitioned File Columns', () => {
             })
             
             // Second TODO column should contain the second set of sections
-            cy.get('.todo-column').eq(1).within(() => {
+            cy.get('.todo-column').not('.raw-text-column').eq(1).within(() => {
                 cy.contains('.section-header', 'LOW-P').should('exist')
                 cy.contains('.section-header', 'BACKLOG').should('exist')
                 cy.contains('.section-header', 'ICEBOX').should('exist')
@@ -76,7 +76,7 @@ describe('Partitioned File Columns', () => {
 
     it('should have proper spacing between partitioned columns', () => {
         cy.get('.column-stack').eq(0).within(() => {
-            cy.get('.todo-column').then($columns => {
+            cy.get('.todo-column').not('.raw-text-column').then($columns => {
                 // Get the positions of both columns
                 const firstColumnBottom = $columns[0].getBoundingClientRect().bottom
                 const secondColumnTop = $columns[1].getBoundingClientRect().top

@@ -1,4 +1,5 @@
 # TODO
+
 ## Quick Features
 * [ ] collapsible/hidable DONE
 * [ ] details is a pop up instead of "expand card"
@@ -10,6 +11,7 @@
 * [ ] counts in tabs
 * [ ] shift click move bulk items
 * [ ] can't archive a section with incomplete tasks
+* [ ] right click - move task to ...
 
 ## Bugs
 * [ ] BUG: Compact "confirm delete" is truncated vertically
@@ -26,16 +28,19 @@
 * [ ] DELETE - undo
 
 # WIP
+
 ### In Progress
-* [ ] PARSE: non destructive write-backj aka save unparsed lines
 * [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
 * [ ] hover preview is a tool tip
 * [ ] purge existing hidden and on-ice feature, but bring it back
 * [ ] refactor column, fileColumn -> columnStack, column
 * [ ] display note preview inline
+* [ ] custom file again, or multiple custom directories
 
 # ARCHIVE
+
 ### Just done
+* [x] PARSE: non destructive write-backj aka save unparsed lines
 * [x] drop and drop conflation between task/section
 * [x] refactor: move creating visual column in parser
 * [x] get rid of section.column and section.filecolumn?

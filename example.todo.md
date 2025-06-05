@@ -1,7 +1,14 @@
+raw text line before the first column WINDSTORM
+
 # TODO
+raw texts line between column and section SPARKLE
+
 ## TO DO
 * [ ] PROJECT - Mountain trip planning !!( Due May 16)
 * [ ] WORK - Follow up with client
+raw text line in a section SUPERCATS
+* malformed raw text do do line in a section BADBOYS
+#### this is also raw text GIGGLEGIGGLE
 
 ## PROJECTS
 * [~] SOCIAL - Event coordination for friends !!(Jun 1)
@@ -31,7 +38,7 @@
 ### New Section 1
 * [ ] test
 
-# TODO
+# TODO-2
 ## LOW-P
 * [ ] HEALTH - Research classes
 

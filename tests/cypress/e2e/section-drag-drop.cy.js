@@ -13,7 +13,7 @@ describe('Section Drag and Drop', () => {
         const sectionName = 'PROJECTS'
 
         // Verify starting position
-        cy.get('.todo-column').first().within(() => {
+        cy.get('.todo-column').not('.raw-text-column').first().within(() => {
             findSection(sectionName).should('exist')
         })
 
@@ -24,7 +24,7 @@ describe('Section Drag and Drop', () => {
         // Verify new position - use more direct verification
         cy.get('.wip-column').first()
             .should('contain', sectionName)
-        cy.get('.todo-column').first()
+        cy.get('.todo-column').not('.raw-text-column').first()
             .should('not.contain', sectionName)
 
         // Verify persistence
