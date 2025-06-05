@@ -1,11 +1,8 @@
 # TODO
 ## Quick Features
-* [ ] hover preview is a tool tip
-* [ ] collapsible/hidable DONE
-* [ ] details is a pop up instead of "expand card"
+* [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
 * [ ] VIEW - sortable tabs
 * [ ] "add task" should be a an empty row ready
-* [ ] VIEW: Auto sort tasks by status
 * [ ] Backup rotation
 * [ ] FEATURE: "Today, Tomorrow" as due dates
 * [ ] counts in tabs
@@ -29,13 +26,17 @@
 
 # WIP
 ### In Progress
-* [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
-* [ ] purge existing hidden and on-ice feature, but bring it back
+* [ ] hide raw text by default
+* [ ] collapsible/hidable DONE
+* [ ] details is a pop up instead of "expand card"
+* [ ] VIEW: Auto sort tasks by status
+* [ ] purge "visualColumn"
 * [ ] display note preview inline
 * [ ] custom file again, or multiple custom directories
 
 # ARCHIVE
 ### Just done
+* [x] purge existing on-ice feature, but bring it back
 * [x] refactor column, fileColumn -> columnStack, column
 * [x] PARSE: non destructive write-backj aka save unparsed lines
 * [x] drop and drop conflation between task/section

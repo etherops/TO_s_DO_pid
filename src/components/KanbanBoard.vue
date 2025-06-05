@@ -31,7 +31,7 @@
             :sections="props.todoData.columnStacks[columnName].sections"
             :can-add-section="true"
             :column="columnName"
-            :column-data="props.todoData.columnStacks[columnName]"
+            :column-data="getColumnDataWithIce(columnName)"
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -51,7 +51,7 @@
             :sections="props.todoData.columnStacks[columnName].sections"
             :can-add-section="true"
             :column="columnName"
-            :column-data="props.todoData.columnStacks[columnName]"
+            :column-data="getColumnDataWithIce(columnName)"
             @add-section="createNewSection('WIP', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -71,7 +71,7 @@
             :sections="props.todoData.columnStacks[columnName].sections"
             :can-add-section="false"
             :column="columnName"
-            :column-data="props.todoData.columnStacks[columnName]"
+            :column-data="getColumnDataWithIce(columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
@@ -104,6 +104,17 @@ const datePickerInitialDate = ref(null);
 
 // Archive choice state
 const archiveChoice = ref(null);
+
+// Helper function to add ice logic to column data
+const getColumnDataWithIce = (columnName) => {
+  const baseColumnData = props.todoData.columnStacks[columnName] || {};
+  const isIceColumn = columnName.toUpperCase().includes('ICE');
+  
+  return {
+    ...baseColumnData,
+    on_ice: isIceColumn
+  };
+};
 
 
 

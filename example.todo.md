@@ -75,3 +75,9 @@ raw text line in a section SUPERCATS
 # DONE
 ### A section in done
 * [x] BUG: "Archive" button doesn't work
+
+# ON ICE
+### We're never doing this shit
+* [ ] Redecorate the living room
+* [ ] Tea with mother in law
+* [ ] Send belated wedding gift

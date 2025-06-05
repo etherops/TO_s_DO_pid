@@ -64,7 +64,6 @@ export function parseTodoMdFile(fileContent) {
       type: 'section',       // Regular section
       headerStyle,           // 'LARGE' for H2, 'SMALL' for H3
       archivable: false,
-      on_ice: false,  // Not used in new format
       items: []
     };
     
@@ -88,7 +87,6 @@ export function parseTodoMdFile(fileContent) {
       type: 'raw-text',
       headerStyle: 'RAW-TEXT',
       archivable: false,
-      on_ice: false,
       text: line,  // Store the full line including indentation
       displayText: line.trim(),  // For display purposes
       lineIndex: lineIndex,

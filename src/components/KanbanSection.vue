@@ -3,7 +3,7 @@
   <div
       :class="['section', {
       'archivable-section': section.archivable,
-      'on-ice-section': section.on_ice,
+      'on-ice-section': columnData.on_ice,
       'raw-text-section': isRawTextSection
     }]"
   >
@@ -34,10 +34,10 @@
         {{ section.name }}
         <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
         <div class="section-header-actions">
-          <button class="add-task-btn" @click="createNewTask">
+          <button v-if="!columnData.on_ice" class="add-task-btn" @click="createNewTask">
             <span class="add-icon">+</span> Add Task
           </button>
-          <button class="edit-section-btn" @click="startEditingSection">
+          <button v-if="!columnData.on_ice" class="edit-section-btn" @click="startEditingSection">
             <span class="edit-icon">✎</span>
           </button>
           <!-- Archive button for archivable sections -->
@@ -87,6 +87,7 @@
           <TaskCard
               :task="item"
               :section="section"
+              :is-on-ice="columnData.on_ice || false"
               @task-updated="$emit('task-updated')"
               @show-date-picker="$emit('show-date-picker', $event)"
           />
@@ -117,6 +118,10 @@ const props = defineProps({
   columnType: {
     type: String,
     required: true
+  },
+  columnData: {
+    type: Object,
+    default: () => ({})
   }
 });
 
@@ -345,30 +350,66 @@ onMounted(() => {
 
 /* On Ice section styles */
 .on-ice-section {
-  background-color: rgba(173, 216, 230, 0.3);
-  border: 1px solid rgba(173, 216, 230, 0.5);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(144, 202, 249, 0.5);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(33, 150, 243, 0.1);
   position: relative;
 }
 
+.on-ice-section .section-header {
+  background: rgba(255, 255, 255, 0.2);
+  color: #1565c0;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+}
+
+.on-ice-section .section-header.small {
+  padding: 8px 10px;
+}
+
+.on-ice-section .section-header.large {
+  padding: 6px 10px;
+}
+
+.on-ice-section .section-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='0.5' opacity='0.4'%3E%3Cpath d='M20 5 L20 35 M8 12 L32 28 M32 12 L8 28'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 20px 20px;
+  background-repeat: repeat;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.on-ice-section .section-header .on-ice-label {
+  position: relative;
+  z-index: 2;
+}
+
 .on-ice-label {
-  background-color: rgba(173, 216, 230, 0.5);
-  border: 1px solid rgba(100, 149, 237, 0.7);
-  border-radius: 4px;
+  background: linear-gradient(45deg, #ffffff 0%, #e3f2fd 100%);
+  border: 1px solid #2196f3;
+  border-radius: 12px;
   padding: 2px 8px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
-  color: #4a6d8c;
+  color: #1976d2;
   display: inline-block;
   margin-left: 8px;
   transition: all 0.2s;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(33, 150, 243, 0.3);
   vertical-align: middle;
 }
 
 .on-ice-label:hover {
-  background-color: rgba(173, 216, 230, 0.7);
+  background: linear-gradient(45deg, #e3f2fd 0%, #bbdefb 100%);
   transform: scale(1.05);
 }
 
@@ -379,6 +420,7 @@ onMounted(() => {
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 3;
 }
 
 /* Edit section styles */

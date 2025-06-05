@@ -1,6 +1,6 @@
 <!-- components/TaskCard.vue -->
 <template>
-  <div class="task-card" :class="{ 'raw-text-card': isRawText }">
+  <div class="task-card" :class="{ 'raw-text-card': isRawText, 'ice-task-card': isOnIce }">
     <!-- raw-text display (simple, uneditable) -->
     <div v-if="isRawText" class="raw-text-content">
       <div class="raw-text-text">{{ task.displayText || task.text }}</div>
@@ -95,7 +95,7 @@
             { 'due-soon': task.statusChar !== 'x' && task.statusChar !== '-' && isSoon(task.text) }
           ]"
             :title="task.text"
-            @dblclick="startEditingAll"
+            @dblclick="isOnIce ? null : startEditingAll"
         >
           {{ task.displayText || task.text }}
         </span>
@@ -103,6 +103,7 @@
         <div class="task-buttons-container">
           <!-- Clock button -->
           <button
+              v-if="!isOnIce"
               class="task-icon-btn clock-btn"
               :class="{ 'has-due-date': hasDueDate(task.text) }"
               @click.stop="handleDateClick"
@@ -113,6 +114,7 @@
 
           <!-- Notes button -->
           <button
+              v-if="!isOnIce"
               class="task-icon-btn notes-btn"
               :class="{ 'has-notes': hasNote(task.text) }"
               @click.stop="handleNotesClick"
@@ -122,7 +124,12 @@
           </button>
 
           <!-- Edit button -->
-          <button class="task-icon-btn edit-btn" @click="handleEditClick" title="Edit task (Shift+click for simple edit)">
+          <button 
+            v-if="!isOnIce"
+            class="task-icon-btn edit-btn" 
+            @click="handleEditClick" 
+            title="Edit task (Shift+click for simple edit)"
+          >
             <span class="edit-icon">✎</span>
           </button>
 
@@ -135,7 +142,11 @@
               ×
             </button>
           </template>
-          <button v-else class="task-icon-btn delete-btn" @click.stop="requestDeleteTask">
+          <button 
+            v-else 
+            class="task-icon-btn delete-btn" 
+            @click.stop="requestDeleteTask"
+          >
             <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
               <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
             </svg>
@@ -201,6 +212,10 @@ const props = defineProps({
   section: {
     type: Object,
     required: true
+  },
+  isOnIce: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -224,9 +239,9 @@ const datePickerRef = ref(null);
 
 // Toggle task status
 const toggleTaskStatus = () => {
-  // Don't allow toggling in "on_ice" sections
-  if (props.section.on_ice) {
-    console.log('Cannot toggle status of items in "on_ice" sections');
+  // Don't allow toggling in "on_ice" columns
+  if (props.isOnIce) {
+    console.log('Cannot toggle status of items in "on_ice" columns');
     return;
   }
 
@@ -1083,6 +1098,31 @@ onMounted(() => {
 
 .task-card:has(.task-title.due-soon) .calendar-day {
   color: #ff9800;
+}
+
+/* ========================= */
+/* Ice Task Card Styling     */
+/* ========================= */
+.ice-task-card {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(144, 202, 249, 0.7);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+  cursor: default;
+}
+
+.ice-task-card:hover {
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.ice-task-card .custom-checkbox {
+  border-color: #2196f3;
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  cursor: not-allowed;
+}
+
+.ice-task-card .task-title {
+  color: #1565c0;
+  font-weight: 600;
 }
 
 /* ========================= */

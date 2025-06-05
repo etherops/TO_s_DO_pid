@@ -1,6 +1,6 @@
 <!-- components/KanbanColumn.vue -->
 <template>
-  <div :class="['kanban-column', `${columnType.toLowerCase()}-column`, { 'raw-text-column': isRawTextColumn }]">
+  <div :class="['kanban-column', `${columnType.toLowerCase()}-column`, { 'raw-text-column': isRawTextColumn, 'ice-column': columnData.on_ice }]" :data-on-ice="columnData.on_ice">
     <!-- Raw-text column content (text only) -->
     <div v-if="isRawTextColumn" class="raw-text-column-content">
       <div class="raw-text-column-text">{{ columnData.displayText || columnData.text }}</div>
@@ -9,8 +9,18 @@
     <!-- Regular column content -->
     <template v-else>
       <div class="column-header">
-        {{ title }}
-        <button v-if="canAddSection" class="add-section-btn" @click="$emit('add-section')">
+        <div class="column-title-container">
+          {{ title }}
+          <div v-if="columnData.on_ice" class="on-ice-badge">
+            <svg class="ice-icon" viewBox="0 0 16 16" width="12" height="12">
+              <g fill="currentColor">
+                <path d="M8 2 L8 14 M3 5 L13 11 M13 5 L3 11 M8 4 L6 2 M8 4 L10 2 M8 12 L6 14 M8 12 L10 14 M5 7 L3 5 M5 7 L3 9 M11 9 L13 11 M11 9 L13 7" stroke="currentColor" stroke-width="0.8" fill="none"/>
+              </g>
+            </svg>
+            ON ICE
+          </div>
+        </div>
+        <button v-if="canAddSection && !columnData.on_ice" class="add-section-btn" @click="$emit('add-section')">
           <span class="add-icon">+</span> Add Section
         </button>
       </div>
@@ -27,6 +37,7 @@
             <KanbanSection
                 :section="section"
                 :column-type="columnType"
+                :column-data="columnData"
                 @task-updated="$emit('task-updated')"
                 @section-updated="$emit('section-updated', $event)"
                 @show-date-picker="$emit('show-date-picker', $event)"
@@ -100,6 +111,42 @@ const getSectionKey = (section) => {
   flex-direction: column;
 }
 
+/* Ice column styling - frozen blue theme */
+.kanban-column.ice-column {
+  background: 
+    /* Large snowflakes */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Cpath d='M50 10 L50 90 M20 30 L80 70 M80 30 L20 70 M50 20 L40 10 M50 20 L60 10 M50 80 L40 90 M50 80 L60 90 M30 40 L20 30 M30 40 L20 50 M70 60 L80 70 M70 60 L80 50' stroke='%23ffffff' stroke-width='1' fill='none'/%3E%3C/g%3E%3C/svg%3E"),
+    /* Medium snowflakes */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23ffffff' fill-opacity='0.2'%3E%3Cpath d='M50 30 L50 70 M35 40 L65 60 M65 40 L35 60 M50 35 L45 30 M50 35 L55 30 M50 65 L45 70 M50 65 L55 70' stroke='%23ffffff' stroke-width='0.5' fill='none'/%3E%3C/g%3E%3C/svg%3E"),
+    /* Tiny snowflakes - spinning */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60'%3E%3Cg fill='%23ffffff' fill-opacity='0.15'%3E%3Cpath d='M30 21 L30 39 M21 25.5 L39 34.5 M39 25.5 L21 34.5 M30 23 L28 21 M30 23 L32 21 M30 37 L28 39 M30 37 L32 39' stroke='%23ffffff' stroke-width='0.5' fill='none'/%3E%3CanimateTransform attributeName='transform' type='rotate' values='0 30 30;360 30 30' dur='8s' repeatCount='indefinite'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  background-size: 100px 100px, 100px 100px, 60px 60px, 100% 100%;
+  background-position: 0 0, 50px 50px, 15px 45px, 0 0;
+  animation: snowfall 15s linear infinite;
+  border: 1px solid #90caf9;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.15);
+}
+
+@keyframes snowfall {
+  0% {
+    background-position: 0 0, 50px 50px, 15px 45px, 0 0;
+  }
+  100% {
+    background-position: 0 75px, 50px 600px, 15px 360px, 0 0;
+  }
+}
+
+.kanban-column.ice-column .column-header {
+  background: transparent !important;
+  color: #1565c0;
+  border-bottom: 1px solid rgba(144, 202, 249, 0.5);
+}
+
+.ice-column .column-content {
+  background: transparent;
+}
+
 .column-header {
   padding: 6px;
   font-weight: bold;
@@ -125,6 +172,37 @@ const getSectionKey = (section) => {
 
 .done-column .column-header {
   background-color: #f1e2e4;
+}
+
+.column-title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.on-ice-badge {
+  background: linear-gradient(45deg, #ffffff 0%, #e3f2fd 100%);
+  color: #1976d2;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 12px;
+  border: 1px solid #2196f3;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 1px 3px rgba(33, 150, 243, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ice-icon {
+  animation: snowflake-spin 8s linear infinite;
+}
+
+@keyframes snowflake-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .column-content {

@@ -195,7 +195,7 @@ describe('TodoMdParser', () => {
       const data = parseTodoMdFile(content)
       const sections = getAllSections(data)
       
-      // New parser doesn't use on_ice property, ICE maps to TODO
+      // ICE columns should be mapped to TODO visual column
       expect(data.columnStacks.ICE.visualColumn).toBe('TODO')
       expect(data.columnStacks.ICE.sections).toHaveLength(1)
       expect(data.columnStacks.TODO.sections).toHaveLength(1)
