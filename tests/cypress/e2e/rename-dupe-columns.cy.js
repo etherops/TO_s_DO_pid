@@ -1,15 +1,4 @@
 describe('Partitioned File Columns', () => {
-    beforeEach(() => {
-        // Visit the app
-        cy.visit('/')
-        
-        // Click on the "example" tab
-        cy.contains('.file-tab', 'example').click()
-        
-        // Verify the tab is active
-        cy.contains('.file-tab', 'example').should('have.class', 'active')
-    })
-
     it('should renamed duplicated TODO column from file as TODO-2', () => {
         // The TODO stack should have multiple columns
         cy.get('.column-stack').eq(0).within(() => {

@@ -26,7 +26,6 @@
 
 # WIP
 ### In Progress
-* [ ] hide raw text by default
 * [ ] collapsible/hidable DONE
 * [ ] details is a pop up instead of "expand card"
 * [ ] VIEW: Auto sort tasks by status
@@ -36,6 +35,7 @@
 
 # ARCHIVE
 ### Just done
+* [x] hide raw text by default
 * [x] purge existing on-ice feature, but bring it back
 * [x] refactor column, fileColumn -> columnStack, column
 * [x] PARSE: non destructive write-backj aka save unparsed lines

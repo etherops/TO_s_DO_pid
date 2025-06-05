@@ -1,19 +1,37 @@
 <!-- components/FileTabBar.vue -->
 <template>
-  <div class="file-tabs">
-    <div class="logo-container">
-      <img src="../assets/favicon.svg" alt="Logo" class="app-logo">
+  <div class="file-tabs-container">
+    <div class="file-tabs">
+      <div class="logo-container">
+        <img src="../assets/favicon.svg" alt="Logo" class="app-logo">
+      </div>
+      <div class="app-title">TO_s_DO_pid</div>
+      <div
+          v-for="file in availableFiles"
+          :key="file.name"
+          :class="['file-tab', 'server-tab', { active: selectedFile.name === file.name }, { 'custom-file': file.isCustom }]"
+          @click="$emit('file-selected', file)"
+          :title="file.name + (file.isCustom ? ' (Custom)' : '')"
+      >
+        {{ formatTabName(file.name) }}
+        <span v-if="file.isCustom" class="custom-badge">Custom</span>
+      </div>
     </div>
-    <div class="app-title">TO_s_DO_pid</div>
-    <div
-        v-for="file in availableFiles"
-        :key="file.name"
-        :class="['file-tab', 'server-tab', { active: selectedFile.name === file.name }, { 'custom-file': file.isCustom }]"
-        @click="$emit('file-selected', file)"
-        :title="file.name + (file.isCustom ? ' (Custom)' : '')"
-    >
-      {{ formatTabName(file.name) }}
-      <span v-if="file.isCustom" class="custom-badge">Custom</span>
+    <div class="raw-text-toggle-container">
+      <label class="toggle-switch" :class="{ disabled: unparsedLineCount === 0 }">
+        <input
+            type="checkbox"
+            class="raw-text-toggle"
+            :disabled="unparsedLineCount === 0"
+            :checked="showRawText"
+            @change="$emit('toggle-raw-text')"
+        />
+        <span class="slider"></span>
+        <span class="toggle-label">
+          {{ showRawText ? 'Hide' : 'Show' }} raw text
+          <span v-if="unparsedLineCount > 0">({{ unparsedLineCount }} lines)</span>
+        </span>
+      </label>
     </div>
   </div>
 </template>
@@ -27,10 +45,18 @@ defineProps({
   selectedFile: {
     type: Object,
     default: () => ({ name: '', isCustom: false })
+  },
+  unparsedLineCount: {
+    type: Number,
+    default: 0
+  },
+  showRawText: {
+    type: Boolean,
+    default: false
   }
 });
 
-defineEmits(['file-selected']);
+defineEmits(['file-selected', 'toggle-raw-text']);
 
 // Format tab name by removing .todo.md extension and replacing underscores with spaces
 const formatTabName = (filename) => {
@@ -41,6 +67,15 @@ const formatTabName = (filename) => {
 </script>
 
 <style scoped>
+.file-tabs-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  margin-top: 5px;
+}
+
 .logo-container {
   display: flex;
   align-items: center;
@@ -68,10 +103,8 @@ const formatTabName = (filename) => {
 .file-tabs {
   display: flex;
   overflow-x: auto;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
   padding: 0 20px;
-  margin-top: 5px;
+  flex: 1;
 }
 
 .file-tab {
@@ -148,5 +181,69 @@ const formatTabName = (filename) => {
   border-radius: 10px;
   margin-left: 5px;
   font-weight: normal;
+}
+
+.raw-text-toggle-container {
+  padding: 0 20px;
+}
+
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.toggle-switch.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.raw-text-toggle {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+  background-color: #ccc;
+  border-radius: 20px;
+  transition: background-color 0.2s ease;
+  margin-right: 8px;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+}
+
+.raw-text-toggle:checked + .slider {
+  background-color: #4caf50;
+}
+
+.raw-text-toggle:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.raw-text-toggle:disabled + .slider {
+  background-color: #ddd;
+}
+
+.toggle-label {
+  color: #555;
 }
 </style>

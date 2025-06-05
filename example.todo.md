@@ -4,18 +4,18 @@ raw text line before the first column WINDSTORM
 raw texts line between column and section SPARKLE
 
 ## TO DO
-* [ ] PROJECT - Mountain trip planning !!( Due May 16)
 * [ ] WORK - Follow up with client
+* [ ] PROJECT - Mountain trip planning !!( Due May 16)
 raw text line in a section SUPERCATS
 * malformed raw text do do line in a section BADBOYS
 #### this is also raw text GIGGLEGIGGLE
 
+## HOBBY
+* [~] HOBBY - RSVP for local event
+
 ## PROJECTS
 * [~] SOCIAL - Event coordination for friends !!(Jun 1)
 * [ ] PROJECT - Outdoor activities (Check mobile breakpoints)
-
-## HOBBY
-* [~] HOBBY - RSVP for local event
 
 ## HELPER
 * [ ] HOME - Garden maintenance

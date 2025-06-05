@@ -85,6 +85,7 @@
       >
         <template #item="{ element: item }">
           <TaskCard
+              v-if="showRawText || item.type !== 'raw-text'"
               :task="item"
               :section="section"
               :is-on-ice="columnData.on_ice || false"
@@ -93,7 +94,7 @@
           />
         </template>
       </draggable>
-      <div v-if="section.items.length === 0" class="empty-section">
+      <div v-if="visibleItemsCount === 0" class="empty-section">
         No items
       </div>
     </div>
@@ -122,6 +123,10 @@ const props = defineProps({
   columnData: {
     type: Object,
     default: () => ({})
+  },
+  showRawText: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -129,6 +134,15 @@ const emit = defineEmits(['task-updated', 'section-updated', 'show-date-picker']
 
 // Computed properties
 const isRawTextSection = computed(() => props.section.type === 'raw-text');
+
+// Count visible items for empty section display
+const visibleItemsCount = computed(() => {
+  if (props.showRawText) {
+    return (props.section.items || []).length;
+  }
+  // Count non-raw-text items when showRawText is false
+  return (props.section.items || []).filter(item => item.type !== 'raw-text').length;
+});
 
 // Section editing state
 const isEditingSection = ref(false);

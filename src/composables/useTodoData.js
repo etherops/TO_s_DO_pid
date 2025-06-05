@@ -11,6 +11,7 @@ export function useTodoData() {
     const availableFiles = ref([]);
     const selectedFile = ref({ name: '', isCustom: false });
     const parsingError = ref('');
+    const showRawText = ref(false);
 
     // Load available text files from the server
     const loadAvailableFiles = async () => {
@@ -123,6 +124,7 @@ export function useTodoData() {
         availableFiles,
         selectedFile,
         parsingError,
+        showRawText,
         loadAvailableFiles,
         loadTodoData,
         persistTodoData,

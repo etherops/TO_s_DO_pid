@@ -32,6 +32,7 @@
             :can-add-section="true"
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
+            :show-raw-text="props.showRawText"
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -52,6 +53,7 @@
             :can-add-section="true"
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
+            :show-raw-text="props.showRawText"
             @add-section="createNewSection('WIP', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -72,6 +74,7 @@
             :can-add-section="false"
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
+            :show-raw-text="props.showRawText"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
@@ -92,6 +95,10 @@ const props = defineProps({
   todoData: {
     type: Object,
     default: () => ({ columnOrder: [], columnStacks: {} })
+  },
+  showRawText: {
+    type: Boolean,
+    default: false
   }
 });
 

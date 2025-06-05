@@ -4,7 +4,10 @@
     <FileTabBar
         :available-files="availableFiles"
         :selected-file="selectedFile"
+        :unparsed-line-count="unparsedLineCount"
+        :show-raw-text="showRawText"
         @file-selected="handleFileChange"
+        @toggle-raw-text="toggleRawText"
     />
 
     <div v-if="parsingError" class="error-message">
@@ -18,13 +21,14 @@
     <KanbanBoard
         v-else
         :todo-data="todoData"
+        :show-raw-text="showRawText"
         @update="persistTodoData"
     />
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, computed } from 'vue';
 import FileTabBar from './components/FileTabBar.vue';
 import KanbanBoard from './components/KanbanBoard.vue';
 import { useTodoData } from './composables/useTodoData';
@@ -35,11 +39,49 @@ const {
   availableFiles,
   selectedFile,
   parsingError,
+  showRawText,
   loadAvailableFiles,
   loadTodoData,
   persistTodoData,
   handleFileChange
 } = useTodoData();
+
+const toggleRawText = () => {
+  showRawText.value = !showRawText.value;
+};
+
+// Calculate unparsed line count in view layer
+const unparsedLineCount = computed(() => {
+  let count = 0;
+  
+  // Count raw-text column stacks
+  todoData.value.columnOrder?.forEach(columnName => {
+    const columnStackData = todoData.value.columnStacks[columnName];
+    if (columnStackData?.type === 'raw-text') {
+      count++;
+    }
+  });
+  
+  // Count raw-text sections and items within sections
+  todoData.value.columnOrder?.forEach(columnName => {
+    const columnStackData = todoData.value.columnStacks[columnName];
+    if (columnStackData?.sections) {
+      columnStackData.sections.forEach(section => {
+        if (section.type === 'raw-text') {
+          count++;
+        } else if (section.items) {
+          section.items.forEach(item => {
+            if (item.type === 'raw-text') {
+              count++;
+            }
+          });
+        }
+      });
+    }
+  });
+  
+  return count;
+});
 
 onMounted(async () => {
   await loadAvailableFiles();

@@ -1,21 +1,13 @@
 describe('Raw Text Handling', () => {
-  before(() => {
-    cy.backupTodoFile();
-  });
-
   beforeEach(() => {
     cy.visit('/');
     cy.contains('TO_s_DO_pid').should('be.visible');
     cy.contains('.file-tab', 'example').click();
     cy.wait(500); // Allow data to load
-  });
 
-  afterEach(() => {
-    cy.restoreTodoFile();
-  });
-
-  after(() => {
-    cy.restoreTodoFile();
+    // Enable raw text visibility
+    cy.get('.toggle-switch').click();
+    cy.wait(100);
   });
 
   it('should display raw text before first column as raw-text stacking column', () => {
@@ -102,6 +94,10 @@ describe('Raw Text Handling', () => {
     // Click the example tab again
     cy.contains('.file-tab', 'example').click();
     cy.wait(500);
+    
+    // Enable raw text visibility again (it resets after refresh)
+    cy.get('.toggle-switch').click();
+    cy.wait(100);
     
     // Verify all raw text is still displayed correctly after reload
     cy.get('.raw-text-column').contains('WINDSTORM').should('exist');
