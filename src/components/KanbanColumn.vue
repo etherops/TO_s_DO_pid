@@ -60,7 +60,7 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  fileColumn: {
+  column: {
     type: String,
     default: null
   },

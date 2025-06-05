@@ -1,6 +1,6 @@
 # TODO
-
 ## Quick Features
+* [ ] hover preview is a tool tip
 * [ ] collapsible/hidable DONE
 * [ ] details is a pop up instead of "expand card"
 * [ ] VIEW - sortable tabs
@@ -28,18 +28,15 @@
 * [ ] DELETE - undo
 
 # WIP
-
 ### In Progress
 * [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
-* [ ] hover preview is a tool tip
 * [ ] purge existing hidden and on-ice feature, but bring it back
-* [ ] refactor column, fileColumn -> columnStack, column
 * [ ] display note preview inline
 * [ ] custom file again, or multiple custom directories
 
 # ARCHIVE
-
 ### Just done
+* [x] refactor column, fileColumn -> columnStack, column
 * [x] PARSE: non destructive write-backj aka save unparsed lines
 * [x] drop and drop conflation between task/section
 * [x] refactor: move creating visual column in parser

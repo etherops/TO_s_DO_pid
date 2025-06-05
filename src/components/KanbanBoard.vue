@@ -23,15 +23,15 @@
 
     <!-- TODO Columns -->
     <div class="column-stack">
-      <template v-for="columnName in props.todoData.fileColumnOrder" :key="`todo-${columnName}`">
+      <template v-for="columnName in props.todoData.columnOrder" :key="`todo-${columnName}`">
         <KanbanColumn
-            v-if="props.todoData.columns[columnName]?.visualColumn === 'TODO'"
+            v-if="props.todoData.columnStacks[columnName]?.visualColumn === 'TODO'"
             column-type="TODO"
             :title="columnName"
-            :sections="props.todoData.columns[columnName].sections"
+            :sections="props.todoData.columnStacks[columnName].sections"
             :can-add-section="true"
-            :file-column="columnName"
-            :column-data="props.todoData.columns[columnName]"
+            :column="columnName"
+            :column-data="props.todoData.columnStacks[columnName]"
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -43,15 +43,15 @@
 
     <!-- WIP Columns -->
     <div class="column-stack">
-      <template v-for="columnName in props.todoData.fileColumnOrder" :key="`wip-${columnName}`">
+      <template v-for="columnName in props.todoData.columnOrder" :key="`wip-${columnName}`">
         <KanbanColumn
-            v-if="props.todoData.columns[columnName]?.visualColumn === 'WIP'"
+            v-if="props.todoData.columnStacks[columnName]?.visualColumn === 'WIP'"
             column-type="WIP"
             :title="columnName"
-            :sections="props.todoData.columns[columnName].sections"
+            :sections="props.todoData.columnStacks[columnName].sections"
             :can-add-section="true"
-            :file-column="columnName"
-            :column-data="props.todoData.columns[columnName]"
+            :column="columnName"
+            :column-data="props.todoData.columnStacks[columnName]"
             @add-section="createNewSection('WIP', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -63,15 +63,15 @@
 
     <!-- DONE Columns -->
     <div class="column-stack">
-      <template v-for="columnName in props.todoData.fileColumnOrder" :key="`done-${columnName}`">
+      <template v-for="columnName in props.todoData.columnOrder" :key="`done-${columnName}`">
         <KanbanColumn
-            v-if="props.todoData.columns[columnName]?.visualColumn === 'DONE'"
+            v-if="props.todoData.columnStacks[columnName]?.visualColumn === 'DONE'"
             column-type="DONE"
             :title="columnName"
-            :sections="props.todoData.columns[columnName].sections"
+            :sections="props.todoData.columnStacks[columnName].sections"
             :can-add-section="false"
-            :file-column="columnName"
-            :column-data="props.todoData.columns[columnName]"
+            :column="columnName"
+            :column-data="props.todoData.columnStacks[columnName]"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
@@ -91,7 +91,7 @@ import ArchiveColumnPicker from './ArchiveColumnPicker.vue';
 const props = defineProps({
   todoData: {
     type: Object,
-    default: () => ({ fileColumnOrder: [], columns: {} })
+    default: () => ({ columnOrder: [], columnStacks: {} })
   }
 });
 
@@ -107,15 +107,15 @@ const archiveChoice = ref(null);
 
 
 
-// Create a new section in the specified column
-const createNewSection = (column, fileColumn = null) => {
+// Create a new section in the specified columnStack
+const createNewSection = (columnStack, column = null) => {
   let sectionNumber = 1;
   let sectionName = `New Section ${sectionNumber}`;
 
   // Check for existing sections in nested structure
   const allExistingSections = [];
-  props.todoData.fileColumnOrder.forEach(columnName => {
-    const columnData = props.todoData.columns[columnName];
+  props.todoData.columnOrder.forEach(columnName => {
+    const columnData = props.todoData.columnStacks[columnName];
     if (columnData && columnData.sections) {
       allExistingSections.push(...columnData.sections);
     }
@@ -126,40 +126,40 @@ const createNewSection = (column, fileColumn = null) => {
     sectionName = `New Section ${sectionNumber}`;
   }
 
-  // If no fileColumn specified, use the first one for this column type
-  if (!fileColumn) {
-    // Find the first column that matches the desired visual column type
-    const matchingColumn = props.todoData.fileColumnOrder.find(columnName => {
-      const columnData = props.todoData.columns[columnName];
-      return columnData && columnData.visualColumn === column;
+  // If no column specified, use the first one for this columnStack type
+  if (!column) {
+    // Find the first columnStack that matches the desired visual columnStack type
+    const matchingColumnStack = props.todoData.columnOrder.find(columnName => {
+      const columnData = props.todoData.columnStacks[columnName];
+      return columnData && columnData.visualColumn === columnStack;
     });
-    fileColumn = matchingColumn || column;
+    column = matchingColumnStack || columnStack;
   }
 
   const newSection = {
     name: sectionName,
-    headerStyle: column === 'WIP' ? 'SMALL' : 'LARGE',
-    archivable: column === 'WIP',
+    headerStyle: columnStack === 'WIP' ? 'SMALL' : 'LARGE',
+    archivable: columnStack === 'WIP',
     on_ice: false,
     items: [],
     isNew: true
   };
 
   // Add to nested structure
-  if (!props.todoData.columns[fileColumn]) {
-    const visualColumn = column === 'TODO' ? 'TODO' : column === 'WIP' ? 'WIP' : 'DONE';
-    props.todoData.columns[fileColumn] = {
+  if (!props.todoData.columnStacks[column]) {
+    const visualColumn = columnStack === 'TODO' ? 'TODO' : columnStack === 'WIP' ? 'WIP' : 'DONE';
+    props.todoData.columnStacks[column] = {
       visualColumn: visualColumn,
       sections: []
     };
-    props.todoData.fileColumnOrder.push(fileColumn);
+    props.todoData.columnOrder.push(column);
   }
 
-  // Insert at beginning for TODO columns, end for WIP columns
-  if (column === 'TODO') {
-    props.todoData.columns[fileColumn].sections.unshift(newSection);
+  // Insert at beginning for TODO columnStacks, end for WIP columnStacks
+  if (columnStack === 'TODO') {
+    props.todoData.columnStacks[column].sections.unshift(newSection);
   } else {
-    props.todoData.columns[fileColumn].sections.push(newSection);
+    props.todoData.columnStacks[column].sections.push(newSection);
   }
 
   emit('update');
@@ -174,8 +174,8 @@ const handleTaskUpdate = () => {
 const getDoneFileColumns = () => {
   // Use nested structure from todoData
   const doneColumns = [];
-  props.todoData.fileColumnOrder.forEach(columnName => {
-    const columnData = props.todoData.columns[columnName];
+  props.todoData.columnOrder.forEach(columnName => {
+    const columnData = props.todoData.columnStacks[columnName];
     if (columnData && columnData.visualColumn === 'DONE') {
       doneColumns.push(columnName);
     }
@@ -184,9 +184,9 @@ const getDoneFileColumns = () => {
 };
 
 // Archive a section in the nested structure
-const archiveSectionInNestedStructure = (section, sourceFileColumn, targetColumn) => {
+const archiveSectionInNestedStructure = (section, sourceColumn, targetColumn) => {
   // Remove from source column
-  const sourceColumnData = props.todoData.columns[sourceFileColumn];
+  const sourceColumnData = props.todoData.columnStacks[sourceColumn];
   if (sourceColumnData && sourceColumnData.sections) {
     const sectionIndex = sourceColumnData.sections.indexOf(section);
     if (sectionIndex !== -1) {
@@ -199,15 +199,15 @@ const archiveSectionInNestedStructure = (section, sourceFileColumn, targetColumn
   section.headerStyle = 'SMALL';
   
   // Add to target column at the beginning (newest archives go to top)
-  if (!props.todoData.columns[targetColumn]) {
-    props.todoData.columns[targetColumn] = {
+  if (!props.todoData.columnStacks[targetColumn]) {
+    props.todoData.columnStacks[targetColumn] = {
       visualColumn: 'DONE',
       sections: []
     };
-    props.todoData.fileColumnOrder.push(targetColumn);
+    props.todoData.columnOrder.push(targetColumn);
   }
   
-  props.todoData.columns[targetColumn].sections.unshift(section);
+  props.todoData.columnStacks[targetColumn].sections.unshift(section);
 };
 
 
@@ -216,8 +216,8 @@ const handleSectionUpdate = (payload) => {
   if (payload && payload.action === 'delete') {
     // Find and delete the section from nested structure
     // Search through all columns to find the section
-    for (const columnName of props.todoData.fileColumnOrder) {
-      const columnData = props.todoData.columns[columnName];
+    for (const columnName of props.todoData.columnOrder) {
+      const columnData = props.todoData.columnStacks[columnName];
       if (columnData && columnData.sections) {
         const sectionIndex = columnData.sections.findIndex(s => s.name === payload.sectionName);
         if (sectionIndex !== -1) {
@@ -231,16 +231,16 @@ const handleSectionUpdate = (payload) => {
     // Handle section archiving
     // Find section in nested structure
     let sectionToArchive = null;
-    let sourceFileColumn = null;
+    let sourceColumn = null;
     
     // Search through all columns to find the section
-    for (const columnName of props.todoData.fileColumnOrder) {
-      const columnData = props.todoData.columns[columnName];
+    for (const columnName of props.todoData.columnOrder) {
+      const columnData = props.todoData.columnStacks[columnName];
       if (columnData && columnData.sections) {
         const section = columnData.sections.find(s => s.name === payload.sectionName);
         if (section) {
           sectionToArchive = section;
-          sourceFileColumn = columnName;
+          sourceColumn = columnName;
           break;
         }
       }
@@ -257,14 +257,14 @@ const handleSectionUpdate = (payload) => {
           sectionName: payload.sectionName,
           availableColumns: doneColumns,
           section: sectionToArchive,
-          sourceFileColumn: sourceFileColumn
+          sourceColumn: sourceColumn
         };
         return; // Don't update yet, wait for user choice
       }
 
       // Determine target column based on existing DONE columns
       targetColumn = (doneColumns.length === 1) ? doneColumns[0] : 'ARCHIVE';
-      archiveSectionInNestedStructure(sectionToArchive, sourceFileColumn, targetColumn);
+      archiveSectionInNestedStructure(sectionToArchive, sourceColumn, targetColumn);
     }
   }
 
@@ -274,10 +274,10 @@ const handleSectionUpdate = (payload) => {
 
 // Handle archive column selection
 const handleArchiveColumnSelect = (targetColumn) => {
-  if (archiveChoice.value && archiveChoice.value.section && archiveChoice.value.sourceFileColumn) {
+  if (archiveChoice.value && archiveChoice.value.section && archiveChoice.value.sourceColumn) {
     archiveSectionInNestedStructure(
       archiveChoice.value.section, 
-      archiveChoice.value.sourceFileColumn, 
+      archiveChoice.value.sourceColumn, 
       targetColumn
     );
     emit('update');
@@ -307,8 +307,8 @@ const closeDatePicker = () => {
 const handleDateConfirm = ({ taskId, date }) => {
   // Find the task across all sections in nested structure
   let task = null;
-  for (const columnName of props.todoData.fileColumnOrder) {
-    const columnData = props.todoData.columns[columnName];
+  for (const columnName of props.todoData.columnOrder) {
+    const columnData = props.todoData.columnStacks[columnName];
     if (columnData && columnData.sections) {
       for (const section of columnData.sections) {
         const found = section.items.find(item => item.id === taskId);
@@ -348,8 +348,8 @@ const handleDateConfirm = ({ taskId, date }) => {
 const handleDateClear = ({ taskId }) => {
   // Find the task across all sections in nested structure
   let task = null;
-  for (const columnName of props.todoData.fileColumnOrder) {
-    const columnData = props.todoData.columns[columnName];
+  for (const columnName of props.todoData.columnOrder) {
+    const columnData = props.todoData.columnStacks[columnName];
     if (columnData && columnData.sections) {
       for (const section of columnData.sections) {
         const found = section.items.find(item => item.id === taskId);

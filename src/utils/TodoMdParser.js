@@ -1,20 +1,20 @@
 import { getStrippedDisplayText } from './noteHelpers';
 
-// Column mapping to visual columns in the UI
-const COLUMN_CATEGORIES = {
+// ColumnStack mapping to visual columns in the UI
+const COLUMNSTACK_CATEGORIES = {
   TODO: ['TODO', 'BACKLOG', 'INBOX', 'LATER', 'SOMEDAY', 'IDEAS', 'ICE'],
   WIP: ['WIP', 'SCHEDULED', 'IN PROGRESS', 'IN-PROGRESS', 'DOING', 'CURRENT', 'ACTIVE', 'ONGOING'],
   DONE: ['DONE', 'COMPLETE', 'COMPLETED', 'ARCHIVE', 'FINISHED', 'RESOLVED']
 };
 
-// Helper to map H1 column names to visual columns (TODO/WIP/DONE)
-function mapColumnToVisualColumn(columnName) {
-  const upperName = columnName.toUpperCase();
+// Helper to map H1 columnStack names to visual columns (TODO/WIP/DONE)
+function mapColumnStackToVisualColumn(columnStackName) {
+  const upperName = columnStackName.toUpperCase();
   
-  // Check each column category
-  for (const [column, keywords] of Object.entries(COLUMN_CATEGORIES)) {
+  // Check each columnStack category
+  for (const [columnStack, keywords] of Object.entries(COLUMNSTACK_CATEGORIES)) {
     if (keywords.some(keyword => upperName.includes(keyword))) {
-      return column;
+      return columnStack;
     }
   }
   
@@ -25,13 +25,13 @@ function mapColumnToVisualColumn(columnName) {
 /**
  * Parses a todo markdown file into structured data
  * @param {string} fileContent - The content of the todo markdown file
- * @returns {Object} Nested structure with fileColumnOrder and columns
+ * @returns {Object} Nested structure with columnOrder and columnStacks
  * 
  * File format:
- * - H1 (#) defines columns (e.g., # TODO, # SCHEDULED, # ARCHIVE)
+ * - H1 (#) defines columnStacks (e.g., # TODO, # SCHEDULED, # ARCHIVE)
  * - H2 (##) defines large sections within columns
  * - H3 (###) defines small sections within columns
- * - Columns are mapped to visual columns (TODO/WIP/DONE) based on keywords
+ * - ColumnStacks are mapped to visual columns (TODO/WIP/DONE) based on keywords
  * - Any unparsable lines become "raw-text" items within sections
  */
 export function parseTodoMdFile(fileContent) {
@@ -40,20 +40,20 @@ export function parseTodoMdFile(fileContent) {
 
   if (!fileContent) {
     console.error('Empty file content provided to parser');
-    return { fileColumnOrder: [], columns: {} };
+    return { columnOrder: [], columnStacks: {} };
   }
 
   const lines = fileContent.split('\n');
   console.log('Number of lines:', lines.length);
 
-  // Object to store sections organized by file column
-  const fileColumns = new Map();  // Map<columnName, {visualColumn, sections}>
+  // Object to store sections organized by columnStack
+  const columnStacks = new Map();  // Map<columnStackName, {visualColumn, sections}>
   
-  // Track seen column names to handle duplicates
-  const seenColumns = new Set();
+  // Track seen columnStack names to handle duplicates
+  const seenColumnStacks = new Set();
 
   // Track current parsing context
-  let currentColumn = null;  // Current H1 column we're in
+  let currentColumnStack = null;  // Current H1 columnStack we're in
   let currentSection = null; // Current H2/H3 section we're in
   let itemId = 1;
 
@@ -73,9 +73,9 @@ export function parseTodoMdFile(fileContent) {
       newSection.archivable = true;
     }
     
-    // Add section to current column
-    if (currentColumn && fileColumns.has(currentColumn)) {
-      fileColumns.get(currentColumn).sections.push(newSection);
+    // Add section to current columnStack
+    if (currentColumnStack && columnStacks.has(currentColumnStack)) {
+      columnStacks.get(currentColumnStack).sections.push(newSection);
     }
     
     return newSection;
@@ -95,29 +95,29 @@ export function parseTodoMdFile(fileContent) {
       id: itemId++
     };
     
-    // Add to current column
-    if (currentColumn && fileColumns.has(currentColumn)) {
-      fileColumns.get(currentColumn).sections.push(rawTextSection);
+    // Add to current columnStack
+    if (currentColumnStack && columnStacks.has(currentColumnStack)) {
+      columnStacks.get(currentColumnStack).sections.push(rawTextSection);
     }
     
     return rawTextSection;
   };
 
-  // Helper to create a raw-text column from a single line (for lines before first H1)
-  const createRawTextColumn = (line, lineIndex) => {
-    const columnName = `raw-text-${itemId++}`;
+  // Helper to create a raw-text columnStack from a single line (for lines before first H1)
+  const createRawTextColumnStack = (line, lineIndex) => {
+    const columnStackName = `raw-text-${itemId++}`;
     
-    // Create a raw-text column - the COLUMN itself is raw-text, not containing sections
-    fileColumns.set(columnName, {
-      visualColumn: 'TODO', // Raw-text columns display in TODO stack
-      type: 'raw-text', // The column itself is raw-text
+    // Create a raw-text columnStack - the COLUMNSTACK itself is raw-text, not containing sections
+    columnStacks.set(columnStackName, {
+      visualColumn: 'TODO', // Raw-text columnStacks display in TODO stack
+      type: 'raw-text', // The columnStack itself is raw-text
       text: line,  // Store the full line including indentation
       displayText: line.trim(),  // For display purposes
       lineIndex: lineIndex,
-      sections: [] // Raw-text columns have no sections
+      sections: [] // Raw-text columnStacks have no sections
     });
     
-    return columnName;
+    return columnStackName;
   };
 
   // Parse the lines
@@ -130,32 +130,32 @@ export function parseTodoMdFile(fileContent) {
       continue;
     }
 
-    // H1 - Column header (# COLUMN_NAME)
+    // H1 - ColumnStack header (# COLUMNSTACK_NAME)
     if (trimmedLine.match(/^# /)) {
-      let columnName = trimmedLine.substring(2).trim();
+      let columnStackName = trimmedLine.substring(2).trim();
       
-      // Handle duplicate column names
-      if (seenColumns.has(columnName)) {
+      // Handle duplicate columnStack names
+      if (seenColumnStacks.has(columnStackName)) {
         let counter = 2;
-        while (seenColumns.has(`${columnName}-${counter}`)) {
+        while (seenColumnStacks.has(`${columnStackName}-${counter}`)) {
           counter++;
         }
-        columnName = `${columnName}-${counter}`;
-        console.log(`Duplicate column renamed: ${trimmedLine.substring(2).trim()} -> ${columnName}`);
+        columnStackName = `${columnStackName}-${counter}`;
+        console.log(`Duplicate columnStack renamed: ${trimmedLine.substring(2).trim()} -> ${columnStackName}`);
       }
-      seenColumns.add(columnName);
+      seenColumnStacks.add(columnStackName);
       
-      currentColumn = columnName;
+      currentColumnStack = columnStackName;
       
-      // Initialize the file column if it doesn't exist
-      if (!fileColumns.has(currentColumn)) {
-        fileColumns.set(currentColumn, {
-          visualColumn: mapColumnToVisualColumn(currentColumn),
+      // Initialize the file columnStack if it doesn't exist
+      if (!columnStacks.has(currentColumnStack)) {
+        columnStacks.set(currentColumnStack, {
+          visualColumn: mapColumnStackToVisualColumn(currentColumnStack),
           sections: []
         });
       }
       
-      // H1 headers are column markers, not sections
+      // H1 headers are columnStack markers, not sections
       // Reset current section
       currentSection = null;
       continue;
@@ -201,14 +201,14 @@ export function parseTodoMdFile(fileContent) {
 
     // Any line that doesn't match our expected format becomes an raw-text item
     if (!currentSection) {
-      // If we have a current column but no section, this is a column-level raw-text section
-      if (currentColumn) {
+      // If we have a current columnStack but no section, this is a columnStack-level raw-text section
+      if (currentColumnStack) {
         createRawTextSection(line, i);
-        console.log(`Added column-level raw-text section at line ${i + 1}: "${line.trim()}"`);
+        console.log(`Added columnStack-level raw-text section at line ${i + 1}: "${line.trim()}"`);
       } else {
-        // No current column - this is a raw-text line before the first column
-        createRawTextColumn(line, i);
-        console.log(`Added raw-text column for line ${i + 1}: "${line.trim()}"`);
+        // No current columnStack - this is a raw-text line before the first columnStack
+        createRawTextColumnStack(line, i);
+        console.log(`Added raw-text columnStack for line ${i + 1}: "${line.trim()}"`);
       }
       continue;
     }
@@ -225,67 +225,67 @@ export function parseTodoMdFile(fileContent) {
     console.log(`Added section-level raw-text at line ${i + 1}: "${line.trim()}"`);
   }
 
-  console.log('Parsed file columns:', Array.from(fileColumns.keys()));
+  console.log('Parsed file columnStacks:', Array.from(columnStacks.keys()));
   
   // Convert Map to the expected structure
-  const fileColumnOrder = Array.from(fileColumns.keys());
-  const columns = {};
+  const columnOrder = Array.from(columnStacks.keys());
+  const columnStacksObj = {};
   
-  fileColumns.forEach((columnData, columnName) => {
-    columns[columnName] = columnData;
+  columnStacks.forEach((columnStackData, columnStackName) => {
+    columnStacksObj[columnStackName] = columnStackData;
   });
   
-  console.log('Generated structure:', { fileColumnOrder, columns });
+  console.log('Generated structure:', { columnOrder, columnStacks: columnStacksObj });
   
   // Return nested structure
   return {
-    fileColumnOrder,
-    columns
+    columnOrder,
+    columnStacks: columnStacksObj
   };
 }
 
 /**
  * Renders sections and items back into todo markdown format
- * @param {Object} data - Nested structure with fileColumnOrder and columns
+ * @param {Object} data - Nested structure with columnOrder and columnStacks
  * @returns {string} The formatted text content of the todo markdown file
  */
 export function renderTodoMdFile(data) {
   console.log('==== RENDERING TODO MD FILE ====');
   
-  if (!data || !data.fileColumnOrder || !data.columns) {
-    console.error('Invalid data provided to render - must have fileColumnOrder and columns');
+  if (!data || !data.columnOrder || !data.columnStacks) {
+    console.error('Invalid data provided to render - must have columnOrder and columnStacks');
     return '';
   }
   
-  const { fileColumnOrder, columns } = data;
-  console.log('File columns:', fileColumnOrder);
+  const { columnOrder, columnStacks } = data;
+  console.log('ColumnStack order:', columnOrder);
 
   const outputLines = [];
   
-  fileColumnOrder.forEach((columnName, columnIndex) => {
-    const columnData = columns[columnName];
-    if (!columnData) return;
+  columnOrder.forEach((columnStackName, columnStackIndex) => {
+    const columnStackData = columnStacks[columnStackName];
+    if (!columnStackData) return;
     
-    // Handle raw-text columns (the column itself is raw-text)
-    if (columnData.type === 'raw-text') {
-      // For raw-text columns, just output the text without any header
-      if (columnIndex > 0) {
+    // Handle raw-text columnStacks (the columnStack itself is raw-text)
+    if (columnStackData.type === 'raw-text') {
+      // For raw-text columnStacks, just output the text without any header
+      if (columnStackIndex > 0) {
         outputLines.push('');
       }
-      outputLines.push(columnData.text);
+      outputLines.push(columnStackData.text);
       return;
     }
     
-    // Regular columns - add spacing between columns
-    if (columnIndex > 0) {
+    // Regular columnStacks - add spacing between columnStacks
+    if (columnStackIndex > 0) {
       outputLines.push('');
     }
     
-    // Render H1 column header
-    outputLines.push(`# ${columnName}`);
+    // Render H1 columnStack header
+    outputLines.push(`# ${columnStackName}`);
     
-    // Render sections in this column
-    columnData.sections.forEach((section, sectionIndex) => {
+    // Render sections in this columnStack
+    columnStackData.sections.forEach((section, sectionIndex) => {
       if (section.type === 'raw-text') {
         // raw-text section - render text directly without section header
         outputLines.push(section.text);

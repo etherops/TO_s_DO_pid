@@ -6,7 +6,7 @@ import { parseTodoMdFile, renderTodoMdFile } from '../utils/TodoMdParser';
 const API_BASE_URL = 'http://localhost:3001/api';
 
 export function useTodoData() {
-    const todoData = ref({ fileColumnOrder: [], columns: {} });
+    const todoData = ref({ columnOrder: [], columnStacks: {} });
     const loading = ref(true);
     const availableFiles = ref([]);
     const selectedFile = ref({ name: '', isCustom: false });
@@ -55,7 +55,7 @@ export function useTodoData() {
             // Handle 404 errors specifically
             if (error.response && error.response.status === 404) {
                 parsingError.value = 'File no longer exists. Please select a different file.';
-                todoData.value = { fileColumnOrder: [], columns: {} };
+                todoData.value = { columnOrder: [], columnStacks: {} };
                 
                 // Clear the saved file from localStorage if it no longer exists
                 localStorage.removeItem('selectedTodoFile');
