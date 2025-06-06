@@ -25,7 +25,7 @@
     <div class="column-stack">
       <template v-for="columnName in props.todoData.columnOrder" :key="`todo-${columnName}`">
         <KanbanColumn
-            v-if="props.todoData.columnStacks[columnName]?.visualColumn === 'TODO'"
+            v-if="props.todoData.columnStacks[columnName]?.name === 'TODO'"
             column-type="TODO"
             :title="columnName"
             :sections="props.todoData.columnStacks[columnName].sections"
@@ -46,7 +46,7 @@
     <div class="column-stack">
       <template v-for="columnName in props.todoData.columnOrder" :key="`wip-${columnName}`">
         <KanbanColumn
-            v-if="props.todoData.columnStacks[columnName]?.visualColumn === 'WIP'"
+            v-if="props.todoData.columnStacks[columnName]?.name === 'WIP'"
             column-type="WIP"
             :title="columnName"
             :sections="props.todoData.columnStacks[columnName].sections"
@@ -67,7 +67,7 @@
     <div class="column-stack">
       <template v-for="columnName in props.todoData.columnOrder" :key="`done-${columnName}`">
         <KanbanColumn
-            v-if="props.todoData.columnStacks[columnName]?.visualColumn === 'DONE'"
+            v-if="props.todoData.columnStacks[columnName]?.name === 'DONE'"
             column-type="DONE"
             :title="columnName"
             :sections="props.todoData.columnStacks[columnName].sections"
@@ -149,7 +149,7 @@ const createNewSection = (columnStack, column = null) => {
     // Find the first columnStack that matches the desired visual columnStack type
     const matchingColumnStack = props.todoData.columnOrder.find(columnName => {
       const columnData = props.todoData.columnStacks[columnName];
-      return columnData && columnData.visualColumn === columnStack;
+      return columnData && columnData.name === columnStack;
     });
     column = matchingColumnStack || columnStack;
   }
@@ -165,9 +165,9 @@ const createNewSection = (columnStack, column = null) => {
 
   // Add to nested structure
   if (!props.todoData.columnStacks[column]) {
-    const visualColumn = columnStack === 'TODO' ? 'TODO' : columnStack === 'WIP' ? 'WIP' : 'DONE';
+    const nameValue = columnStack === 'TODO' ? 'TODO' : columnStack === 'WIP' ? 'WIP' : 'DONE';
     props.todoData.columnStacks[column] = {
-      visualColumn: visualColumn,
+      name: nameValue,
       sections: []
     };
     props.todoData.columnOrder.push(column);
@@ -194,7 +194,7 @@ const getDoneFileColumns = () => {
   const doneColumns = [];
   props.todoData.columnOrder.forEach(columnName => {
     const columnData = props.todoData.columnStacks[columnName];
-    if (columnData && columnData.visualColumn === 'DONE') {
+    if (columnData && columnData.name === 'DONE') {
       doneColumns.push(columnName);
     }
   });
@@ -219,7 +219,7 @@ const archiveSectionInNestedStructure = (section, sourceColumn, targetColumn) =>
   // Add to target column at the beginning (newest archives go to top)
   if (!props.todoData.columnStacks[targetColumn]) {
     props.todoData.columnStacks[targetColumn] = {
-      visualColumn: 'DONE',
+      name: 'DONE',
       sections: []
     };
     props.todoData.columnOrder.push(targetColumn);

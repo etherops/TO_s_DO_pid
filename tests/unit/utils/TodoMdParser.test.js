@@ -60,9 +60,9 @@ describe('TodoMdParser', () => {
       
       // Check the structure organization
       expect(data.columnOrder).toEqual(['TODO', 'SCHEDULED', 'ARCHIVE'])
-      expect(data.columnStacks.TODO.visualColumn).toBe('TODO')
-      expect(data.columnStacks.SCHEDULED.visualColumn).toBe('WIP')
-      expect(data.columnStacks.ARCHIVE.visualColumn).toBe('DONE')
+      expect(data.columnStacks.TODO.name).toBe('TODO')
+      expect(data.columnStacks.SCHEDULED.name).toBe('WIP')
+      expect(data.columnStacks.ARCHIVE.name).toBe('DONE')
     })
 
     it('should handle special H1 format with brackets', () => {
@@ -73,7 +73,7 @@ describe('TodoMdParser', () => {
       const data = parseTodoMdFile(content)
       
       expect(data.columnOrder).toContain('[ ] TODO')  // H1 columnStack name in structure
-      expect(data.columnStacks['[ ] TODO'].visualColumn).toBe('TODO')  // Visual columnStack
+      expect(data.columnStacks['[ ] TODO'].name).toBe('TODO')  // Visual columnStack
       expect(data.columnStacks['[ ] TODO'].sections[0].name).toBe('Tasks')  // Section in correct columnStack
     })
 
@@ -179,7 +179,7 @@ describe('TodoMdParser', () => {
       
       // Check that ARCHIVE columnStack maps to DONE visual columnStack
       expect(data.columnOrder).toContain('ARCHIVE')
-      expect(data.columnStacks.ARCHIVE.visualColumn).toBe('DONE')
+      expect(data.columnStacks.ARCHIVE.name).toBe('DONE')
       expect(data.columnStacks.ARCHIVE.sections[0]).toBe(section)
     })
 
@@ -196,7 +196,7 @@ describe('TodoMdParser', () => {
       const sections = getAllSections(data)
       
       // ICE columns should be mapped to TODO visual column
-      expect(data.columnStacks.ICE.visualColumn).toBe('TODO')
+      expect(data.columnStacks.ICE.name).toBe('TODO')
       expect(data.columnStacks.ICE.sections).toHaveLength(1)
       expect(data.columnStacks.TODO.sections).toHaveLength(1)
       expect(data.columnOrder).toContain('ICE')
@@ -212,7 +212,7 @@ describe('TodoMdParser', () => {
       const sections = getAllSections(data)
       const section = sections[0]
       
-      expect(data.columnStacks.SCHEDULED.visualColumn).toBe('WIP')
+      expect(data.columnStacks.SCHEDULED.name).toBe('WIP')
       expect(section.headerStyle).toBe('SMALL')
       expect(section.archivable).toBe(true)
     })
@@ -236,9 +236,9 @@ describe('TodoMdParser', () => {
       expect(archiveSection).toBeDefined()
       
       // Check that we have sections in different visual columnStacks
-      const todoColumnStacks = data.columnOrder.filter(col => data.columnStacks[col].visualColumn === 'TODO')
-      const wipColumnStacks = data.columnOrder.filter(col => data.columnStacks[col].visualColumn === 'WIP')
-      const doneColumnStacks = data.columnOrder.filter(col => data.columnStacks[col].visualColumn === 'DONE')
+      const todoColumnStacks = data.columnOrder.filter(col => data.columnStacks[col].name === 'TODO')
+      const wipColumnStacks = data.columnOrder.filter(col => data.columnStacks[col].name === 'WIP')
+      const doneColumnStacks = data.columnOrder.filter(col => data.columnStacks[col].name === 'DONE')
       
       expect(todoColumnStacks.length).toBeGreaterThan(0)
       expect(wipColumnStacks.length).toBeGreaterThan(0)
@@ -265,8 +265,8 @@ describe('TodoMdParser', () => {
       // Check they're in the correct columnStacks by structure
       expect(data.columnStacks.TODO.sections[0].name).toBe('BACKLOG')
       expect(data.columnStacks.ARCHIVE.sections[0].name).toBe('BACKLOG')
-      expect(data.columnStacks.TODO.visualColumn).toBe('TODO')
-      expect(data.columnStacks.ARCHIVE.visualColumn).toBe('DONE')
+      expect(data.columnStacks.TODO.name).toBe('TODO')
+      expect(data.columnStacks.ARCHIVE.name).toBe('DONE')
     })
 
     it('should categorize columnStacks correctly', () => {
@@ -291,7 +291,7 @@ describe('TodoMdParser', () => {
 * [ ] Task`
 
         const data = parseTodoMdFile(content)
-        expect(data.columnStacks[name].visualColumn).toBe(expected)
+        expect(data.columnStacks[name].name).toBe(expected)
       })
     })
     it('should preserve unparsable lines as rawText items', () => {
@@ -417,21 +417,21 @@ another raw text line
       // Check the raw-text columnStacks have the correct structure
       const firstColumnStack = data.columnStacks[firstColumnStackName]
       expect(firstColumnStack.type).toBe('raw-text')
-      expect(firstColumnStack.visualColumn).toBe('TODO')
+      expect(firstColumnStack.name).toBe('TODO')
       expect(firstColumnStack.text).toBe('raw text line before any columns')
       expect(firstColumnStack.displayText).toBe('raw text line before any columns')
       expect(firstColumnStack.sections).toEqual([])
       
       const secondColumnStack = data.columnStacks[secondColumnStackName]
       expect(secondColumnStack.type).toBe('raw-text')
-      expect(secondColumnStack.visualColumn).toBe('TODO')
+      expect(secondColumnStack.name).toBe('TODO')
       expect(secondColumnStack.text).toBe('another raw text line')
       expect(secondColumnStack.displayText).toBe('another raw text line')
       expect(secondColumnStack.sections).toEqual([])
       
       // Third should be regular TODO columnStack
       expect(data.columnOrder[2]).toBe('TODO')
-      expect(data.columnStacks.TODO.visualColumn).toBe('TODO')
+      expect(data.columnStacks.TODO.name).toBe('TODO')
       expect(data.columnStacks.TODO.sections).toHaveLength(1)
       expect(data.columnStacks.TODO.sections[0].name).toBe('Section')
     })
