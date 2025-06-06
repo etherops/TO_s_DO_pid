@@ -350,4 +350,30 @@ describe('Notes Feature', () => {
       cy.get('.notes-btn').should('have.attr', 'title', 'Jan 14, follow up about refund');
     });
   });
+
+  it('should display inline note preview', () => {
+    const taskText = 'Garden maintenance';
+
+    // Add a note to the task
+    findTask(taskText).within(() => {
+      cy.get('.notes-btn').click();
+    });
+
+    cy.get('.note-text-edit').type('Check sprinkler system and trim hedges');
+    cy.get('.confirm-edit-btn').click();
+
+    // Verify inline note preview exists and contains text
+    findTask(taskText).within(() => {
+      cy.get('.inline-note-preview').should('exist');
+      cy.get('.inline-note-preview').should('contain', 'Check sprinkler system and trim hedges');
+    });
+
+    // Verify persistence after refresh
+    withRefresh(() => {
+      findTask(taskText).within(() => {
+        cy.get('.inline-note-preview').should('exist');
+        cy.get('.inline-note-preview').should('contain', 'Check sprinkler system and trim hedges');
+      });
+    }, 'Inline note preview persistence');
+  });
 });

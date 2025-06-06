@@ -86,21 +86,26 @@
     </template>
     <template v-else>
       <div class="task-container">
-        <span
-            :class="[
-            'task-title',
-            { 'due-date': task.statusChar !== 'x' && task.statusChar !== '-' && hasDueDate(task.text) },
-            { 'due-past': task.statusChar !== 'x' && task.statusChar !== '-' && isPast(task.text) },
-            { 'due-today': task.statusChar !== 'x' && task.statusChar !== '-' && isToday(task.text) },
-            { 'due-soon': task.statusChar !== 'x' && task.statusChar !== '-' && isSoon(task.text) }
-          ]"
-            :title="task.text"
-            @dblclick="isOnIce ? null : startEditingAll"
-        >
-          {{ task.displayText || task.text }}
-        </span>
+          <span
+              :class="[
+              'task-title',
+              { 'due-date': task.statusChar !== 'x' && task.statusChar !== '-' && hasDueDate(task.text) },
+              { 'due-past': task.statusChar !== 'x' && task.statusChar !== '-' && isPast(task.text) },
+              { 'due-today': task.statusChar !== 'x' && task.statusChar !== '-' && isToday(task.text) },
+              { 'due-soon': task.statusChar !== 'x' && task.statusChar !== '-' && isSoon(task.text) }
+            ]"
+              :title="task.text"
+              @dblclick="isOnIce ? null : startEditingAll"
+          >
+            {{ task.displayText || task.text }}
+          </span>
 
-        <div class="task-buttons-container">
+          <!-- Inline note preview -->
+          <div v-if="hasNote(task.text) && !isEditing" class="inline-note-preview">
+            {{ formatInlineNote(extractNoteFromText(task.text)) }}
+          </div>
+
+          <div class="task-buttons-container">
           <!-- Clock button -->
           <button
               v-if="!isOnIce"
@@ -485,6 +490,22 @@ const handleNewTaskKeydown = (event) => {
   }
 };
 
+// Format note for inline preview - show \n instead of line breaks
+const formatInlineNote = (noteText) => {
+  if (!noteText) return '';
+  
+  // Truncate to reasonable length and show literal \n
+  const maxLength = 60;
+  let formatted = noteText;
+  
+  // If it's too long, truncate with ellipsis
+  if (formatted.length > maxLength) {
+    formatted = formatted.substring(0, maxLength) + '...';
+  }
+  
+  return formatted;
+};
+
 // Process display text on mount if the task is new
 onMounted(() => {
   if (props.task.isNew) nextTick(() => startEditingAll());
@@ -638,7 +659,6 @@ onMounted(() => {
   width: 100%;
   position: relative;
   align-items: flex-start;
-  overflow: hidden;
 }
 
 .task-card:hover .task-container {
@@ -648,14 +668,13 @@ onMounted(() => {
 .task-title {
   margin-left: 8px;
   margin-top: 3px;
-  flex: 1;
+  flex: 0 1 auto;
   white-space: nowrap;
   font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
   position: relative;
   transition: all 0.3s ease;
-  max-width: calc(100% - 110px);
 }
 
 .task-card:hover .task-title {
@@ -663,6 +682,25 @@ onMounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Inline note preview */
+.inline-note-preview {
+  margin-left: 8px;
+  margin-right: 8px;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.2;
+  background-color: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border-left: 3px solid #2196f3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  max-width: 300px;
+  align-self: center;
 }
 
 /* ========================= */
@@ -983,7 +1021,7 @@ onMounted(() => {
 /* Hover Preview             */
 /* ========================= */
 .hover-preview-container {
-  display: none;
+  visibility: hidden;
   position: absolute;
   top: 100%;
   right: 0;
@@ -998,11 +1036,11 @@ onMounted(() => {
   margin-top: 4px;
   opacity: 0;
   transform: translateY(-4px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
 }
 
 .task-card:hover .hover-preview-container {
-  display: block;
+  visibility: visible;
   opacity: 1;
   transform: translateY(0);
 }
