@@ -27,13 +27,13 @@
 # WIP
 ### In Progress
 * [ ] collapsible/hidable DONE
-* [ ] details is a pop up instead of "expand card"
 * [ ] VIEW: Auto sort tasks by status
 * [ ] display note preview inline
 * [ ] custom file again, or multiple custom directories
 
 # ARCHIVE
 ### Just done
+* [x] details is a pop up instead of "expand card"
 * [x] bug: purge "visualColumn", correctly name column/columnstack
 * [x] hide raw text by default
 * [x] purge existing on-ice feature, but bring it back

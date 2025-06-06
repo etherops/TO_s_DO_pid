@@ -157,8 +157,15 @@
     </div>
     
     <!-- Hover preview container (non-edit mode) -->
-    <div v-if="!isEditing && !isRawText && (hasDueDate(task.text) || hasNote(task.text))" class="hover-preview-container">
-      <div class="hover-preview-row">
+    <div v-if="!isEditing && !isRawText && (isLongTitle || hasDueDate(task.text) || hasNote(task.text))" class="hover-preview-container">
+      <!-- Full title display -->
+      <div v-if="isLongTitle" class="full-title-preview">
+        <div class="preview-display-label">Full Title</div>
+        <div class="full-title-text">{{ task.displayText || task.text }}</div>
+      </div>
+      
+      <!-- Notes and due date row -->
+      <div v-if="hasDueDate(task.text) || hasNote(task.text)" class="hover-preview-row">
         <!-- Note preview aligned with title -->
         <div v-if="hasNote(task.text) || hasDueDate(task.text)" class="note-preview">
           <div class="preview-display-label">Notes</div>
@@ -223,6 +230,14 @@ const emit = defineEmits(['task-updated']);
 
 // Computed properties
 const isRawText = computed(() => props.task.type === 'raw-text');
+
+// Check if title is long enough to be truncated
+const isLongTitle = computed(() => {
+  const titleText = props.task.displayText || props.task.text;
+  // Rough estimate: if title is longer than 50 characters, it's probably truncated
+  // You could also measure actual element width vs container width for more accuracy
+  return titleText.length > 50;
+});
 
 // Task state
 const isEditing = ref(false);
@@ -489,6 +504,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   cursor: grab;
+  position: relative;
 }
 
 .task-card:active {
@@ -497,7 +513,7 @@ onMounted(() => {
 
 .task-card:hover {
   height: auto;
-  z-index: 10;
+  z-index: 100;
 }
 
 /* ========================= */
@@ -643,9 +659,10 @@ onMounted(() => {
 }
 
 .task-card:hover .task-title {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: initial;
+  /* Keep title truncated even on hover to prevent card expansion */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ========================= */
@@ -967,20 +984,51 @@ onMounted(() => {
 /* ========================= */
 .hover-preview-container {
   display: none;
-  margin-left: 28px;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 66.67%;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  z-index: 50;
+  padding: 12px;
+  margin: 0;
   margin-top: 4px;
-  margin-bottom: 4px;
-  width: calc(100% - 28px);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .task-card:hover .hover-preview-container {
   display: block;
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .hover-preview-row {
   display: flex;
   align-items: flex-start;
   width: 100%;
+}
+
+/* Full title preview section */
+.full-title-preview {
+  margin-bottom: 12px;
+}
+
+.full-title-text {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  line-height: 1.4;
+  white-space: normal;
+  word-wrap: break-word;
+  background-color: #f9f9f9;
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 3px solid #4caf50;
 }
 
 .preview-display-label {
