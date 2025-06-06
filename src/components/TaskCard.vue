@@ -1,6 +1,16 @@
 <!-- components/TaskCard.vue -->
 <template>
-  <div class="task-card" :class="{ 'raw-text-card': isRawText, 'ice-task-card': isOnIce }">
+  <div class="task-card" :class="{ 
+    'raw-text-card': isRawText, 
+    'ice-task-card': isOnIce, 
+    'floating': task.isFloating, 
+    'sorting': task.isSorting, 
+    'floating-up': task.isFloatingUp,
+    'floating-down': task.isFloatingDown
+  }"
+  :style="(task.isFloatingUp || task.isFloatingDown) && task.floatDistance ? {
+    '--float-distance': task.floatDistance
+  } : {}">
     <!-- raw-text display (simple, uneditable) -->
     <div v-if="isRawText" class="raw-text-content">
       <div class="raw-text-text">{{ task.displayText || task.text }}</div>
@@ -14,7 +24,8 @@
             'unchecked': task.statusChar === ' ',
             'in-progress': task.statusChar === '~',
             'checked': task.statusChar === 'x',
-            'cancelled': task.statusChar === '-'
+            'cancelled': task.statusChar === '-',
+            'pending-sort': isPendingSort
           }]"
             @click="toggleTaskStatus"
         ></div>
@@ -196,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue';
 import CompactDatePicker from './CompactDatePicker.vue';
 import {
   hasDueDate,
@@ -215,6 +226,9 @@ import {
   updateNoteInText,
   getStrippedDisplayText
 } from '../utils/noteHelpers';
+import {
+  sortTaskToCorrectPosition
+} from '../utils/sortHelpers';
 
 const props = defineProps({
   task: {
@@ -251,6 +265,8 @@ const editTaskText = ref('');
 const taskPendingDelete = ref(false);
 const editNoteText = ref('');
 const editDateValue = ref('');
+const isPendingSort = ref(false);
+const sortTimeout = ref(null);
 
 // Template refs
 const taskTextInput = ref(null);
@@ -265,7 +281,15 @@ const toggleTaskStatus = () => {
     return;
   }
 
+  // Clear any existing sort timeout
+  if (sortTimeout.value) {
+    clearTimeout(sortTimeout.value);
+    sortTimeout.value = null;
+    isPendingSort.value = false;
+  }
+
   // Cycle through states: unchecked -> in-progress -> checked -> cancelled -> unchecked
+  const oldStatus = props.task.statusChar;
   if (props.task.statusChar === ' ') {
     props.task.statusChar = '~';
   } else if (props.task.statusChar === '~') {
@@ -276,7 +300,24 @@ const toggleTaskStatus = () => {
     props.task.statusChar = ' ';
   }
 
+  // Semi auto-sort: trigger when any status change occurs
+  if (oldStatus !== props.task.statusChar) {
+    // Start pulsing animation
+    isPendingSort.value = true;
+    
+    // Delay sorting by 1.5 seconds to allow user to continue clicking
+    sortTimeout.value = setTimeout(() => {
+      isPendingSort.value = false;
+      sortTaskAfterStatusChange();
+    }, 1500);
+  }
+
   emit('task-updated');
+};
+
+// Sort task after status change using shared sorting utility
+const sortTaskAfterStatusChange = () => {
+  sortTaskToCorrectPosition(props.section.items, props.task, emit);
 };
 
 // Handle edit button click (check for shift key)
@@ -509,6 +550,13 @@ const formatInlineNote = (noteText) => {
 // Process display text on mount if the task is new
 onMounted(() => {
   if (props.task.isNew) nextTick(() => startEditingAll());
+});
+
+// Clean up timeout on unmount
+onUnmounted(() => {
+  if (sortTimeout.value) {
+    clearTimeout(sortTimeout.value);
+  }
 });
 </script>
 
@@ -1224,5 +1272,107 @@ onMounted(() => {
   100% {
     transform: scale(1);
   }
+}
+
+@keyframes checkboxPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 10px rgba(33, 150, 243, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+  }
+}
+
+/* Pending sort animation */
+.custom-checkbox.pending-sort {
+  animation: checkboxPulse 0.6s ease-in-out infinite;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+  50% {
+    transform: translateY(-10px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  }
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* Floating card animation */
+.task-card.floating {
+  animation: floatUp 0.8s ease-out;
+  z-index: 200;
+}
+
+@keyframes sortShimmer {
+  0% {
+    background-color: white;
+    transform: scale(1);
+  }
+  25% {
+    background-color: #e3f2fd;
+    transform: scale(1.02);
+  }
+  50% {
+    background-color: #bbdefb;
+    transform: scale(1.01);
+  }
+  75% {
+    background-color: #e3f2fd;
+    transform: scale(1.02);
+  }
+  100% {
+    background-color: white;
+    transform: scale(1);
+  }
+}
+
+/* Sorting card animation */
+.task-card.sorting {
+  animation: sortShimmer 0.6s ease-in-out;
+  border: 1px solid #2196f3;
+}
+
+@keyframes smoothFloatUp {
+  0% {
+    transform: translateY(calc(var(--float-distance, 1) * 100%));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes smoothFloatDown {
+  0% {
+    transform: translateY(calc(var(--float-distance, 1) * -100%));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Simple floating up animation */
+.task-card.floating-up {
+  animation: smoothFloatUp 0.3s cubic-bezier(0.1, 0.8, 0.5, 1) forwards;
+  z-index: 200;
+  position: relative;
+}
+
+/* Simple floating down animation */
+.task-card.floating-down {
+  animation: smoothFloatDown 0.3s cubic-bezier(0.1, 0.8, 0.5, 1) forwards;
+  z-index: 200;
+  position: relative;
 }
 </style>

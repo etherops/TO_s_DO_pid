@@ -37,6 +37,13 @@
           <button v-if="!columnData.on_ice" class="add-task-btn" @click="createNewTask">
             <span class="add-icon">+</span> Add Task
           </button>
+          <button v-if="!columnData.on_ice" 
+                  :class="['sort-tasks-btn', { 'sorting': isSorting }]" 
+                  @click="sortTasks" 
+                  title="Sort tasks"
+                  :disabled="isSorting">
+            🔀
+          </button>
           <button v-if="!columnData.on_ice" class="edit-section-btn" @click="startEditingSection">
             <span class="edit-icon">✎</span>
           </button>
@@ -110,6 +117,10 @@
 import { ref, nextTick, onMounted, computed } from 'vue';
 import draggable from 'vuedraggable';
 import TaskCard from './TaskCard.vue';
+import {
+  getStatusPriority,
+  sortTaskToCorrectPosition
+} from '../utils/sortHelpers';
 
 const props = defineProps({
   section: {
@@ -148,6 +159,7 @@ const visibleItemsCount = computed(() => {
 const isEditingSection = ref(false);
 const editSectionName = ref('');
 const sectionPendingDelete = ref(false);
+const isSorting = ref(false);
 
 // Template refs
 const sectionNameInput = ref(null);
@@ -254,6 +266,66 @@ const archiveSection = () => {
   emit('section-updated', { action: 'archive', sectionName: props.section.name });
 };
 
+// Sort a single task to its correct position with animation using shared utility
+const sortSingleTask = async (task) => {
+  return await sortTaskToCorrectPosition(
+    props.section.items, 
+    task, 
+    emit,
+    {
+      allowOverlap: true,
+      animationDuration: 150
+    }
+  );
+};
+
+// Visual bubble sort using the shared single task sort function
+const sortTasks = async () => {
+  if (isSorting.value) return; // Prevent multiple simultaneous sorts
+  
+  isSorting.value = true;
+  
+  const items = props.section.items;
+  let swapped = true;
+  let passCount = 0;
+  
+  // Continue making passes until no swaps occur
+  while (swapped) {
+    swapped = false;
+    passCount++;
+    
+    // Bubble sort from bottom to top using the shared sort function
+    for (let i = items.length - 1; i > 0; i--) {
+      const currentItem = items[i];
+      
+      // Skip raw-text items
+      if (currentItem.type === 'raw-text') continue;
+      
+      // Use the shared sort function for this task
+      const taskMoved = await sortSingleTask(currentItem);
+      if (taskMoved) {
+        swapped = true;
+        // Note: i doesn't need adjustment since sortSingleTask handles the array changes
+      }
+    }
+    
+    // Small pause between passes
+    if (swapped) {
+      await new Promise(resolve => setTimeout(resolve, 75));
+    }
+  }
+  
+  // Final cleanup
+  items.forEach(item => {
+    if (item.isFloatingUp) delete item.isFloatingUp;
+    if (item.isFloatingDown) delete item.isFloatingDown;
+    if (item.floatDistance) delete item.floatDistance;
+  });
+  
+  isSorting.value = false;
+  emit('task-updated');
+};
+
 // Handle drag end
 const onDragEnd = () => {
   emit('task-updated');
@@ -311,6 +383,12 @@ onMounted(() => {
 
 .task-list {
   min-height: 5px;
+}
+
+/* Add smooth transitions for task reordering */
+.section-items .task-card {
+  transition: transform 0.3s ease-in-out;
+  margin-bottom: 3px;
 }
 
 .ghost-card {
@@ -554,6 +632,47 @@ onMounted(() => {
   font-size: 14px;
   margin-right: 5px;
   font-weight: bold;
+}
+
+/* Sort Tasks button */
+.sort-tasks-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+  padding: 4px 6px;
+  margin-left: 5px;
+  opacity: 0.7;
+  transition: all 0.2s;
+  border-radius: 3px;
+  background-color: rgba(220, 220, 220, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sort-tasks-btn:hover {
+  opacity: 1;
+  color: #2196f3;
+  background-color: rgba(33, 150, 243, 0.1);
+  transform: scale(1.1);
+}
+
+.sort-tasks-btn.sorting {
+  animation: sortSpin 0.5s linear infinite;
+  opacity: 0.7;
+  cursor: not-allowed;
+  color: #ff9800;
+}
+
+@keyframes sortSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Archive button */

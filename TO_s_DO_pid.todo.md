@@ -10,6 +10,9 @@
 * [ ] can't archive a section with incomplete tasks
 * [ ] right click - move task to ...
 
+## Fun Stuff
+* [ ] Celebration easter egg (have it applaud when you click or something like that)
+
 ## Bugs
 * [ ] BUG: Compact "confirm delete" is truncated vertically
 
@@ -26,12 +29,13 @@
 
 # WIP
 ### In Progress
-* [ ] collapsible/hidable DONE
-* [ ] VIEW: Auto sort tasks by status
 * [ ] custom file again, or multiple custom directories
+* [ ] collapsible/hidable DONE
+* [ ] when you toggle to ~, it should open edit focus on notes
 
 # ARCHIVE
 ### Just done
+* [x] VIEW: Auto sort tasks by status
 * [x] display note preview inline
 * [x] details is a pop up instead of "expand card"
 * [x] bug: purge "visualColumn", correctly name column/columnstack

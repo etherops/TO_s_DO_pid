@@ -2,7 +2,6 @@ raw text line before the first column WINDSTORM
 
 # TODO
 raw texts line between column and section SPARKLE
-
 ## TO DO
 * [ ] WORK - Follow up with client
 * [ ] PROJECT - Mountain trip planning !!( Due May 16)
@@ -20,6 +19,18 @@ raw text line in a section SUPERCATS
 ## HELPER
 * [ ] HOME - Garden maintenance
 * [ ] HOME - Lawn care
+
+### AUTOSORT TEST
+* [ ] sort0
+* [-] sort1
+* [ ] sort2
+* [-] sort3
+* [~] sort4
+* [ ] sort5
+* [ ] sort6
+* [x] sort7
+* [x] sort8
+* [-] sort9
 
 # SCHEDULED
 ### WIP
@@ -53,6 +64,7 @@ raw text line in a section SUPERCATS
 ## ON HOLD
 * [ ] PAUSED - Waiting for external input
 * [ ] PAUSED - Pending decision
+
 
 # ARCHIVE
 ### MAY Week 4
