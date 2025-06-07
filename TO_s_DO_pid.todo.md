@@ -1,6 +1,6 @@
 # TODO
 ## Quick Features
-* [ ] BOTH: auto append date completed DD/MM/YY on complete and set to done
+* [ ] collapsible/hidable DONE
 * [ ] VIEW - sortable tabs
 * [ ] "add task" should be a an empty row ready
 * [ ] Backup rotation
@@ -29,12 +29,16 @@
 
 # WIP
 ### In Progress
-* [ ] custom file again, or multiple custom directories
-* [ ] collapsible/hidable DONE
 * [ ] when you toggle to ~, it should open edit focus on notes
+* [ ] bug: hover preview is showing for full title when the title isn't overflow=true
+* [ ] save with a note puts in progress
+* [ ] due date no parens
+* [ ] parallelize tests
+* [ ] custom file again, or multiple custom directories
 
 # ARCHIVE
 ### Just done
+* [x] BOTH: auto append date completed DD/MM/YY on complete and set to done | Sat, June 7
 * [x] VIEW: Auto sort tasks by status
 * [x] display note preview inline
 * [x] details is a pop up instead of "expand card"

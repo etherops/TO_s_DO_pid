@@ -612,7 +612,9 @@ onMounted(() => {
   background-color: #f1f8e9;
   border: 1px solid #c5e1a5;
   border-radius: 4px;
-  padding: 5px 10px;
+  padding: 4px 8px;
+  height: 70%;
+  margin-top: 4px;
   font-size: 12px;
   color: #558b2f;
   cursor: pointer;

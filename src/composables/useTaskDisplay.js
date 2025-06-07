@@ -1,5 +1,5 @@
 // composables/useTaskDisplay.js
-import { getStrippedDisplayText } from '../utils/noteHelpers';
+import { getStrippedDisplayText } from '../utils/taskTextHelpers';
 
 /**
  * Update task display text by removing notes and due dates

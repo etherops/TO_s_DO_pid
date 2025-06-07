@@ -1,4 +1,4 @@
-import { getStrippedDisplayText } from './noteHelpers';
+import { getStrippedDisplayText } from './taskTextHelpers';
 
 // ColumnStack categories - determines which UI stack a column belongs to
 const COLUMNSTACK_CATEGORIES = {

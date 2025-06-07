@@ -25,7 +25,8 @@
             'in-progress': task.statusChar === '~',
             'checked': task.statusChar === 'x',
             'cancelled': task.statusChar === '-',
-            'pending-sort': isPendingSort
+            'pending-sort': isPendingSort,
+            'pending-completion': isPendingCompletion
           }]"
             @click="toggleTaskStatus"
         ></div>
@@ -84,6 +85,23 @@
           </div>
         </div>
         
+        <!-- Completion date section -->
+        <div v-if="editCompletionDate" class="completion-date-row">
+          <div class="completion-date-section">
+            <label class="completion-date-label">Completed</label>
+            <div class="completion-date-display">
+              <span class="completion-date-badge">{{ editCompletionDate }}</span>
+              <button 
+                class="clear-completion-btn" 
+                @click="clearCompletionDate"
+                title="Clear completion date"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+        
         <!-- Action buttons row -->
         <div class="edit-actions-row">
           <button class="confirm-edit-btn" @click="saveAllEdits">
@@ -97,26 +115,43 @@
     </template>
     <template v-else>
       <div class="task-container">
-          <span
-              :class="[
-              'task-title',
-              { 'due-date': task.statusChar !== 'x' && task.statusChar !== '-' && hasDueDate(task.text) },
-              { 'due-past': task.statusChar !== 'x' && task.statusChar !== '-' && isPast(task.text) },
-              { 'due-today': task.statusChar !== 'x' && task.statusChar !== '-' && isToday(task.text) },
-              { 'due-soon': task.statusChar !== 'x' && task.statusChar !== '-' && isSoon(task.text) }
-            ]"
-              :title="task.text"
-              @dblclick="isOnIce ? null : startEditingAll"
-          >
-            {{ task.displayText || task.text }}
-          </span>
+          <!-- Content area that can flex -->
+          <div class="task-content-area">
+            <span
+                :class="[
+                'task-title',
+                { 'cancelled-task': task.statusChar === '-' },
+                { 'due-date': task.statusChar !== 'x' && task.statusChar !== '-' && hasDueDate(task.text) },
+                { 'due-past': task.statusChar !== 'x' && task.statusChar !== '-' && isPast(task.text) },
+                { 'due-today': task.statusChar !== 'x' && task.statusChar !== '-' && isToday(task.text) },
+                { 'due-soon': task.statusChar !== 'x' && task.statusChar !== '-' && isSoon(task.text) }
+              ]"
+                :title="task.text"
+                @dblclick="isOnIce ? null : startEditingAll"
+            >
+              {{ task.displayText || task.text }}
+            </span>
 
-          <!-- Inline note preview -->
-          <div v-if="hasNote(task.text) && !isEditing" class="inline-note-preview">
-            {{ formatInlineNote(extractNoteFromText(task.text)) }}
+            <!-- Inline note preview -->
+            <div v-if="hasNote(task.text) && !isEditing" 
+                 :class="['inline-note-preview', { 'cancelled-note': task.statusChar === '-' }]">
+              {{ formatInlineNote(extractNoteFromText(task.text)) }}
+            </div>
           </div>
 
+          <!-- Completion date badge - positioned between content and buttons -->
+          <div
+              v-if="hasCompletionDate(task.text) && !isOnIce"
+              :class="['completion-badge', { 'completion-badge-cancelled': task.statusChar === '-' }]"
+              :title="`${task.statusChar === 'x' ? 'Completed' : 'Cancelled'}: ${getCompletionBadgeFromText(task.text)}`"
+          >
+            <span :class="task.statusChar === 'x' ? 'completion-checkmark' : 'completion-cancel-mark'"></span>
+            {{ getCompletionBadgeFromText(task.text) }}
+          </div>
+
+          <!-- Fixed buttons container -->
           <div class="task-buttons-container">
+
           <!-- Clock button -->
           <button
               v-if="!isOnIce"
@@ -225,10 +260,17 @@ import {
   extractNoteFromText,
   updateNoteInText,
   getStrippedDisplayText
-} from '../utils/noteHelpers';
+} from '../utils/taskTextHelpers';
 import {
   sortTaskToCorrectPosition
 } from '../utils/sortHelpers';
+import {
+  hasCompletionDate,
+  getCompletionBadgeFromText,
+  addCompletionDate,
+  removeCompletionDate,
+  extractCompletionDate
+} from '../utils/completionDateHelpers';
 
 const props = defineProps({
   task: {
@@ -258,6 +300,7 @@ const isLongTitle = computed(() => {
   return titleText.length > 50;
 });
 
+
 // Task state
 const isEditing = ref(false);
 const isSimpleEdit = ref(false);
@@ -267,6 +310,9 @@ const editNoteText = ref('');
 const editDateValue = ref('');
 const isPendingSort = ref(false);
 const sortTimeout = ref(null);
+const isPendingCompletion = ref(false);
+const completionTimeout = ref(null);
+const editCompletionDate = ref('');
 
 // Template refs
 const taskTextInput = ref(null);
@@ -281,11 +327,16 @@ const toggleTaskStatus = () => {
     return;
   }
 
-  // Clear any existing sort timeout
+  // Clear any existing timeouts
   if (sortTimeout.value) {
     clearTimeout(sortTimeout.value);
     sortTimeout.value = null;
     isPendingSort.value = false;
+  }
+  if (completionTimeout.value) {
+    clearTimeout(completionTimeout.value);
+    completionTimeout.value = null;
+    isPendingCompletion.value = false;
   }
 
   // Cycle through states: unchecked -> in-progress -> checked -> cancelled -> unchecked
@@ -299,6 +350,20 @@ const toggleTaskStatus = () => {
   } else {
     props.task.statusChar = ' ';
   }
+
+  // Handle completion date for tasks marked as completed or cancelled
+  if ((props.task.statusChar === 'x' && oldStatus !== 'x') || 
+      (props.task.statusChar === '-' && oldStatus !== '-')) {
+    // Task was just marked as completed or cancelled
+    isPendingCompletion.value = true;
+    
+    // Delay adding completion date by 1.5 seconds to allow user to continue clicking
+    completionTimeout.value = setTimeout(() => {
+      isPendingCompletion.value = false;
+      addCompletionDateToTask();
+    }, 1500);
+  }
+  // Users can manually remove completion dates through the edit interface if desired.
 
   // Semi auto-sort: trigger when any status change occurs
   if (oldStatus !== props.task.statusChar) {
@@ -318,6 +383,37 @@ const toggleTaskStatus = () => {
 // Sort task after status change using shared sorting utility
 const sortTaskAfterStatusChange = () => {
   sortTaskToCorrectPosition(props.section.items, props.task, emit);
+};
+
+// Add completion date to task
+const addCompletionDateToTask = () => {
+  if (props.task.text) {
+    const newText = addCompletionDate(props.task.text);
+    const newDisplayText = getStrippedDisplayText(newText);
+    
+    // Update task properties
+    props.task.text = newText;
+    props.task.displayText = newDisplayText;
+    
+    // Trigger reactivity update
+    emit('task-updated');
+  }
+};
+
+// Remove completion date from task
+const removeCompletionDateFromTask = () => {
+  if (props.task.text) {
+    props.task.text = removeCompletionDate(props.task.text);
+    props.task.displayText = getStrippedDisplayText(props.task.text);
+    emit('task-updated');
+  }
+};
+
+// Clear completion date in edit mode
+const clearCompletionDate = () => {
+  editCompletionDate.value = '';
+  // Also remove from task text immediately
+  removeCompletionDateFromTask();
 };
 
 // Handle edit button click (check for shift key)
@@ -360,14 +456,15 @@ const startEditingAll = (focusTarget = '') => {
   isEditing.value = true;
   isSimpleEdit.value = false;
   
-  // Extract clean title without note or due date
-  const cleanTitle = getStrippedDisplayText(props.task.text);
+  // Extract clean title without note, due date, or completion date
+  let cleanTitle = getStrippedDisplayText(props.task.text);
+  cleanTitle = removeCompletionDate(cleanTitle);
   editTaskText.value = cleanTitle;
   
   // Extract existing note
   editNoteText.value = extractNoteFromText(props.task.text) || '';
   
-  // Extract existing date
+  // Extract existing due date
   const existingDate = extractDateFromText(props.task.text);
   if (existingDate) {
     const year = existingDate.getFullYear();
@@ -377,6 +474,10 @@ const startEditingAll = (focusTarget = '') => {
   } else {
     editDateValue.value = '';
   }
+  
+  // Extract existing completion date
+  editCompletionDate.value = hasCompletionDate(props.task.text) ? 
+    getCompletionBadgeFromText(props.task.text) : '';
 
   nextTick(() => {
     if (focusTarget === 'date' && datePickerRef.value) {
@@ -437,6 +538,14 @@ const saveAllEdits = () => {
       const formattedDate = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}`;
       newText += ` !!(${formattedDate})`;
     }
+    
+    // Preserve completion date if it exists
+    if (hasCompletionDate(props.task.text)) {
+      const completionDateStr = extractCompletionDate(props.task.text);
+      if (completionDateStr) {
+        newText += ` | ${completionDateStr}`;
+      }
+    }
   }
 
   if (newText !== props.task.text) {
@@ -449,6 +558,7 @@ const saveAllEdits = () => {
   editTaskText.value = '';
   editNoteText.value = '';
   editDateValue.value = '';
+  editCompletionDate.value = '';
   emit('task-updated');
 };
 
@@ -468,6 +578,7 @@ const cancelAllEdits = () => {
   editTaskText.value = '';
   editNoteText.value = '';
   editDateValue.value = '';
+  editCompletionDate.value = '';
 };
 
 // Handle keydown in task edit
@@ -552,10 +663,13 @@ onMounted(() => {
   if (props.task.isNew) nextTick(() => startEditingAll());
 });
 
-// Clean up timeout on unmount
+// Clean up timeouts on unmount
 onUnmounted(() => {
   if (sortTimeout.value) {
     clearTimeout(sortTimeout.value);
+  }
+  if (completionTimeout.value) {
+    clearTimeout(completionTimeout.value);
   }
 });
 </script>
@@ -707,22 +821,42 @@ onUnmounted(() => {
   width: 100%;
   position: relative;
   align-items: flex-start;
+  gap: 4px;
+  overflow: hidden; /* Prevent any overflow from breaking layout */
 }
 
 .task-card:hover .task-container {
   align-items: flex-start;
 }
 
-.task-title {
+/* Content area that can shrink */
+.task-content-area {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex: 1;
+  min-width: 0; /* Allow content to shrink */
   margin-left: 8px;
   margin-top: 3px;
-  flex: 0 1 auto;
+  gap: 8px;
+  overflow: hidden; /* Prevent overflow from pushing other elements */
+}
+
+.task-title {
+  flex: 1;
   white-space: nowrap;
   font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
   position: relative;
   transition: all 0.3s ease;
+  min-width: 0; /* Allow title to shrink */
+}
+
+.task-title.cancelled-task {
+  text-decoration: line-through;
+  color: #757575;
+  opacity: 0.8;
 }
 
 .task-card:hover .task-title {
@@ -734,8 +868,6 @@ onUnmounted(() => {
 
 /* Inline note preview */
 .inline-note-preview {
-  margin-left: 8px;
-  margin-right: 8px;
   font-size: 11px;
   color: #555;
   line-height: 1.2;
@@ -746,9 +878,17 @@ onUnmounted(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 0 1 auto;
-  max-width: 300px;
+  flex: 0 0 auto;
+  max-width: 120px; /* Smaller max width to prioritize title */
   align-self: center;
+}
+
+.inline-note-preview.cancelled-note {
+  text-decoration: line-through;
+  color: #999;
+  background-color: #fafafa;
+  border-left-color: #ccc;
+  opacity: 0.8;
 }
 
 /* ========================= */
@@ -801,8 +941,9 @@ onUnmounted(() => {
   align-items: center;
   z-index: 20;
   width: 100px;
+  min-width: 100px; /* Ensure minimum width is enforced */
   justify-content: flex-end;
-  margin-left: auto;
+  flex: 0 0 100px; /* Fixed size, never grow or shrink */
 }
 
 .task-card:hover .task-buttons-container {
@@ -835,6 +976,59 @@ onUnmounted(() => {
 .clock-btn.has-due-date,
 .notes-btn.has-notes {
   opacity: 1;
+}
+
+/* ========================= */
+/* Completion Badge          */
+/* ========================= */
+.completion-badge {
+  background-color: #e8f5e9;
+  border: 1.5px solid #4caf50;
+  color: #2e7d32;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px 1px 4px;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  line-height: 1;
+  height: 16px;
+  position: relative;
+  flex: 0 0 auto; /* Never shrink, always visible */
+  align-self: center;
+  margin-top: 3px; /* Align with task title baseline */
+  min-width: fit-content; /* Ensure badge never gets compressed */
+}
+
+.completion-checkmark {
+  display: inline-block;
+  width: 3px;
+  height: 6px;
+  border: solid #4caf50;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  margin-bottom: 1px;
+  margin-left: 2px;
+  margin-right: 1px;
+}
+
+.completion-cancel-mark {
+  display: inline-block;
+  width: 8px;
+  height: 2px;
+  background-color: #757575;
+  margin-bottom: 1px;
+  margin-left: 2px;
+  margin-right: 1px;
+}
+
+.completion-badge-cancelled {
+  background-color: #f5f5f5;
+  border-color: #757575;
+  color: #424242;
 }
 
 /* Delete button specific */
@@ -1065,6 +1259,71 @@ onUnmounted(() => {
   font-weight: bold;
 }
 
+/* Completion date edit styles */
+.completion-date-row {
+  display: flex;
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.completion-date-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.completion-date-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4caf50;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.completion-date-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completion-date-badge {
+  background-color: #e8f5e9;
+  border: 1.5px solid #4caf50;
+  color: #2e7d32;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  display: inline-flex;
+  align-items: center;
+}
+
+.clear-completion-btn {
+  background: none;
+  border: 1px solid #e57373;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  color: #e57373;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.clear-completion-btn:hover {
+  background-color: #e57373;
+  color: white;
+  transform: scale(1.1);
+}
+
 /* ========================= */
 /* Hover Preview             */
 /* ========================= */
@@ -1291,6 +1550,11 @@ onUnmounted(() => {
 
 /* Pending sort animation */
 .custom-checkbox.pending-sort {
+  animation: checkboxPulse 0.6s ease-in-out infinite;
+}
+
+/* Pending completion animation */
+.custom-checkbox.pending-completion {
   animation: checkboxPulse 0.6s ease-in-out infinite;
 }
 

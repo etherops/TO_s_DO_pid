@@ -105,5 +105,8 @@ export const getStrippedDisplayText = (text) => {
     // Remove notes
     cleanText = cleanText.replace(/\s*\([^)]+\)/g, '');
 
+    // Remove completion dates (pipe format)
+    cleanText = cleanText.replace(/\s*\|[^|]*$/, '');
+
     return cleanText.trim();
 };
