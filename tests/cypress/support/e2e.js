@@ -10,26 +10,30 @@ import * as helpers from './helpers.js'
 window.todoHelpers = helpers;
 
 // Global hooks that run for all test files
-// This ensures backup/restore always happens
-before(() => {
-  // Create initial backup before all tests in the file
-  cy.backupTodoFile();
-});
+// This approach creates unique test files for parallel execution
+
+// Store test file info globally for cleanup
+let testFileInfo = null;
 
 beforeEach(() => {
-  // Visit the app and load example todo
-  cy.visit('/');
-  cy.contains('TO_s_DO_pid').should('be.visible');
-  cy.contains('.file-tab', 'example').click();
-  cy.wait(500); // Allow data to load
+  // Create test file based on spec name for this test
+  cy.createTestFile().then((fileInfo) => {
+    testFileInfo = fileInfo;
+    
+    // Wait to ensure backend file detection under parallel load
+    cy.wait(500);
+    
+    // Visit the app and switch to our test file
+    cy.visit('/');
+    cy.contains('TO_s_DO_pid').should('be.visible');
+    cy.switchToFile(fileInfo.fileName);
+  });
 });
 
 afterEach(() => {
-  // Restore todo file after each test
-  cy.restoreTodoFile();
-});
-
-after(() => {
-  // Final restore after all tests in the file
-  cy.restoreTodoFile();
+  // Clean up the test file
+  if (testFileInfo) {
+    cy.cleanupTestFile(testFileInfo.filePath);
+    testFileInfo = null;
+  }
 });

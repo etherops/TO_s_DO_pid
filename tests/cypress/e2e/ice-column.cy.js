@@ -1,13 +1,5 @@
 describe('Ice Column Functionality', () => {
-    beforeEach(() => {
-        // Visit the app
-        cy.visit('/')
-        cy.contains('TO_s_DO_pid').should('be.visible')
-        
-        // Load the example file which contains ON ICE column
-        cy.contains('.file-tab', 'example').click()
-        cy.wait(500) // Allow data to load
-    })
+    // Global beforeEach in e2e.js handles file navigation
 
     it('should display ICE column in TODO stack with frozen styling', () => {
         // Scroll to the ON ICE column first

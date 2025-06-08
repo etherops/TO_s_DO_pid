@@ -1,5 +1,6 @@
 # TODO
 ## Quick Features
+* [ ] due date no parens
 * [ ] collapsible/hidable DONE
 * [ ] VIEW - sortable tabs
 * [ ] "add task" should be a an empty row ready
@@ -9,11 +10,13 @@
 * [ ] shift click move bulk items
 * [ ] can't archive a section with incomplete tasks
 * [ ] right click - move task to ...
+* [ ] due date allows: today, tomorrow, yesterday - mainly for testing
 
 ## Fun Stuff
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
 
 ## Bugs
+* [ ] bug: visual - confrim delete needs higher z-index
 * [ ] BUG: Compact "confirm delete" is truncated vertically
 
 ## Bigger Features
@@ -29,15 +32,13 @@
 
 # WIP
 ### In Progress
-* [ ] when you toggle to ~, it should open edit focus on notes
-* [ ] bug: hover preview is showing for full title when the title isn't overflow=true
 * [ ] save with a note puts in progress
-* [ ] due date no parens
-* [ ] parallelize tests
+* [ ] bug: hover preview is showing for full title when the title isn't overflow=true (bug: purge "visualColumn", correctly name column/columnstack)
 * [ ] custom file again, or multiple custom directories
 
 # ARCHIVE
 ### Just done
+* [x] parallelize tests | Sat, June 7
 * [x] BOTH: auto append date completed DD/MM/YY on complete and set to done | Sat, June 7
 * [x] VIEW: Auto sort tasks by status
 * [x] display note preview inline

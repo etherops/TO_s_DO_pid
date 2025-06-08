@@ -40,11 +40,15 @@ export const KNOWN_SECTIONS = {
 };
 
 // Helper to refresh and wait for app to reload
+// Automatically switches to the correct test file for parallel isolation
 export function refreshAndWait() {
     cy.reload();
     cy.contains('TO_s_DO_pid').should('be.visible');
-    cy.contains('.file-tab', 'example').click();
-    cy.wait(500); // Give time for data to load
+    
+    // Switch back to the correct file for this test (using spec-based filename)
+    cy.getCurrentTestFileName().then((fileName) => {
+        cy.switchToFile(fileName);
+    });
 }
 
 // Helper to find a task by text
@@ -69,7 +73,7 @@ export function withRefresh(testFn, description) {
     }
     testFn();
     
-    // Refresh and wait
+    // Refresh and wait, restoring correct tab for parallel isolation
     refreshAndWait();
     
     // Run test after refresh

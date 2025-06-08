@@ -14,6 +14,7 @@ todo.txt
 .TO_s_DO_pid.bak
 .env
 example_backup.todo.md
+fixture*.todo.md
 
 # Testing
 coverage/
@@ -21,3 +22,4 @@ coverage/
 tests/e2e/screenshots/
 tests/e2e/videos/
 tests/e2e/downloads/
+runner-results

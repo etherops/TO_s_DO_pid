@@ -2,9 +2,9 @@ raw text line before the first column WINDSTORM
 
 # TODO
 raw texts line between column and section SPARKLE
+
 ## TO DO
 * [ ] WORK - Follow up with client
-* [ ] PROJECT - Mountain trip planning !!( Due May 16)
 raw text line in a section SUPERCATS
 * malformed raw text do do line in a section BADBOYS
 #### this is also raw text GIGGLEGIGGLE
@@ -35,6 +35,7 @@ raw text line in a section SUPERCATS
 # SCHEDULED
 ### WIP
 * [~] BILLS - Phone bill really really really really really really really really really really really really really really really really really long (Jan 14, follow up about refund)
+* [ ] PROJECT - Mountain trip planning !!( Due May 16)
 * [x] PROPERTY - Research local zoning regulations !! Due May 16
 
 ### CURRENT WEEK (Week of May 1
@@ -64,7 +65,6 @@ raw text line in a section SUPERCATS
 ## ON HOLD
 * [ ] PAUSED - Waiting for external input
 * [ ] PAUSED - Pending decision
-
 
 # ARCHIVE
 ### MAY Week 4

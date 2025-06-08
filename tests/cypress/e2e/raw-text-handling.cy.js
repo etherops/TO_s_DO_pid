@@ -1,10 +1,7 @@
+import { refreshAndWait } from '../support/helpers.js';
+
 describe('Raw Text Handling', () => {
   beforeEach(() => {
-    cy.visit('/');
-    cy.contains('TO_s_DO_pid').should('be.visible');
-    cy.contains('.file-tab', 'example').click();
-    cy.wait(500); // Allow data to load
-
     // Enable raw text visibility
     cy.get('.toggle-switch').click();
     cy.wait(100);
@@ -62,11 +59,14 @@ describe('Raw Text Handling', () => {
   });
 
   it('should preserve raw text content during drag operations', () => {
-    // Perform a drag operation on a regular task
-    cy.get('.todo-column').contains('PROJECT - Mountain trip planning').as('taskToDrag');
+    // Find any draggable task in TODO column (not in raw-text or ice columns)
+    cy.get('.todo-column').not('.raw-text-column').not('.ice-column').first()
+      .find('.task-card').not('.raw-text-card').first().as('taskToDrag');
+
+    // Find target in WIP column
     cy.get('.wip-column .section').first().as('dropTarget');
     
-    cy.get('@taskToDrag').parent().drag('@dropTarget');
+    cy.get('@taskToDrag').drag('@dropTarget');
     
     // Wait for the operation to complete
     cy.wait(1000);
@@ -88,12 +88,11 @@ describe('Raw Text Handling', () => {
     cy.get('.raw-text-card').contains('GIGGLEGIGGLE').should('exist');
     
     // Reload the page to force a fresh parse
-    cy.reload();
+    refreshAndWait();
     cy.wait(2000);
     
-    // Click the example tab again
-    cy.contains('.file-tab', 'example').click();
-    cy.wait(500);
+    // The tab should remain selected after reload, just wait for content
+    cy.get('.kanban-column', { timeout: 5000 }).should('exist');
     
     // Enable raw text visibility again (it resets after refresh)
     cy.get('.toggle-switch').click();

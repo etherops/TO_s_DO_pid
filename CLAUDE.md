@@ -64,13 +64,24 @@ More tasks...
 
 ## Testing Approach
 
-E2E tests use Cypress with custom helpers in `cypress/support/`:
-- `test-base.js` - Common setup/teardown for file isolation
-- `helpers.js` - Reusable test utilities
+**CRITICAL TESTING PRINCIPLE: 100% TEST SUCCESS RATE IS MANDATORY**
+- Less than 100% test success is FAILURE and UNACCEPTABLE
+- All tests must pass reliably, every time, in all execution modes
+- Flaky tests are not acceptable - they must be fixed, not ignored
+- "Good enough" or "mostly working" is never acceptable for test suites
 
-Run single test file:
+E2E tests use Cypress with parallel execution support:
+- `cypress/support/helpers.js` - Reusable test utilities with browser isolation
+- `cypress/support/e2e.js` - Global hooks for unique file creation per test
+- Parallel execution: `npm run test:e2e:parallel` - runs tests across 4 threads
+- Each test gets unique `fixture-*.todo.md` file to prevent data conflicts
+- Browser isolation ensures localStorage doesn't leak between parallel tests
+
+Run commands:
 ```bash
-npx cypress run --spec "cypress/e2e/task-crud.cy.js"
+npm run test:e2e          # Sequential execution
+npm run test:e2e:parallel # Parallel execution (4 threads)
+npx cypress run --spec "cypress/e2e/task-crud.cy.js"  # Single test
 ```
 
 ## Code Best Practices
