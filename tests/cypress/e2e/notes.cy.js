@@ -257,9 +257,12 @@ describe('Notes Feature', () => {
     });
 
     // Verify we can still toggle task status
+    // Note: Since adding a note automatically sets status to in-progress [~],
+    // clicking once should move it to checked [x]
     findTask(taskText).within(() => {
+      cy.get('.custom-checkbox').should('have.class', 'in-progress'); // Status should be in-progress after adding note
       cy.get('.custom-checkbox').click();
-      cy.get('.custom-checkbox').should('have.class', 'in-progress');
+      cy.get('.custom-checkbox').should('have.class', 'checked'); // Should move to checked after one click
     });
 
     // Verify note is still there
@@ -375,5 +378,69 @@ describe('Notes Feature', () => {
         cy.get('.inline-note-preview').should('contain', 'Check sprinkler system and trim hedges');
       });
     }, 'Inline note preview persistence');
+  });
+
+  it('should automatically set status to in-progress when note is added', () => {
+    const taskText = 'HEALTH - Research classes';
+
+    // Verify task starts as unchecked
+    findTask(taskText).within(() => {
+      cy.get('.custom-checkbox').should('have.class', 'unchecked');
+      cy.get('.notes-btn').should('not.have.class', 'has-notes');
+    });
+
+    // Add a note to the task
+    findTask(taskText).within(() => {
+      cy.get('.notes-btn').click();
+    });
+
+    cy.get('.note-text-edit').type('Look into yoga and pilates options');
+    cy.get('.confirm-edit-btn').click();
+
+    // Verify status automatically changed to in-progress
+    findTask(taskText).within(() => {
+      cy.get('.custom-checkbox').should('have.class', 'in-progress');
+      cy.get('.notes-btn').should('have.class', 'has-notes');
+    });
+
+    // Verify persistence after refresh
+    withRefresh(() => {
+      findTask(taskText).within(() => {
+        cy.get('.custom-checkbox').should('have.class', 'in-progress');
+        cy.get('.notes-btn').should('have.class', 'has-notes');
+      });
+    }, 'Auto-status change persistence');
+  });
+
+  it('should auto-status work for new tasks with notes', () => {
+    const sectionName = 'BACKLOG';
+    const taskTitle = 'New task with note';
+    const fullTaskWithNote = 'New task with note (important detail)';
+
+    // Create new task with note in simple edit mode
+    findSection(sectionName).within(() => {
+      cy.get('.add-task-btn').click();
+    });
+
+    // Task should start in edit mode, type text with note
+    cy.get('.new-task-input').type(fullTaskWithNote);
+    cy.get('.confirm-edit-btn').click();
+
+    // Verify the task was created with in-progress status due to the note
+    // Use the title part for finding since the note gets parsed out for display
+    findTask(taskTitle).within(() => {
+      cy.get('.custom-checkbox').should('have.class', 'in-progress');
+      cy.get('.notes-btn').should('have.class', 'has-notes');
+      cy.get('.notes-btn').should('have.attr', 'title', 'important detail');
+    });
+
+    // Verify persistence after refresh
+    withRefresh(() => {
+      findTask(taskTitle).within(() => {
+        cy.get('.custom-checkbox').should('have.class', 'in-progress');
+        cy.get('.notes-btn').should('have.class', 'has-notes');
+        cy.get('.notes-btn').should('have.attr', 'title', 'important detail');
+      });
+    }, 'New task auto-status persistence');
   });
 });

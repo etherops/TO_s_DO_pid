@@ -16,6 +16,7 @@
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
 
 ## Bugs
+* [ ] bug: hover preview is showing for full title when the title isn't overflow=true (bug: purge "visualColumn", correctly name column/columnstack)
 * [ ] bug: visual - confrim delete needs higher z-index
 * [ ] BUG: Compact "confirm delete" is truncated vertically
 
@@ -32,12 +33,11 @@
 
 # WIP
 ### In Progress
-* [ ] save with a note puts in progress
-* [ ] bug: hover preview is showing for full title when the title isn't overflow=true (bug: purge "visualColumn", correctly name column/columnstack)
 * [ ] custom file again, or multiple custom directories
 
 # ARCHIVE
 ### Just done
+* [x] save with a note puts in progress | Sat, June 7
 * [x] parallelize tests | Sat, June 7
 * [x] BOTH: auto append date completed DD/MM/YY on complete and set to done | Sat, June 7
 * [x] VIEW: Auto sort tasks by status

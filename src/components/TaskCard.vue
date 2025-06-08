@@ -511,15 +511,23 @@ const saveAllEdits = () => {
   }
 
   // Update task
+  const wasNewTask = props.task.isNew;
   if (props.task.isNew) {
     delete props.task.isNew;
   }
 
   let newText;
+  let statusChangedDueToNote = false;
   
-  if (isSimpleEdit.value || props.task.isNew) {
+  if (isSimpleEdit.value || wasNewTask) {
     // In simple edit mode or for new tasks, use the text as-is
     newText = editTaskText.value.trim();
+    
+    // Auto-status change: if task has a note and current status is empty, set to in-progress
+    if (hasNote(newText) && props.task.statusChar === ' ') {
+      props.task.statusChar = '~';
+      statusChangedDueToNote = true;
+    }
   } else {
     // In full edit mode, build the text from components
     newText = editTaskText.value.trim();
@@ -528,6 +536,12 @@ const saveAllEdits = () => {
     if (editNoteText.value.trim()) {
       const escapedNote = editNoteText.value.trim().replace(/\n/g, '\\n');
       newText += ` (${escapedNote})`;
+    }
+    
+    // Auto-status change: if note was added and current status is empty, set to in-progress
+    if (editNoteText.value.trim() && props.task.statusChar === ' ') {
+      props.task.statusChar = '~';
+      statusChangedDueToNote = true;
     }
     
     // Add date if present
@@ -551,6 +565,18 @@ const saveAllEdits = () => {
   if (newText !== props.task.text) {
     props.task.text = newText;
     props.task.displayText = getStrippedDisplayText(newText);
+  }
+
+  // Trigger semi-automatic sort if status changed due to note addition
+  if (statusChangedDueToNote) {
+    // Start pulsing animation
+    isPendingSort.value = true;
+    
+    // Delay sorting by 1.5 seconds to allow user to continue editing
+    sortTimeout.value = setTimeout(() => {
+      isPendingSort.value = false;
+      sortTaskAfterStatusChange();
+    }, 1500);
   }
 
   isEditing.value = false;
