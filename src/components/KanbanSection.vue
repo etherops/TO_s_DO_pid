@@ -34,6 +34,15 @@
         {{ section.name }}
         <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
         <div class="section-header-actions">
+          <!-- Collapse completed tasks button -->
+          <button 
+            v-if="!columnData.on_ice && hasCompletedTasks" 
+            class="collapse-completed-btn"
+            @click="toggleCompletedCollapse"
+            :title="isCompletedCollapsed ? 'Expand completed/cancelled tasks' : 'Collapse completed/cancelled tasks'"
+          >
+            <span class="collapse-icon">{{ isCompletedCollapsed ? '▶' : '▼' }}</span>
+          </button>
           <button v-if="!columnData.on_ice" class="add-task-btn" @click="createNewTask">
             <span class="add-icon">+</span> Add Task
           </button>
@@ -80,7 +89,34 @@
         </div>
       </template>
     </div>
-    <div v-if="!isRawTextSection" class="section-items">
+    <div 
+      v-if="!isRawTextSection" 
+      class="section-items" 
+      :class="{ 'completed-collapsed': isCompletedCollapsed }"
+      :style="{ '--collapsed-stack-height': collapsedStackHeight }"
+    >
+      <!-- Summary card (only when collapsed) -->
+      <div 
+        v-if="isCompletedCollapsed && getContiguousCompletedTasks.length > 0"
+        class="task-card-wrapper collapsed-summary"
+        :style="getSummaryCardStyle()"
+      >
+        <div class="task-card summary-card">
+          <div class="summary-content">
+            <span v-if="collapsedSummary.completed > 0" class="summary-item">
+              <div class="custom-checkbox checked"></div>
+              <span class="summary-text">{{ collapsedSummary.completed }} completed</span>
+            </span>
+            <span v-if="collapsedSummary.completed > 0 && collapsedSummary.cancelled > 0" class="separator">, </span>
+            <span v-if="collapsedSummary.cancelled > 0" class="summary-item">
+              <div class="custom-checkbox cancelled"></div>
+              <span class="summary-text">{{ collapsedSummary.cancelled }} cancelled</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- All tasks in single draggable container -->
       <draggable
           v-model="section.items"
           :group="'tasks'"
@@ -90,17 +126,25 @@
           handle=".task-card"
           @end="onDragEnd"
       >
-        <template #item="{ element: item }">
-          <TaskCard
-              v-if="showRawText || item.type !== 'raw-text'"
-              :task="item"
-              :section="section"
-              :is-on-ice="columnData.on_ice || false"
-              @task-updated="$emit('task-updated')"
-              @show-date-picker="$emit('show-date-picker', $event)"
-          />
+        <template #item="{ element: item, index }">
+          <div 
+            v-if="showRawText || item.type !== 'raw-text'"
+            :class="['task-card-wrapper', {
+              'collapsed-completed': isCompletedCollapsed && getContiguousCompletedTasks.includes(item)
+            }]"
+            :style="getTaskCardStyle(item, index)"
+          >
+            <TaskCard
+                :task="item"
+                :section="section"
+                :is-on-ice="columnData.on_ice || false"
+                @task-updated="$emit('task-updated')"
+                @show-date-picker="$emit('show-date-picker', $event)"
+            />
+          </div>
         </template>
       </draggable>
+      
       <div v-if="visibleItemsCount === 0" class="empty-section">
         No items
       </div>
@@ -161,8 +205,109 @@ const editSectionName = ref('');
 const sectionPendingDelete = ref(false);
 const isSorting = ref(false);
 
+// Initialize collapse state from localStorage
+const storageKey = computed(() => `section-collapse-${props.section.name}`);
+const isCompletedCollapsed = ref(false);
+
+// Load collapse state on mount
+onMounted(() => {
+  const saved = localStorage.getItem(storageKey.value);
+  if (saved !== null) {
+    isCompletedCollapsed.value = saved === 'true';
+  }
+});
+
 // Template refs
 const sectionNameInput = ref(null);
+
+// Computed property to check if section has completed/cancelled tasks
+const hasCompletedTasks = computed(() => {
+  return (props.section.items || []).some(item => 
+    item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')
+  );
+});
+
+// Get contiguous completed/cancelled tasks from the top of the list
+const getContiguousCompletedTasks = computed(() => {
+  const items = props.section.items || [];
+  const contiguousTasks = [];
+  
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')) {
+      contiguousTasks.push(item);
+    } else {
+      // Stop at first non-completed task
+      break;
+    }
+  }
+  
+  return contiguousTasks;
+});
+
+// Toggle collapsed state for completed tasks
+const toggleCompletedCollapse = () => {
+  isCompletedCollapsed.value = !isCompletedCollapsed.value;
+  // Save to localStorage
+  localStorage.setItem(storageKey.value, isCompletedCollapsed.value.toString());
+};
+
+
+// Computed property to calculate counts for summary card
+const collapsedSummary = computed(() => {
+  const tasks = getContiguousCompletedTasks.value;
+  const completed = tasks.filter(task => task.statusChar === 'x').length;
+  const cancelled = tasks.filter(task => task.statusChar === '-').length;
+  return { completed, cancelled };
+});
+
+// Get positioning styles for task cards
+const getTaskCardStyle = (item, index) => {
+  if (!isCompletedCollapsed.value) {
+    return {}; // Normal positioning when not collapsed
+  }
+  
+  const contiguousTasks = getContiguousCompletedTasks.value;
+  const isInCollapsed = contiguousTasks.includes(item);
+  
+  if (isInCollapsed) {
+    // Apply absolute positioning for collapsed cards relative to section-items
+    const collapsedIndex = contiguousTasks.findIndex(t => t.id === item.id);
+    return {
+      position: 'absolute',
+      top: `${8 + collapsedIndex * 15}px`, // 8px for section padding
+      zIndex: 100 + collapsedIndex,
+      height: '45px',
+      overflow: 'hidden',
+      width: '100%',
+      left: '0',
+    };
+  }
+  
+  // For uncompleted tasks, return normal styling (padding-top on container handles spacing)
+  return {};
+};
+
+// Get positioning styles for summary card
+const getSummaryCardStyle = () => {
+  const completedCount = getContiguousCompletedTasks.value.length;
+  return {
+    position: 'absolute',
+    top: `${8 + completedCount * 15}px`, // 8px for section padding
+    zIndex: 100 + completedCount,
+    width: '100%',
+    left: '0',
+  };
+};
+
+// Calculate the height needed for the collapsed stack
+const collapsedStackHeight = computed(() => {
+  if (!isCompletedCollapsed.value) return 0;
+  const completedCount = getContiguousCompletedTasks.value.length;
+  if (completedCount === 0) return 0;
+  // Height calculation: last card top position + summary card height + spacing to prevent overlap
+  return completedCount * 15 + 45; // 45px for summary card + spacing to clear uncompleted tasks
+});
 
 // Start editing section name
 const startEditingSection = () => {
@@ -800,5 +945,161 @@ onMounted(() => {
   background-color: rgba(229, 115, 115, 0.1);
   border-color: rgba(229, 115, 115, 0.3);
   transform: scale(1.1);
+}
+
+/* Collapse completed tasks button */
+.collapse-completed-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: #666;
+  padding: 4px 6px;
+  margin-right: 5px;
+  opacity: 0.7;
+  transition: all 0.2s;
+  border-radius: 3px;
+  background-color: rgba(220, 220, 220, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapse-completed-btn:hover {
+  opacity: 1;
+  color: #4caf50;
+  background-color: rgba(76, 175, 80, 0.1);
+  transform: scale(1.05);
+}
+
+.collapse-icon {
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+/* Collapsed completed tasks styles */
+.section-items.completed-collapsed {
+  position: relative;
+}
+
+.section-items.completed-collapsed .task-list {
+  position: relative; /* Create positioning context for absolutely positioned collapsed cards */
+  padding-top: calc(var(--collapsed-stack-height, 0) * 1px); /* Push uncompleted tasks below collapsed stack */
+}
+
+
+
+.task-card-wrapper {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+/* When collapsed, completed tasks get special styling */
+.task-card-wrapper.collapsed-completed .task-card {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+/* Ensure dragging still works with collapsed items */
+.task-card-wrapper.collapsed-completed.sortable-drag {
+  height: auto !important;
+  position: relative !important;
+  top: auto !important;
+  z-index: auto !important;
+}
+
+/* Summary card styling */
+.task-card-wrapper.collapsed-summary {
+  position: absolute !important;
+  height: 45px !important;
+  overflow: hidden !important;
+  width: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center; /* Center the summary card */
+}
+
+.summary-card {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 5px;
+  padding: 2px 8px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  cursor: default;
+  font-size: 12px;
+  width: auto; /* Only as wide as needed */
+  height: 28px; /* Make it shorter */
+}
+
+.summary-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-text {
+  font-size: 12px;
+  color: #495057;
+}
+
+.separator {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+/* Use regular checkbox styling for summary card - just disable interactions */
+.summary-card .custom-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #aaa;
+  border-radius: 2px;
+  position: relative;
+  cursor: default;
+  transition: none;
+  user-select: none;
+}
+
+.summary-card .custom-checkbox.checked {
+  background-color: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.summary-card .custom-checkbox.checked:after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 5px;
+  width: 4px;
+  height: 8px;
+  border: solid #4caf50;
+  border-width: 0 1px 1px 0;
+  transform: rotate(45deg);
+}
+
+.summary-card .custom-checkbox.cancelled {
+  background-color: #f5f5f5;
+  border-color: #757575;
+}
+
+.summary-card .custom-checkbox.cancelled:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  background-color: #757575;
+  transform: translateY(-50%);
 }
 </style>

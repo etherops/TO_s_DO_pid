@@ -1,7 +1,6 @@
 # TODO
 ## Quick Features
 * [ ] due date no parens
-* [ ] collapsible/hidable DONE
 * [ ] VIEW - sortable tabs
 * [ ] "add task" should be a an empty row ready
 * [ ] Backup rotation
@@ -11,6 +10,7 @@
 * [ ] can't archive a section with incomplete tasks
 * [ ] right click - move task to ...
 * [ ] due date allows: today, tomorrow, yesterday - mainly for testing
+* [ ] double click to edit, focus tittle
 
 ## Fun Stuff
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
@@ -33,10 +33,13 @@
 
 # WIP
 ### In Progress
+* [~] fancier archive button (when you click archive, show a modal confirmation askign if the user is sure indicating it will move the current section to the archive, but create a new section and move any undone cards into that section in WIP.  It should then create a new section, put it in the same slot as the existing archiving section, name is "Week: {Current Month} {Current Week of Month .e.g 1,2,3,4)".  It will move all unstarted and in progress tasks into that section.)
 * [ ] custom file again, or multiple custom directories
+* [ ] too much vertical whitespace in task cards
 
 # ARCHIVE
 ### Just done
+* [x] collapsible/hidable DONE | Sun, June 8
 * [x] save with a note puts in progress | Sat, June 7
 * [x] parallelize tests | Sat, June 7
 * [x] BOTH: auto append date completed DD/MM/YY on complete and set to done | Sat, June 7
