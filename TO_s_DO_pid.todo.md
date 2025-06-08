@@ -1,16 +1,14 @@
 # TODO
 ## Quick Features
-* [ ] due date no parens
-* [ ] VIEW - sortable tabs
-* [ ] "add task" should be a an empty row ready
-* [ ] Backup rotation
-* [ ] FEATURE: "Today, Tomorrow" as due dates
-* [ ] counts in tabs
-* [ ] shift click move bulk items
-* [ ] can't archive a section with incomplete tasks
-* [ ] right click - move task to ...
-* [ ] due date allows: today, tomorrow, yesterday - mainly for testing
-* [ ] double click to edit, focus tittle
+* [ ] TABS: sortable tabs
+* [ ] ADD TASK: "add task" should be a an empty row ready
+* [ ] BACKUP: Backup rotation
+* [ ] DUE DATE: "Today, Tomorrow" as due dates
+* [ ] MOVE: shift click move bulk items
+* [ ] MOVE: right click - move task to ...
+* [ ] EDIT: double click to edit, focus tittle
+* [ ] DUE DATE: due date no parens
+* [ ] TABS: counts in tabs
 
 ## Fun Stuff
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
@@ -18,7 +16,6 @@
 ## Bugs
 * [ ] bug: hover preview is showing for full title when the title isn't overflow=true (bug: purge "visualColumn", correctly name column/columnstack)
 * [ ] bug: visual - confrim delete needs higher z-index
-* [ ] BUG: Compact "confirm delete" is truncated vertically
 
 ## Bigger Features
 * [ ] DYNAMIC: dynamic re-render/watch on file change
@@ -26,19 +23,20 @@
 * [ ] LARGE: iPhone app
 * [ ] LARGE: Host on Lightwire
 * [ ] Rebrand KindaBan
-* [ ] VIEW - diff revisions !!(May 26)
+* [ ] VIEW - diff revisions
 * [ ] SERVER: git push integration
 * [ ] feature: add the preceeding folder name in custom tabs
 * [ ] DELETE - undo
 
 # WIP
 ### In Progress
-* [~] fancier archive button (when you click archive, show a modal confirmation askign if the user is sure indicating it will move the current section to the archive, but create a new section and move any undone cards into that section in WIP.  It should then create a new section, put it in the same slot as the existing archiving section, name is "Week: {Current Month} {Current Week of Month .e.g 1,2,3,4)".  It will move all unstarted and in progress tasks into that section.)
+* [ ] collase in archive by default, put badge at top in archive by default
+* [ ] V-BUG: too much vertical whitespace in task cards
 * [ ] custom file again, or multiple custom directories
-* [ ] too much vertical whitespace in task cards
 
 # ARCHIVE
 ### Just done
+* [x] fancier archive button".  It will move all unstarted and in progress tasks into that section.) | Sun, June 8
 * [x] collapsible/hidable DONE | Sun, June 8
 * [x] save with a note puts in progress | Sat, June 7
 * [x] parallelize tests | Sat, June 7

@@ -12,13 +12,15 @@
         @close="closeDatePicker"
     />
 
-    <!-- Archive Column Picker Modal -->
-    <ArchiveColumnPicker
-        v-if="archiveChoice"
-        :section-name="archiveChoice.sectionName"
-        :available-columns="archiveChoice.availableColumns"
-        @select="handleArchiveColumnSelect"
-        @cancel="cancelArchiveChoice"
+    <!-- Archive Confirmation Modal -->
+    <ArchiveConfirmationModal
+        v-if="archiveConfirmation"
+        :section-name="archiveConfirmation.sectionName"
+        :section-items="archiveConfirmation.sectionItems"
+        :new-section-name="archiveConfirmation.newSectionName"
+        :available-columns="archiveConfirmation.availableColumns"
+        @close="cancelArchiveConfirmation"
+        @confirm="confirmArchive"
     />
 
     <!-- TODO Columns -->
@@ -89,7 +91,8 @@
 import { ref } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
 import DatePicker from './DatePicker.vue';
-import ArchiveColumnPicker from './ArchiveColumnPicker.vue';
+import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
+import { generateLeftoversSectionName } from '../utils/sectionHelpers.js';
 
 const props = defineProps({
   todoData: {
@@ -109,8 +112,8 @@ const datePickerTaskId = ref(null);
 const datePickerPosition = ref({ top: 0, left: 0 });
 const datePickerInitialDate = ref(null);
 
-// Archive choice state
-const archiveChoice = ref(null);
+// Archive confirmation state
+const archiveConfirmation = ref(null);
 
 // Helper function to add ice logic to column data
 const getColumnDataWithIce = (columnName) => {
@@ -246,7 +249,7 @@ const handleSectionUpdate = (payload) => {
       }
     }
   } else if (payload && payload.action === 'archive') {
-    // Handle section archiving
+    // Handle section archiving - show confirmation modal first
     // Find section in nested structure
     let sectionToArchive = null;
     let sourceColumn = null;
@@ -265,24 +268,23 @@ const handleSectionUpdate = (payload) => {
     }
     
     if (sectionToArchive) {
-      // Get all DONE-type file columns
-      const doneColumns = getDoneFileColumns();
+      // Generate the new leftovers section name
+      const newSectionName = generateLeftoversSectionName(payload.sectionName);
       
-      let targetColumn;
-      if (doneColumns.length > 1) {
-        // Multiple DONE columns, show picker
-        archiveChoice.value = {
-          sectionName: payload.sectionName,
-          availableColumns: doneColumns,
-          section: sectionToArchive,
-          sourceColumn: sourceColumn
-        };
-        return; // Don't update yet, wait for user choice
-      }
-
-      // Determine target column based on existing DONE columns
-      targetColumn = (doneColumns.length === 1) ? doneColumns[0] : 'ARCHIVE';
-      archiveSectionInNestedStructure(sectionToArchive, sourceColumn, targetColumn);
+      // Get available DONE columns
+      const doneColumns = getDoneFileColumns();
+      const availableColumns = doneColumns.length > 0 ? doneColumns : ['ARCHIVE'];
+      
+      // Show confirmation modal
+      archiveConfirmation.value = {
+        sectionName: payload.sectionName,
+        sectionItems: sectionToArchive.items || [],
+        newSectionName: newSectionName,
+        section: sectionToArchive,
+        sourceColumn: sourceColumn,
+        availableColumns: availableColumns
+      };
+      return; // Don't update yet, wait for user confirmation
     }
   }
 
@@ -290,22 +292,52 @@ const handleSectionUpdate = (payload) => {
   emit('update');
 };
 
-// Handle archive column selection
-const handleArchiveColumnSelect = (targetColumn) => {
-  if (archiveChoice.value && archiveChoice.value.section && archiveChoice.value.sourceColumn) {
-    archiveSectionInNestedStructure(
-      archiveChoice.value.section, 
-      archiveChoice.value.sourceColumn, 
-      targetColumn
-    );
-    emit('update');
-  }
-  archiveChoice.value = null;
+// Cancel archive confirmation
+const cancelArchiveConfirmation = () => {
+  archiveConfirmation.value = null;
 };
 
-// Cancel archive choice
-const cancelArchiveChoice = () => {
-  archiveChoice.value = null;
+// Confirm archive - execute the enhanced archive process
+const confirmArchive = (selectedColumn) => {
+  if (!archiveConfirmation.value) return;
+  
+  const { section, sourceColumn, newSectionName } = archiveConfirmation.value;
+  
+  // Filter incomplete tasks (not completed or cancelled)
+  const incompleteTasks = section.items.filter(item => 
+    item.type === 'task' && item.statusChar !== 'x' && item.statusChar !== '-'
+  );
+  
+  // Create new week section if there are incomplete tasks
+  if (incompleteTasks.length > 0) {
+    // Create the new section in the same column position
+    const newSection = {
+      name: newSectionName,
+      headerStyle: 'SMALL',
+      archivable: true,
+      on_ice: false,
+      items: [...incompleteTasks] // Move incomplete tasks to new section
+    };
+    
+    // Find the index of the current section being archived
+    const sourceColumnData = props.todoData.columnStacks[sourceColumn];
+    const sectionIndex = sourceColumnData.sections.indexOf(section);
+    
+    // Insert the new section at the same position
+    sourceColumnData.sections.splice(sectionIndex, 0, newSection);
+    
+    // Remove incomplete tasks from the original section
+    section.items = section.items.filter(item => 
+      item.type !== 'task' || item.statusChar === 'x' || item.statusChar === '-'
+    );
+  }
+  
+  // Archive to the selected column
+  archiveSectionInNestedStructure(section, sourceColumn, selectedColumn);
+  emit('update');
+  
+  // Clear confirmation modal
+  archiveConfirmation.value = null;
 };
 
 // Show date picker for a task

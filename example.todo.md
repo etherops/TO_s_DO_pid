@@ -50,6 +50,13 @@ raw text line in a section SUPERCATS
 ### New Section 1
 * [ ] test
 
+### test archive
+* [x] asdf | Sun, June 8
+* [x] asdf | Sun, June 8
+* [-] asdf | Sun, June 8
+* [~] asdf
+* [ ] asdf
+
 # TODO-2
 ## LOW-P
 * [ ] HEALTH - Research classes

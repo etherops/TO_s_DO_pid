@@ -16,18 +16,22 @@ describe('Section Archiving', () => {
             cy.get('.archive-section-btn').click()
         })
 
-        // Archive picker modal should appear since there are 2 DONE columns
+        // First, the confirmation modal should appear
         cy.get('.modal-backdrop').should('be.visible')
-        cy.contains('Choose Archive Destination').should('be.visible')
+        cy.contains('Archive Section').should('be.visible')
         
-        // Should show both DONE columns as options
-        cy.get('.column-options').within(() => {
-            cy.contains('button', 'ARCHIVE').should('exist')
-            cy.contains('button', 'DONE').should('exist')
+        // Should show the archive destination selector with both DONE columns
+        cy.get('.archive-destination').should('be.visible')
+        cy.get('.destination-selector').within(() => {
+            cy.contains('.destination-btn', 'ARCHIVE').should('exist')
+            cy.contains('.destination-btn', 'DONE').should('exist')
         })
 
         // Select ARCHIVE
-        cy.contains('button.column-option', 'ARCHIVE').click()
+        cy.contains('.destination-btn', 'ARCHIVE').click()
+        
+        // Confirm the archive
+        cy.get('.btn-confirm').click()
 
         // Modal should close
         cy.get('.modal-backdrop').should('not.exist')
@@ -48,9 +52,15 @@ describe('Section Archiving', () => {
             })
         })
 
-        // Section should no longer be in WIP column
+        // Original section should no longer be in WIP column (but leftovers section might exist)
         cy.get('.column-stack').eq(1).find('.wip-column').within(() => {
-            cy.contains('.section-header', sectionName).should('not.exist')
+            cy.get('.section-header').each(($header) => {
+                const text = $header.text().trim();
+                // Should not find the exact original section name (but might find "Leftovers from" section)
+                if (!text.includes('Leftovers from')) {
+                    expect(text).to.not.equal(sectionName);
+                }
+            });
         })
 
         // Refresh and verify persistence and correct ordering
