@@ -1,6 +1,6 @@
 <!-- components/KanbanColumn.vue -->
 <template>
-  <div v-if="showRawText || !isRawTextColumn" :class="['kanban-column', `${columnType.toLowerCase()}-column`, { 'raw-text-column': isRawTextColumn, 'ice-column': columnData.on_ice }]" :data-on-ice="columnData.on_ice">
+  <div v-if="showRawText || !isRawTextColumn" ref="columnRef" :class="['kanban-column', `${columnType.toLowerCase()}-column`, { 'raw-text-column': isRawTextColumn, 'ice-column': columnData.on_ice }]" :data-on-ice="columnData.on_ice">
     <!-- Raw-text column content (text only) -->
     <div v-if="isRawTextColumn" class="raw-text-column-content">
       <div class="raw-text-column-text">{{ columnData.displayText || columnData.text }}</div>
@@ -20,9 +20,17 @@
             ON ICE
           </div>
         </div>
-        <button v-if="canAddSection && !columnData.on_ice" class="add-section-btn" @click="$emit('add-section')">
-          <span class="add-icon">+</span> Add Section
-        </button>
+        <div class="column-header-buttons">
+          <button v-if="columnType === 'DONE' && !columnData.on_ice" class="collapse-all-btn" @click="collapseAll">
+            <span class="collapse-icon">▼</span> Collapse All
+          </button>
+          <button v-if="columnType === 'DONE' && !columnData.on_ice" class="expand-all-btn" @click="expandAll">
+            <span class="expand-icon">▶</span> Expand All
+          </button>
+          <button v-if="canAddSection && !columnData.on_ice" class="add-section-btn" @click="$emit('add-section')">
+            <span class="add-icon">+</span> Add Section
+          </button>
+        </div>
       </div>
       <div class="column-content">
         <draggable
@@ -52,7 +60,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import draggable from 'vuedraggable';
 import KanbanSection from './KanbanSection.vue';
 
@@ -94,6 +102,9 @@ const emit = defineEmits([
   'show-date-picker'
 ]);
 
+// Template refs
+const columnRef = ref(null);
+
 // Computed properties
 const isRawTextColumn = computed(() => props.columnData?.type === 'raw-text');
 
@@ -105,6 +116,36 @@ const getSectionKey = (section) => {
   }
   // For regular sections, use name
   return section.name || 'unnamed';
+};
+
+// Collapse all sections in this column
+const collapseAll = () => {
+  // Find all sections in this column that are expanded and click their collapse button
+  if (columnRef.value) {
+    const collapseButtons = columnRef.value.querySelectorAll('.collapse-completed-btn');
+    collapseButtons.forEach(button => {
+      const icon = button.querySelector('.collapse-icon');
+      // Only click if currently expanded (showing ▼)
+      if (icon && icon.textContent === '▼') {
+        button.click();
+      }
+    });
+  }
+};
+
+// Expand all sections in this column
+const expandAll = () => {
+  // Find all sections in this column that are collapsed and click their collapse button
+  if (columnRef.value) {
+    const collapseButtons = columnRef.value.querySelectorAll('.collapse-completed-btn');
+    collapseButtons.forEach(button => {
+      const icon = button.querySelector('.collapse-icon');
+      // Only click if currently collapsed (showing ▶)
+      if (icon && icon.textContent === '▶') {
+        button.click();
+      }
+    });
+  }
 };
 </script>
 
@@ -186,6 +227,12 @@ const getSectionKey = (section) => {
   gap: 8px;
 }
 
+.column-header-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .on-ice-badge {
   background: linear-gradient(45deg, #ffffff 0%, #e3f2fd 100%);
   color: #1976d2;
@@ -251,6 +298,40 @@ const getSectionKey = (section) => {
   font-size: 14px;
   margin-right: 5px;
   font-weight: bold;
+}
+
+/* Collapse/Expand All buttons */
+.collapse-all-btn,
+.expand-all-btn {
+  background-color: rgba(220, 220, 220, 0.5);
+  border: 1px solid #adb5bd;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #495057;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.collapse-all-btn:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+  transform: scale(1.02);
+}
+
+.expand-all-btn:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+  transform: scale(1.02);
+}
+
+.collapse-icon,
+.expand-icon {
+  font-size: 10px;
+  margin-right: 4px;
 }
 
 /* Raw-text column styles */

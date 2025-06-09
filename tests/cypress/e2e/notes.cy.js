@@ -312,8 +312,11 @@ describe('Notes Feature', () => {
       cy.get('.notes-btn').should('have.class', 'has-notes');
     });
 
-    // Hover to see preview
-    findTask(taskText).realHover();
+    // Ensure element is in viewport and stable
+    findTask(taskText).should('be.visible');
+    
+    // Use realHover with scrollBehavior disabled to prevent auto-scrolling
+    findTask(taskText).realHover({ scrollBehavior: false });
 
     // Verify preview structure
     findTask(taskText).within(() => {

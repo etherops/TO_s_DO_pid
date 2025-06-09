@@ -30,7 +30,6 @@
 
 # WIP
 ### In Progress
-* [ ] collase in archive by default, put badge at top in archive by default
 * [ ] V-BUG: too much vertical whitespace in task cards
 * [ ] custom file again, or multiple custom directories
 
@@ -41,6 +40,7 @@
 * [x] save with a note puts in progress | Sat, June 7
 * [x] parallelize tests | Sat, June 7
 * [x] BOTH: auto append date completed DD/MM/YY on complete and set to done | Sat, June 7
+* [x] collase in archive by default, put badge at top in archive by default | Mon, June 9
 * [x] VIEW: Auto sort tasks by status
 * [x] display note preview inline
 * [x] details is a pop up instead of "expand card"

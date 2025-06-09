@@ -209,12 +209,20 @@ const isSorting = ref(false);
 const storageKey = computed(() => `section-collapse-${props.section.name}`);
 const isCompletedCollapsed = ref(false);
 
-// Load collapse state on mount
-onMounted(() => {
+// Function to load collapse state from localStorage
+const loadCollapseState = () => {
   const saved = localStorage.getItem(storageKey.value);
   if (saved !== null) {
     isCompletedCollapsed.value = saved === 'true';
+  } else {
+    // If no saved state, default to collapsed for DONE columns
+    isCompletedCollapsed.value = props.columnType === 'DONE';
   }
+};
+
+// Load collapse state on mount
+onMounted(() => {
+  loadCollapseState();
 });
 
 // Template refs

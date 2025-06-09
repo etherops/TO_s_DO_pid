@@ -5,6 +5,7 @@ import 'cypress-real-events'
 
 // Import helpers to make them globally available
 import * as helpers from './helpers.js'
+import {refreshAndWait} from "./helpers.js";
 
 // Make helpers available globally
 window.todoHelpers = helpers;
@@ -19,7 +20,8 @@ beforeEach(() => {
   // Create test file based on spec name for this test
   cy.createTestFile().then((fileInfo) => {
     testFileInfo = fileInfo;
-    
+    // Clear localStorage to test default behavior
+    cy.clearLocalStorage();
     // Wait to ensure backend file detection under parallel load
     cy.wait(500);
     
