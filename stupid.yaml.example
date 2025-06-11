@@ -1,0 +1,14 @@
+# Stupid Configuration Example
+# Copy this file to stupid.yaml and customize it for your stupid setup
+
+# Directories to scan for .todo.md files
+directories:
+  # - /Users/username/Documents/todos
+  # - /Users/username/Projects/todos
+  # - /path/to/another/directory
+
+# Individual todo files to include
+files:
+  # - /Users/username/Desktop/personal.todo.md
+  # - /Users/username/work/project.todo.md
+  # - /path/to/specific/file.todo.md

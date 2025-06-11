@@ -15,6 +15,7 @@ todo.txt
 .env
 example_backup.todo.md
 fixture*.todo.md
+stupid.yaml
 
 # Testing
 coverage/

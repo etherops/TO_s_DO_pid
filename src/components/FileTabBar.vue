@@ -8,13 +8,12 @@
       <div class="app-title">TO_s_DO_pid</div>
       <div
           v-for="file in availableFiles"
-          :key="file.name"
-          :class="['file-tab', 'server-tab', { active: selectedFile.name === file.name }, { 'custom-file': file.isCustom }]"
+          :key="file.path || file.name"
+          :class="['file-tab', { 'server-tab': file.isBuiltIn, 'custom-tab': !file.isBuiltIn, active: isFileActive(file) }]"
           @click="$emit('file-selected', file)"
-          :title="file.name + (file.isCustom ? ' (Custom)' : '')"
+          :title="getFileTooltip(file)"
       >
-        {{ formatTabName(file.name) }}
-        <span v-if="file.isCustom" class="custom-badge">Custom</span>
+        {{ formatTabName(file) }}
       </div>
     </div>
     <div class="raw-text-toggle-container">
@@ -37,14 +36,14 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   availableFiles: {
     type: Array,
     default: () => []
   },
   selectedFile: {
     type: Object,
-    default: () => ({ name: '', isCustom: false })
+    default: () => ({ name: '', path: '', isBuiltIn: true })
   },
   unparsedLineCount: {
     type: Number,
@@ -58,11 +57,38 @@ defineProps({
 
 defineEmits(['file-selected', 'toggle-raw-text']);
 
-// Format tab name by removing .todo.md extension and replacing underscores with spaces
-const formatTabName = (filename) => {
-  let displayName = filename.replace(/\.todo\.md$/i, '');
+// Format tab name based on file type
+const formatTabName = (file) => {
+  // For full path files, show directory/filename
+  if (!file.isBuiltIn && file.path && file.source !== 'directory') {
+    const parts = file.path.split('/');
+    if (parts.length >= 2) {
+      // Get parent directory and filename
+      const parentDir = parts[parts.length - 2];
+      const filename = parts[parts.length - 1].replace(/\.todo\.md$/i, '').replace(/\.md$/i, '');
+      return `${parentDir}/${filename}`;
+    }
+  }
+  
+  // For directory files and built-in files, just show the name
+  let displayName = file.name.replace(/\.todo\.md$/i, '');
   displayName = displayName.replace(/_/g, ' ');
   return displayName;
+};
+
+// Check if a file is the active one
+const isFileActive = (file) => {
+  if (!props.selectedFile || !file) return false;
+  return (props.selectedFile.path && file.path === props.selectedFile.path) ||
+         (!props.selectedFile.path && file.name === props.selectedFile.name);
+};
+
+// Get tooltip for file
+const getFileTooltip = (file) => {
+  if (!file.isBuiltIn && file.path) {
+    return file.path;
+  }
+  return file.name;
 };
 </script>
 
@@ -126,12 +152,10 @@ const formatTabName = (filename) => {
 
 .file-tab:hover {
   background-color: #f0f0f0;
-  color: #4caf50;
 }
 
 .file-tab.active {
   background-color: #f5f5f5;
-  color: #4caf50;
   border-top-width: 1.5px;
   border-bottom: none;
   border-right-width: 1.5px;
@@ -139,16 +163,43 @@ const formatTabName = (filename) => {
   position: relative;
 }
 
-/* Server tab styles */
+/* Built-in server tab styles (grey theme) */
 .server-tab {
-  border-left: 3px solid #4caf50;
+  border-left: 3px solid #888;
+}
+
+.server-tab:hover {
+  color: #666;
 }
 
 .server-tab.active {
   border-left-width: 6px;
+  color: #666;
 }
 
 .server-tab::after {
+  content: '•';
+  font-size: 14px;
+  color: #888;
+  margin-left: 8px;
+  opacity: 0.7;
+}
+
+/* Custom tab styles (green theme) */
+.custom-tab {
+  border-left: 3px solid #4caf50;
+}
+
+.custom-tab:hover {
+  color: #4caf50;
+}
+
+.custom-tab.active {
+  border-left-width: 6px;
+  color: #4caf50;
+}
+
+.custom-tab::after {
   content: '•';
   font-size: 14px;
   color: #4caf50;
@@ -156,32 +207,6 @@ const formatTabName = (filename) => {
   opacity: 0.7;
 }
 
-/* Custom file styles (from custom directory) */
-.server-tab.custom-file {
-  border-left: 3px solid #9c27b0;
-}
-
-.server-tab.custom-file.active {
-  border-left-width: 6px;
-}
-
-.server-tab.custom-file::after {
-  content: '•';
-  font-size: 14px;
-  color: #9c27b0;
-  margin-left: 8px;
-  opacity: 0.7;
-}
-
-.custom-badge {
-  font-size: 10px;
-  background-color: #9c27b0;
-  color: white;
-  padding: 2px 5px;
-  border-radius: 10px;
-  margin-left: 5px;
-  font-weight: normal;
-}
 
 .raw-text-toggle-container {
   padding: 0 20px;

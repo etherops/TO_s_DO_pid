@@ -1,5 +1,6 @@
 # TODO
 ## Quick Features
+* [ ] FOCUS - focus vs planning mode (WIP is larger and overlaps TODO and ARCHIVE)
 * [ ] TABS: sortable tabs
 * [ ] ADD TASK: "add task" should be a an empty row ready
 * [ ] BACKUP: Backup rotation
@@ -9,6 +10,7 @@
 * [ ] EDIT: double click to edit, focus tittle
 * [ ] DUE DATE: due date no parens
 * [ ] TABS: counts in tabs
+* [ ] Show TODO/WIP/ARCHIVE even if none
 
 ## Fun Stuff
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
@@ -18,6 +20,7 @@
 * [ ] bug: visual - confrim delete needs higher z-index
 
 ## Bigger Features
+* [~] FOCUS MODE (TODO and ARCHIVE slide to the side, WIP pops twice as wide 2 columns.  Automatically?)
 * [ ] DYNAMIC: dynamic re-render/watch on file change
 * [ ] SUBTASKS: Support subtasks
 * [ ] LARGE: iPhone app
@@ -31,10 +34,13 @@
 # WIP
 ### In Progress
 * [ ] V-BUG: too much vertical whitespace in task cards
-* [ ] custom file again, or multiple custom directories
+* [ ] BUG: non-destructive subtasks...
+* [ ] BUG: notes only puts in progress in WIP col
+* [ ] auto poll server (take server and backup immedietely if there is conflict)
 
 # ARCHIVE
 ### Just done
+* [x] custom file again, or multiple custom directories | Tues, June 10
 * [x] fancier archive button".  It will move all unstarted and in progress tasks into that section.) | Sun, June 8
 * [x] collapsible/hidable DONE | Sun, June 8
 * [x] save with a note puts in progress | Sat, June 7

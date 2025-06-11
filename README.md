@@ -23,12 +23,27 @@ This is a really really stupid to do list web app that shouldn't exist.
 4. Run `npm run dev` to start the development server
 5. Open your browser and navigate to `http://localhost:5173`
 
-## Custom Todo Files Directory
+## Custom Todo Files and Directories
 
-You can configure a custom directory for todo files by setting the `TODO_CUSTOM_DIR` environment variable:
+You can configure multiple directories and individual todo files using a stupidly named YAML configuration file:
 
-1. Copy the `.env.example` file to `.env`
-2. Edit the `.env` file and set `TODO_CUSTOM_DIR` to the path of your custom todo files directory
+1. Copy `stupid.yaml.example` to `stupid.yaml`
+2. Edit `stupid.yaml` and add:
+   - Directories to scan for `.todo.md` files
+   - Individual `.todo.md` file paths
 3. Restart the server
 
-Todo files in the custom directory will be displayed with a "Custom" badge in the file tabs.
+Example configuration:
+```yaml
+# Directories to scan for .todo.md files
+directories:
+  - /Users/username/Documents/todos
+  - /Users/username/Projects/todos
+
+# Individual todo files to include
+files:
+  - /Users/username/Desktop/personal.todo.md
+  - /Users/username/work/project.todo.md
+```
+
+Custom files will be displayed with a "Custom" or "Dir" badge in the file tabs.

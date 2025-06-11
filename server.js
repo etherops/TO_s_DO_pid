@@ -3,8 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-// Add dotenv for environment variables
-require('dotenv').config();
+const yaml = require('js-yaml');
 
 // Add a logger function to help with debugging
 const logger = {
@@ -22,14 +21,23 @@ const logger = {
   }
 };
 
-// Get the custom todo directory from environment variables
-const TODO_CUSTOM_DIR = process.env.TODO_CUSTOM_DIR;
-if (TODO_CUSTOM_DIR) {
-  logger.info('Custom todo directory configured:', TODO_CUSTOM_DIR);
-  // Check if the directory exists
-  if (!fs.existsSync(TODO_CUSTOM_DIR)) {
-    logger.error('Custom todo directory does not exist:', TODO_CUSTOM_DIR);
+// Load configuration from YAML file
+let todoConfig = { directories: [], files: [] };
+const configPath = path.join(__dirname, 'stupid.yaml');
+
+try {
+  if (fs.existsSync(configPath)) {
+    const configContent = fs.readFileSync(configPath, 'utf8');
+    todoConfig = yaml.load(configContent) || { directories: [], files: [] };
+    logger.info('Loaded stupid configuration:', {
+      directories: todoConfig.directories?.length || 0,
+      files: todoConfig.files?.length || 0
+    });
+  } else {
+    logger.info('No stupid.yaml found, using default configuration');
   }
+} catch (error) {
+  logger.error('Error loading stupid.yaml:', error);
 }
 
 const app = express();
@@ -40,31 +48,14 @@ app.use(cors());
 app.use(bodyParser.json({limit: '5mb'}));
 app.use(express.static('dist'));
 
-// Function to get the default todo file path
-const getDefaultTodoFilePath = () => {
-  const todoFilePath = path.join(__dirname, 'todo.todo.md');
-  const exampleTodoFilePath = path.join(__dirname, 'example.todo.md');
-
-  // Check if todo.todo.md exists, if not fallback to example.todo.md
-  if (fs.existsSync(todoFilePath)) {
-    logger.info('Using todo.todo.md as default file');
-    return todoFilePath;
-  } else {
-    logger.info('Fallback to example.todo.md as default file');
-    return exampleTodoFilePath;
-  }
-};
 
 // Function to create a backup of a todo file
-const createBackup = (filePath, isCustom) => {
+const createBackup = (filePath) => {
   try {
-    logger.info('createBackup called with', {filePath, isCustom});
+    logger.info('createBackup called with', {filePath});
     // Get the directory where the file is located
-    let fileDir;
-
-    // If it's a custom file, use the custom directory
-    fileDir = isCustom && TODO_CUSTOM_DIR ? TODO_CUSTOM_DIR : path.dirname(filePath)
-    logger.info('Using backupup directory: ', { path: fileDir });
+    const fileDir = path.dirname(filePath);
+    logger.info('Using backup directory: ', { path: fileDir });
 
     // Create main backup directory path
     const backupDirName = '.TO_s_DO_pid.bak';
@@ -112,42 +103,86 @@ const createBackup = (filePath, isCustom) => {
   }
 };
 
-// Get todo file path from filename or use default
-const getTodoFilePath = (filename, isCustom = false) => {
-  logger.info('getTodoFilePath called with', {filename, isCustom});
-  if (!filename) {
-    return getDefaultTodoFilePath()
+// Helper function to scan a directory for todo files
+const scanDirectory = (dir, isBuiltIn = false) => {
+  try {
+    if (!fs.existsSync(dir)) {
+      logger.warn('Directory does not exist:', dir);
+      return [];
+    }
+    
+    logger.info('Scanning directory:', dir);
+    return fs.readdirSync(dir)
+      .filter(file => file.endsWith('.todo.md'))
+      .map(file => ({
+        name: file,
+        path: path.join(dir, file),
+        isBuiltIn,
+        source: 'directory',
+        directory: dir
+      }));
+  } catch (error) {
+    logger.error(`Error reading directory ${dir}:`, error);
+    return [];
   }
-
-  let thedir = isCustom && TODO_CUSTOM_DIR ? TODO_CUSTOM_DIR : __dirname
-  logger.info('Using directory for file path', { path: thedir });
-  return path.join(thedir, filename);
 };
 
-// Get all .todo.md files in the server directory and custom directory
+// Helper function to add an individual file
+const addFile = (filePath) => {
+  try {
+    if (!fs.existsSync(filePath)) {
+      logger.warn('File does not exist:', filePath);
+      return null;
+    }
+    
+    if (!filePath.endsWith('.todo.md') && !filePath.endsWith('TODO.md')) {
+      logger.warn('File does not have .todo.md or TODO.md extension:', filePath);
+      return null;
+    }
+    
+    logger.info('Adding configured file:', filePath);
+    return {
+      name: path.basename(filePath),
+      path: filePath,
+      isBuiltIn: false,
+      source: 'file'
+    };
+  } catch (error) {
+    logger.error(`Error checking file ${filePath}:`, error);
+    return null;
+  }
+};
+
+// Get all .todo.md files from server directory, configured directories, and individual files
 app.get('/api/files', (req, res) => {
   try {
-    logger.info('Listing todo.md files in directories');
+    logger.info('Listing todo.md files from all configured sources');
     let files = [];
 
-    // Get files from local directory
-    const localFiles = fs.readdirSync(__dirname)
-      .filter(file => file.endsWith('.todo.md'))
-      .map(file => ({ name: file, isCustom: false }));
+    // Get files from local server directory (built-in)
+    files = scanDirectory(__dirname, true);
 
-    files = [...localFiles];
-
-    // Get files from custom directory if configured
-    if (TODO_CUSTOM_DIR && fs.existsSync(TODO_CUSTOM_DIR)) {
-      logger.info('Listing todo.md files in custom directory', TODO_CUSTOM_DIR);
-      const customFiles = fs.readdirSync(TODO_CUSTOM_DIR)
-        .filter(file => file.endsWith('.todo.md'))
-        .map(file => ({ name: file, isCustom: true }));
-
-      files = [...files, ...customFiles];
+    // Get files from configured directories
+    if (todoConfig.directories && Array.isArray(todoConfig.directories)) {
+      todoConfig.directories.forEach(dir => {
+        files = [...files, ...scanDirectory(dir, false)];
+      });
     }
 
-    res.json({ files });
+    // Add individual configured files
+    if (todoConfig.files && Array.isArray(todoConfig.files)) {
+      todoConfig.files.forEach(filePath => {
+        const file = addFile(filePath);
+        if (file) files.push(file);
+      });
+    }
+
+    // Remove duplicates based on path
+    const uniqueFiles = files.filter((file, index, self) =>
+      index === self.findIndex((f) => f.path === file.path)
+    );
+
+    res.json({ files: uniqueFiles });
   } catch (error) {
     logger.error('Error listing todo.md files:', error);
     res.status(500).json({ error: 'Failed to list todo.md files' });
@@ -157,13 +192,15 @@ app.get('/api/files', (req, res) => {
 // Get todo file content
 app.get('/api/todos', (req, res) => {
   try {
-    const filename = req.query.filename;
-    const isCustom = req.query.isCustom === 'true';
+    const filePath = req.query.path;
+    
+    logger.info('GET /api/todos received', {path: filePath});
+    
+    if (!filePath) {
+      return res.status(400).json({ error: 'Path parameter is required' });
+    }
 
-    logger.info('GET /api/todos received', {filename, isCustom,});
-    const filePath = getTodoFilePath(filename, isCustom);
-
-    logger.info('Reading todo file', { path: filePath, isCustom });
+    logger.info('Reading todo file', { path: filePath });
     
     // Check if file exists before trying to read it
     if (!fs.existsSync(filePath)) {
@@ -177,8 +214,7 @@ app.get('/api/todos', (req, res) => {
     
     const fileContent = fs.readFileSync(filePath, 'utf8');
     res.json({ 
-      content: fileContent,
-      isCustom: isCustom
+      content: fileContent
     });
   } catch (error) {
     logger.error('Error reading todo file:', error);
@@ -189,9 +225,10 @@ app.get('/api/todos', (req, res) => {
 // Update todo file content - only endpoint for writing to file
 app.post('/api/todos', (req, res) => {
   try {
-    const { content, filename, isCustom } = req.body;
+    const { content, path: filePath } = req.body;
 
-    logger.info('Received POST request to /api/todos', {filename, isCustom,
+    logger.info('Received POST request to /api/todos', {
+      path: filePath,
       contentLength: content ? content.length : 0
     });
 
@@ -199,19 +236,20 @@ app.post('/api/todos', (req, res) => {
       logger.error('Missing content in request');
       return res.status(400).json({ error: 'Content is required' });
     }
-
-    // Convert isCustom to boolean if it's a string
-    const isCustomBoolean = isCustom === 'true' ? true : Boolean(isCustom);
-    const filePath = getTodoFilePath(filename, isCustomBoolean);
+    
+    if (!filePath) {
+      logger.error('Missing path in request');
+      return res.status(400).json({ error: 'Path is required' });
+    }
 
     // Create backup before writing to file
-    logger.info('Creating backup for file', { filePath, isCustomBoolean });
-    createBackup(filePath, isCustomBoolean);
+    logger.info('Creating backup for file', { filePath: filePath });
+    createBackup(filePath);
 
-    logger.info('Writing todo file', { path: filePath, isCustomBoolean, contentLength: content.length });
+    logger.info('Writing todo file', { path: filePath, contentLength: content.length });
     fs.writeFileSync(filePath, content, 'utf8');
     logger.info('Todo file successfully written');
-    res.json({ success: true, isCustom: isCustomBoolean });
+    res.json({ success: true });
   } catch (error) {
     logger.error('Error writing todo file:', error);
     res.status(500).json({ error: 'Failed to write todo file' });

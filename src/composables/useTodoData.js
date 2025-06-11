@@ -9,7 +9,7 @@ export function useTodoData() {
     const todoData = ref({ columnOrder: [], columnStacks: {} });
     const loading = ref(true);
     const availableFiles = ref([]);
-    const selectedFile = ref({ name: '', isCustom: false });
+    const selectedFile = ref({ name: '', path: '', isBuiltIn: true });
     const parsingError = ref('');
     const showRawText = ref(false);
 
@@ -20,8 +20,14 @@ export function useTodoData() {
             availableFiles.value = response.data.files;
 
             // Check for saved file in localStorage
-            const savedFile = JSON.parse(localStorage.getItem('selectedTodoFile'));
-            selectedFile.value = savedFile ? savedFile : availableFiles.value[0];
+            const savedFilePath = localStorage.getItem('selectedTodoFilePath');
+            if (savedFilePath) {
+                // Find the file by path
+                const foundFile = availableFiles.value.find(f => f.path === savedFilePath);
+                selectedFile.value = foundFile || availableFiles.value[0] || { name: '', path: '', isBuiltIn: true };
+            } else {
+                selectedFile.value = availableFiles.value[0] || { name: '', path: '', isBuiltIn: true };
+            }
         } catch (error) {
             console.error('Error loading file list:', error);
         }
@@ -33,16 +39,18 @@ export function useTodoData() {
             loading.value = true;
             parsingError.value = '';
 
-            // Load from server
-            const params = selectedFile.value.name ? {
-                filename: selectedFile.value.name,
-                isCustom: selectedFile.value.isCustom
-            } : {};
+            // Load from server using path
+            if (!selectedFile.value.path) {
+                parsingError.value = 'No file selected';
+                loading.value = false;
+                return;
+            }
 
-            const response = await axios.get(`${API_BASE_URL}/todos`, { params });
+            const response = await axios.get(`${API_BASE_URL}/todos`, { 
+                params: { path: selectedFile.value.path } 
+            });
 
             try {
-                // Parse the todo markdown file
                 todoData.value = parseTodoMdFile(response.data.content);
             } catch (parseError) {
                 console.error('Error parsing server todo file:', parseError);
@@ -59,12 +67,12 @@ export function useTodoData() {
                 todoData.value = { columnOrder: [], columnStacks: {} };
                 
                 // Clear the saved file from localStorage if it no longer exists
-                localStorage.removeItem('selectedTodoFile');
+                localStorage.removeItem('selectedTodoFilePath');
                 
                 // Try to load the first available file instead
                 if (availableFiles.value.length > 0) {
                     selectedFile.value = availableFiles.value[0];
-                    localStorage.setItem('selectedTodoFile', JSON.stringify(selectedFile.value));
+                    localStorage.setItem('selectedTodoFilePath', selectedFile.value.path);
                     // Reload with the new file
                     await loadTodoData();
                     return;
@@ -89,13 +97,15 @@ export function useTodoData() {
             }
 
             // Send the content to the server
-            const payload = {
-                content,
-                filename: selectedFile.value.name,
-                isCustom: selectedFile.value.isCustom
-            };
+            if (!selectedFile.value.path) {
+                console.error('No file path available for saving');
+                return false;
+            }
 
-            await axios.post(`${API_BASE_URL}/todos`, payload);
+            await axios.post(`${API_BASE_URL}/todos`, {
+                content,
+                path: selectedFile.value.path
+            });
             return true;
         } catch (error) {
             console.error('Error saving todo data:', error);
@@ -112,8 +122,8 @@ export function useTodoData() {
         // Update selected file
         selectedFile.value = file;
 
-        // Save selected file to localStorage
-        localStorage.setItem('selectedTodoFile', JSON.stringify(selectedFile.value));
+        // Save selected file path to localStorage
+        localStorage.setItem('selectedTodoFilePath', selectedFile.value.path);
 
         await loadTodoData();
     };
