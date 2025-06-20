@@ -3,7 +3,7 @@ import { refreshAndWait } from '../support/helpers.js';
 describe('Raw Text Handling', () => {
   beforeEach(() => {
     // Enable raw text visibility
-    cy.get('.toggle-switch').click();
+    cy.get('.toggle-switch').contains('raw text').click();
     cy.wait(100);
   });
 
@@ -95,7 +95,7 @@ describe('Raw Text Handling', () => {
     cy.get('.kanban-column', { timeout: 5000 }).should('exist');
     
     // Enable raw text visibility again (it resets after refresh)
-    cy.get('.toggle-switch').click();
+    cy.get('.toggle-switch').contains('raw text').click();
     cy.wait(100);
     
     // Verify all raw text is still displayed correctly after reload

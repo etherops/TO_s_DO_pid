@@ -1,6 +1,5 @@
 # TODO
 ## Quick Features
-* [ ] FOCUS - focus vs planning mode (WIP is larger and overlaps TODO and ARCHIVE)
 * [ ] TABS: sortable tabs
 * [ ] ADD TASK: "add task" should be a an empty row ready
 * [ ] BACKUP: Backup rotation
@@ -11,6 +10,10 @@
 * [ ] DUE DATE: due date no parens
 * [ ] TABS: counts in tabs
 * [ ] Show TODO/WIP/ARCHIVE even if none
+* [ ] EFFECT: collapse furls and unfurls like a deck of cards
+* [ ] drag to collapsed section temporarily expands the section
+* [ ] MOVE: unfinished task to section...
+* [ ] COLLAPSE: expand on hover
 
 ## Fun Stuff
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
@@ -18,9 +21,10 @@
 ## Bugs
 * [ ] bug: hover preview is showing for full title when the title isn't overflow=true (bug: purge "visualColumn", correctly name column/columnstack)
 * [ ] bug: visual - confrim delete needs higher z-index
+* [ ] BUG: same name section loses tasks!
 
 ## Bigger Features
-* [~] FOCUS MODE (TODO and ARCHIVE slide to the side, WIP pops twice as wide 2 columns.  Automatically?)
+* [ ] CONSOLIDATED board (show WIP section for all lists)
 * [ ] DYNAMIC: dynamic re-render/watch on file change
 * [ ] SUBTASKS: Support subtasks
 * [ ] LARGE: iPhone app
@@ -30,16 +34,19 @@
 * [ ] SERVER: git push integration
 * [ ] feature: add the preceeding folder name in custom tabs
 * [ ] DELETE - undo
+* [ ] Calendar view
 
 # WIP
 ### In Progress
+* [ ] md5 sum check before writing
+* [ ] auto poll/websocket server (take server and backup immedietely if there is conflict)
 * [ ] V-BUG: too much vertical whitespace in task cards
 * [ ] BUG: non-destructive subtasks...
 * [ ] BUG: notes only puts in progress in WIP col
-* [ ] auto poll server (take server and backup immedietely if there is conflict)
 
 # ARCHIVE
 ### Just done
+* [x] FOCUS MODE (TODO and ARCHIVE slide to the side, WIP pops twice as wide 2 columns.  Automatically?) | Fri, June 20
 * [x] custom file again, or multiple custom directories | Tues, June 10
 * [x] fancier archive button".  It will move all unstarted and in progress tasks into that section.) | Sun, June 8
 * [x] collapsible/hidable DONE | Sun, June 8

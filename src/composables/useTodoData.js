@@ -12,6 +12,7 @@ export function useTodoData() {
     const selectedFile = ref({ name: '', path: '', isBuiltIn: true });
     const parsingError = ref('');
     const showRawText = ref(false);
+    const focusMode = ref(localStorage.getItem('focusMode') === 'true');
 
     // Load available text files from the server
     const loadAvailableFiles = async () => {
@@ -135,6 +136,7 @@ export function useTodoData() {
         selectedFile,
         parsingError,
         showRawText,
+        focusMode,
         loadAvailableFiles,
         loadTodoData,
         persistTodoData,

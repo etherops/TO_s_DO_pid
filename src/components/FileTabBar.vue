@@ -16,7 +16,17 @@
         {{ formatTabName(file) }}
       </div>
     </div>
-    <div class="raw-text-toggle-container">
+    <div class="toggles-container">
+      <label class="toggle-switch">
+        <input
+            type="checkbox"
+            class="focus-mode-toggle"
+            :checked="focusMode"
+            @change="$emit('toggle-focus-mode')"
+        />
+        <span class="slider"></span>
+        <span class="toggle-label">Focus mode</span>
+      </label>
       <label class="toggle-switch" :class="{ disabled: unparsedLineCount === 0 }">
         <input
             type="checkbox"
@@ -52,10 +62,14 @@ const props = defineProps({
   showRawText: {
     type: Boolean,
     default: false
+  },
+  focusMode: {
+    type: Boolean,
+    default: false
   }
 });
 
-defineEmits(['file-selected', 'toggle-raw-text']);
+defineEmits(['file-selected', 'toggle-raw-text', 'toggle-focus-mode']);
 
 // Format tab name based on file type
 const formatTabName = (file) => {
@@ -131,6 +145,7 @@ const getFileTooltip = (file) => {
   overflow-x: auto;
   padding: 0 20px;
   flex: 1;
+  min-width: 0; /* Allow flex item to shrink below content width */
 }
 
 .file-tab {
@@ -148,6 +163,7 @@ const getFileTooltip = (file) => {
   align-items: center;
   border: 1px solid #e0e0e0;
   border-bottom: none;
+  flex-shrink: 0; /* Prevent tabs from shrinking */
 }
 
 .file-tab:hover {
@@ -208,8 +224,11 @@ const getFileTooltip = (file) => {
 }
 
 
-.raw-text-toggle-container {
+.toggles-container {
+  display: flex;
+  gap: 15px;
   padding: 0 20px;
+  flex-shrink: 0; /* Prevent toggles from shrinking */
 }
 
 .toggle-switch {
@@ -226,7 +245,8 @@ const getFileTooltip = (file) => {
   cursor: not-allowed;
 }
 
-.raw-text-toggle {
+.raw-text-toggle,
+.focus-mode-toggle {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -256,11 +276,13 @@ const getFileTooltip = (file) => {
   transition: transform 0.2s ease;
 }
 
-.raw-text-toggle:checked + .slider {
+.raw-text-toggle:checked + .slider,
+.focus-mode-toggle:checked + .slider {
   background-color: #4caf50;
 }
 
-.raw-text-toggle:checked + .slider:before {
+.raw-text-toggle:checked + .slider:before,
+.focus-mode-toggle:checked + .slider:before {
   transform: translateX(20px);
 }
 

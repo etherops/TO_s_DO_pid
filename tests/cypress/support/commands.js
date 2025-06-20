@@ -41,7 +41,10 @@ Cypress.Commands.add('switchToFile', (fileName) => {
     const baseFileName = fileName.replace('.todo.md', '')
     
     // Wait for the file tab to appear (backend might need time to detect new file)
-    cy.contains('.file-tab', baseFileName, { timeout: 8000 }).should('be.visible').click()
+    cy.contains('.file-tab', baseFileName, { timeout: 8000 })
+        .scrollIntoView() // Scroll the tab into view if it's hidden
+        .should('be.visible')
+        .click()
     
     // Wait for the tab to become active
     cy.contains('.file-tab', baseFileName).should('have.class', 'active')
