@@ -1,5 +1,7 @@
 # TODO
 ## Quick Features
+* [ ] BUG: notes only puts in progress in WIP col
+* [ ] BUG: non-destructive subtasks...
 * [ ] TABS: sortable tabs
 * [ ] ADD TASK: "add task" should be a an empty row ready
 * [ ] BACKUP: Backup rotation
@@ -38,13 +40,11 @@
 
 # WIP
 ### In Progress
-* [ ] V-BUG: too much vertical whitespace in task cards
-* [ ] BUG: non-destructive subtasks...
-* [ ] BUG: notes only puts in progress in WIP col
 * [ ] BUG: delete sections w/ same name!
 
 # ARCHIVE
 ### Just done
+* [x] V-BUG: too much vertical whitespace in task cards
 * [x] auto poll/websocket server (take server and backup immedietely if there is conflict) | Tues, June 24
 * [x] md5 sum check before writing | Tues, June 24
 * [x] FOCUS MODE (TODO and ARCHIVE slide to the side, WIP pops twice as wide 2 columns.  Automatically?) | Fri, June 20
