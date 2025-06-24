@@ -53,9 +53,13 @@ raw text line in a section SUPERCATS
 ### test archive
 * [x] asdf | Sun, June 8
 * [x] asdf | Sun, June 8
-* [-] asdf | Sun, June 8
-* [~] asdf
-* [ ] asdf
+* [x] asdf | Tues, June 24
+* [~] asdf | Sun, June 8
+* [x] asdf
+* [x] test4 | Tues, June 24
+* [x] test1 | Tues, June 24
+* [x] test2 | Tues, June 24
+* [ ] test3 | Tues, June 24
 
 # TODO-2
 ## LOW-P
