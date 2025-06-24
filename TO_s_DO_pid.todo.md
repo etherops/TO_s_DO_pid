@@ -38,14 +38,15 @@
 
 # WIP
 ### In Progress
-* [ ] md5 sum check before writing
-* [ ] auto poll/websocket server (take server and backup immedietely if there is conflict)
 * [ ] V-BUG: too much vertical whitespace in task cards
 * [ ] BUG: non-destructive subtasks...
 * [ ] BUG: notes only puts in progress in WIP col
+* [ ] BUG: delete sections w/ same name!
 
 # ARCHIVE
 ### Just done
+* [x] auto poll/websocket server (take server and backup immedietely if there is conflict) | Tues, June 24
+* [x] md5 sum check before writing | Tues, June 24
 * [x] FOCUS MODE (TODO and ARCHIVE slide to the side, WIP pops twice as wide 2 columns.  Automatically?) | Fri, June 20
 * [x] custom file again, or multiple custom directories | Tues, June 10
 * [x] fancier archive button".  It will move all unstarted and in progress tasks into that section.) | Sun, June 8

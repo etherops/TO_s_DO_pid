@@ -54,6 +54,25 @@ module.exports = defineConfig({
                             console.error('File deletion failed:', error)
                             return { success: false, error: error.message }
                         })
+                },
+                writeFile({ path: filePath, content }) {
+                    // Security safeguard: only write to fixture files
+                    const normalizedPath = path.normalize(filePath)
+                    const fileName = path.basename(normalizedPath)
+                    
+                    if (!fileName.startsWith('fixture')) {
+                        return Promise.resolve({ 
+                            success: false, 
+                            error: 'Can only write to files starting with "fixture"' 
+                        })
+                    }
+                    
+                    return fs.writeFile(filePath, content, 'utf8')
+                        .then(() => ({ success: true }))
+                        .catch(error => {
+                            console.error('File write failed:', error)
+                            return { success: false, error: error.message }
+                        })
                 }
             })
 

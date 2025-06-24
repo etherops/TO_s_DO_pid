@@ -4,6 +4,9 @@ const path = require('path');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const yaml = require('js-yaml');
+const WebSocket = require('ws');
+const http = require('http');
+const crypto = require('crypto');
 
 // Add a logger function to help with debugging
 const logger = {
@@ -42,6 +45,19 @@ try {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Create WebSocket server
+const wss = new WebSocket.Server({ server });
+
+// Track connected clients and which files they're watching
+const clients = new Map(); // clientId -> { ws, watchingFiles: Set }
+let clientIdCounter = 0;
+
+// Track file watchers
+const fileWatchers = new Map(); // filePath -> FSWatcher
 
 // Middleware
 app.use(cors());
@@ -101,6 +117,109 @@ const createBackup = (filePath) => {
     logger.error('Error creating backup:', error);
     // Don't throw the error, just log it - we don't want to prevent the main file write
   }
+};
+
+// WebSocket handling
+wss.on('connection', (ws) => {
+  const clientId = clientIdCounter++;
+  clients.set(clientId, { ws, watchingFiles: new Set() });
+  logger.info('WebSocket client connected', { clientId });
+
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      logger.debug('WebSocket message received', { clientId, type: data.type });
+
+      if (data.type === 'watch') {
+        const { filePath } = data;
+        const client = clients.get(clientId);
+        client.watchingFiles.add(filePath);
+        
+        // Start watching the file if not already watching
+        if (!fileWatchers.has(filePath)) {
+          startWatchingFile(filePath);
+        }
+        
+        logger.info('Client watching file', { clientId, filePath });
+      }
+    } catch (error) {
+      logger.error('Error processing WebSocket message:', error);
+    }
+  });
+
+  ws.on('close', () => {
+    clients.delete(clientId);
+    logger.info('WebSocket client disconnected', { clientId });
+    
+    // Clean up file watchers if no clients are watching
+    cleanupUnwatchedFiles();
+  });
+
+  ws.on('error', (error) => {
+    logger.error('WebSocket error:', error);
+  });
+});
+
+
+// Start watching a file for changes
+const startWatchingFile = (filePath) => {
+  if (fileWatchers.has(filePath)) return;
+
+  try {
+    const watcher = fs.watch(filePath, (eventType, filename) => {
+      logger.info('File changed', { filePath, eventType });
+      
+      // Read file content and compute checksum
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const checksum = crypto.createHash('md5').update(content).digest('hex');
+        
+        // Notify all clients watching this file with checksum
+        notifyFileChange(filePath, checksum);
+      } catch (err) {
+        logger.error('Error reading file for checksum:', err);
+        // Still notify even if we couldn't get checksum
+        notifyFileChange(filePath, null);
+      }
+    });
+
+    fileWatchers.set(filePath, watcher);
+    logger.info('Started watching file', { filePath });
+  } catch (error) {
+    logger.error('Error watching file:', error);
+  }
+};
+
+// Notify clients about file changes
+const notifyFileChange = (filePath, checksum = null) => {
+  const notification = JSON.stringify({
+    type: 'fileChanged',
+    filePath,
+    checksum,
+    timestamp: new Date().toISOString()
+  });
+
+  clients.forEach((client, clientId) => {
+    if (client.watchingFiles.has(filePath) && client.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(notification);
+      logger.debug('Notified client of file change', { clientId, filePath });
+    }
+  });
+};
+
+// Clean up file watchers that no clients are watching
+const cleanupUnwatchedFiles = () => {
+  fileWatchers.forEach((watcher, filePath) => {
+    const hasWatchers = Array.from(clients.values()).some(client => 
+      client.watchingFiles.has(filePath)
+    );
+    
+    if (!hasWatchers) {
+      watcher.close();
+      fileWatchers.delete(filePath);
+      logger.info('Stopped watching file', { filePath });
+    }
+  });
 };
 
 // Helper function to scan a directory for todo files
@@ -247,8 +366,10 @@ app.post('/api/todos', (req, res) => {
     createBackup(filePath);
 
     logger.info('Writing todo file', { path: filePath, contentLength: content.length });
+    
     fs.writeFileSync(filePath, content, 'utf8');
     logger.info('Todo file successfully written');
+    
     res.json({ success: true });
   } catch (error) {
     logger.error('Error writing todo file:', error);
@@ -257,6 +378,7 @@ app.post('/api/todos', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`WebSocket server ready`);
 });

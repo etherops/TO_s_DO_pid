@@ -25,7 +25,7 @@
         :todo-data="todoData"
         :show-raw-text="showRawText"
         :focus-mode="focusMode"
-        @update="persistTodoData"
+        @update="handleUpdate"
     />
   </div>
 </template>
@@ -57,6 +57,11 @@ const toggleRawText = () => {
 const toggleFocusMode = () => {
   focusMode.value = !focusMode.value;
   localStorage.setItem('focusMode', focusMode.value);
+};
+
+// Handle updates from KanbanBoard - just save immediately
+const handleUpdate = async () => {
+  await persistTodoData();
 };
 
 // Calculate unparsed line count in view layer

@@ -1,9 +1,11 @@
 // composables/useTodoData.js
-import { ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
 import axios from 'axios';
 import { parseTodoMdFile, renderTodoMdFile } from '../utils/TodoMdParser';
+import SparkMD5 from 'spark-md5';
 
 const API_BASE_URL = 'http://localhost:3001/api';
+const WS_URL = 'ws://localhost:3001';
 
 export function useTodoData() {
     const todoData = ref({ columnOrder: [], columnStacks: {} });
@@ -13,6 +15,9 @@ export function useTodoData() {
     const parsingError = ref('');
     const showRawText = ref(false);
     const focusMode = ref(localStorage.getItem('focusMode') === 'true');
+    
+    let ws = null;
+    let reconnectTimeout = null;
 
     // Load available text files from the server
     const loadAvailableFiles = async () => {
@@ -107,6 +112,7 @@ export function useTodoData() {
                 content,
                 path: selectedFile.value.path
             });
+            
             return true;
         } catch (error) {
             console.error('Error saving todo data:', error);
@@ -120,6 +126,8 @@ export function useTodoData() {
         // Clear any previous parsing errors
         parsingError.value = '';
 
+        // Note: We don't explicitly unwatch files - they're cleaned up when no clients watch them
+
         // Update selected file
         selectedFile.value = file;
 
@@ -127,7 +135,93 @@ export function useTodoData() {
         localStorage.setItem('selectedTodoFilePath', selectedFile.value.path);
 
         await loadTodoData();
+        
+        // Start watching new file
+        if (ws && ws.readyState === WebSocket.OPEN && selectedFile.value.path) {
+            ws.send(JSON.stringify({
+                type: 'watch',
+                filePath: selectedFile.value.path
+            }));
+        }
     };
+    
+    // Initialize WebSocket connection
+    const initWebSocket = () => {
+        try {
+            ws = new WebSocket(WS_URL);
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                
+                // Start watching current file if any
+                if (selectedFile.value.path) {
+                    ws.send(JSON.stringify({
+                        type: 'watch',
+                        filePath: selectedFile.value.path
+                    }));
+                }
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'fileChanged' && data.filePath === selectedFile.value.path) {
+                        // Always compute and compare checksums
+                        const currentContent = renderTodoMdFile(todoData.value);
+                        const currentChecksum = SparkMD5.hash(currentContent);
+                        
+                        console.log('Checksum comparison:', {
+                            fileChecksum: data.checksum,
+                            currentChecksum: currentChecksum,
+                            match: data.checksum === currentChecksum
+                        });
+                        
+                        if (data.checksum === currentChecksum) {
+                            console.log('Checksums match, skipping reload (our own change)');
+                            return;
+                        }
+                        
+                        console.log('File changed externally, reloading:', data.filePath);
+                        // Reload the file
+                        loadTodoData();
+                    }
+                } catch (error) {
+                    console.error('Error processing WebSocket message:', error);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                
+                // Attempt to reconnect after 3 seconds
+                reconnectTimeout = setTimeout(() => {
+                    console.log('Attempting to reconnect WebSocket...');
+                    initWebSocket();
+                }, 3000);
+            };
+        } catch (error) {
+            console.error('Error initializing WebSocket:', error);
+        }
+    };
+    
+    // Start WebSocket connection
+    initWebSocket();
+    
+    // Cleanup on unmount
+    onUnmounted(() => {
+        if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+        }
+        
+        if (ws) {
+            ws.close();
+        }
+    });
 
     return {
         todoData,
