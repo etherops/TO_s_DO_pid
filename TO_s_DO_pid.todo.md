@@ -40,11 +40,12 @@
 
 # WIP
 ### In Progress
-* [ ] BUG: delete sections w/ same name!
+* [ ] select, multi select, move to section
 
 # ARCHIVE
 ### Just done
-* [x] V-BUG: too much vertical whitespace in task cards
+* [x] BUG: delete sections w/ same name! | Thurs, June 26
+* [x] V-BUG: too much vertical whitespace in task cards | Thurs, June 26
 * [x] auto poll/websocket server (take server and backup immedietely if there is conflict) | Tues, June 24
 * [x] md5 sum check before writing | Tues, June 24
 * [x] FOCUS MODE (TODO and ARCHIVE slide to the side, WIP pops twice as wide 2 columns.  Automatically?) | Fri, June 20

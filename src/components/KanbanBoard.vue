@@ -247,11 +247,23 @@ const handleSectionUpdate = (payload) => {
     for (const columnName of props.todoData.columnOrder) {
       const columnData = props.todoData.columnStacks[columnName];
       if (columnData && columnData.sections) {
-        const sectionIndex = columnData.sections.findIndex(s => s.name === payload.sectionName);
-        if (sectionIndex !== -1) {
-          // Remove the section from its column
-          columnData.sections.splice(sectionIndex, 1);
-          break;
+        // Use the provided index if available and valid
+        if (payload.sectionIndex !== undefined && payload.sectionIndex !== -1) {
+          // Validate that the section at this index has the expected name
+          if (payload.sectionIndex < columnData.sections.length && 
+              columnData.sections[payload.sectionIndex].name === payload.sectionName) {
+            // Remove the section using the exact index
+            columnData.sections.splice(payload.sectionIndex, 1);
+            break;
+          }
+        } else {
+          // Fallback to name-based search if index not provided
+          const sectionIndex = columnData.sections.findIndex(s => s.name === payload.sectionName);
+          if (sectionIndex !== -1) {
+            // Remove the section from its column
+            columnData.sections.splice(sectionIndex, 1);
+            break;
+          }
         }
       }
     }

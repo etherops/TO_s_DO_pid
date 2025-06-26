@@ -408,8 +408,14 @@ const cancelDeleteSection = () => {
 // Confirm section deletion
 const confirmDeleteSection = () => {
   if (props.section.items.length === 0) {
-    // Emit delete event to parent
-    emit('section-updated', { action: 'delete', sectionName: props.section.name });
+    // Find the index of this section in its column
+    const sectionIndex = props.columnData.sections ? props.columnData.sections.indexOf(props.section) : -1;
+    // Emit delete event to parent with both name and index
+    emit('section-updated', { 
+      action: 'delete', 
+      sectionName: props.section.name,
+      sectionIndex: sectionIndex 
+    });
   }
   sectionPendingDelete.value = false;
 };
