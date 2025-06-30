@@ -23,6 +23,19 @@
         @confirm="confirmArchive"
     />
 
+    <!-- Context Menu for Move To -->
+    <ContextMenu
+        v-if="contextMenu.show"
+        :show="contextMenu.show"
+        :position="contextMenu.position"
+        :todo-data="props.todoData"
+        :current-column="contextMenu.currentColumn"
+        :current-section="contextMenu.currentSection"
+        :selected-count="selectedCount"
+        @close="closeContextMenu"
+        @move-to-section="handleMoveToSection"
+    />
+
     <!-- TODO Columns -->
     <div class="column-stack todo-stack">
       <template v-for="columnName in props.todoData.columnOrder" :key="`todo-${columnName}`">
@@ -35,11 +48,14 @@
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
+            :is-task-selected="isTaskSelected"
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
             @update="emit('update')"
+            @task-click="handleTaskClick"
+            @task-context-menu="handleTaskContextMenu"
         />
       </template>
     </div>
@@ -57,11 +73,14 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :focus-mode="focusMode"
+            :is-task-selected="isTaskSelected"
             @add-section="createNewSection('WIP', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
             @update="emit('update')"
+            @task-click="handleTaskClick"
+            @task-context-menu="handleTaskContextMenu"
         />
       </template>
     </div>
@@ -78,10 +97,13 @@
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
+            :is-task-selected="isTaskSelected"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
             @update="emit('update')"
+            @task-click="handleTaskClick"
+            @task-context-menu="handleTaskContextMenu"
         />
       </template>
     </div>
@@ -93,7 +115,10 @@ import { ref } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
 import DatePicker from './DatePicker.vue';
 import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
+import ContextMenu from './ContextMenu.vue';
 import { generateLeftoversSectionName } from '../utils/sectionHelpers.js';
+import { useTaskSelection } from '../composables/useTaskSelection.js';
+import { useTodoData } from '../composables/useTodoData.js';
 
 const props = defineProps({
   todoData: {
@@ -119,6 +144,26 @@ const datePickerInitialDate = ref(null);
 
 // Archive confirmation state
 const archiveConfirmation = ref(null);
+
+// Task selection composable
+const {
+  selectedTaskIds,
+  selectedCount,
+  isTaskSelected,
+  clearSelection,
+  handleTaskClick: handleTaskSelection
+} = useTaskSelection();
+
+// Data persistence
+const { persistTodoData } = useTodoData();
+
+// Context menu state
+const contextMenu = ref({
+  show: false,
+  position: { x: 0, y: 0 },
+  currentColumn: '',
+  currentSection: ''
+});
 
 // Helper function to add ice logic to column data
 const getColumnDataWithIce = (columnName) => {
@@ -196,6 +241,133 @@ const createNewSection = (columnStack, column = null) => {
 // Handle task updates from columns
 const handleTaskUpdate = () => {
   emit('update');
+};
+
+// Handle task click for selection
+const handleTaskClick = (event) => {
+  // If only one task is selected and it's clicked without modifiers, deselect it
+  if (selectedCount.value === 1 && isTaskSelected(event.taskId) && 
+      !event.event.ctrlKey && !event.event.metaKey && !event.event.shiftKey) {
+    clearSelection();
+  } else {
+    handleTaskSelection(event.taskId, event.event);
+  }
+};
+
+// Handle task context menu
+const handleTaskContextMenu = (event) => {
+  const { taskId, event: mouseEvent } = event;
+  
+  // If clicked task is not selected, select only this task
+  if (!isTaskSelected(taskId)) {
+    clearSelection();
+    handleTaskSelection(taskId, { ctrlKey: false, metaKey: false, shiftKey: false }, []);
+  }
+  
+  // Find the task's current section and column
+  let currentColumn = '';
+  let currentSection = '';
+  
+  for (const columnName of props.todoData.columnOrder) {
+    const columnStack = props.todoData.columnStacks[columnName];
+    if (!columnStack?.sections) continue;
+    
+    for (const section of columnStack.sections) {
+      if (!section.items) continue;
+      
+      if (section.items.some(item => item.id === taskId)) {
+        currentColumn = columnName;
+        currentSection = section.name;
+        break;
+      }
+    }
+    if (currentColumn) break;
+  }
+  
+  // Show context menu
+  contextMenu.value = {
+    show: true,
+    position: { x: mouseEvent.clientX, y: mouseEvent.clientY },
+    currentColumn,
+    currentSection
+  };
+};
+
+// Close context menu
+const closeContextMenu = () => {
+  contextMenu.value.show = false;
+};
+
+// Move multiple tasks to a target section
+const moveTasksToSection = async (taskIds, targetSection) => {
+  try {
+    const tasksToMove = [];
+    
+    // First, collect all tasks and remove them from their current locations
+    for (const columnName of props.todoData.columnOrder) {
+      const columnStack = props.todoData.columnStacks[columnName];
+      if (!columnStack?.sections) continue;
+      
+      for (const section of columnStack.sections) {
+        if (!section.items) continue;
+        
+        // Find and collect tasks to move
+        const tasksInSection = section.items.filter(item => 
+          taskIds.includes(item.id)
+        );
+        
+        if (tasksInSection.length > 0) {
+          tasksToMove.push(...tasksInSection);
+          // Remove tasks from current section
+          section.items = section.items.filter(item => 
+            !taskIds.includes(item.id)
+          );
+        }
+      }
+    }
+    
+    // Find target section and add tasks
+    const targetColumnStack = props.todoData.columnStacks[targetSection.columnName];
+    if (targetColumnStack?.sections) {
+      const targetSectionObj = targetColumnStack.sections[targetSection.sectionIndex];
+      if (targetSectionObj) {
+        // Ensure items array exists
+        if (!targetSectionObj.items) {
+          targetSectionObj.items = [];
+        }
+        
+        // Add all tasks to target section
+        targetSectionObj.items.push(...tasksToMove);
+        
+        // Persist changes
+        await persistTodoData();
+        
+        return true;
+      }
+    }
+    
+    console.error('Target section not found:', targetSection);
+    return false;
+  } catch (error) {
+    console.error('Error moving tasks:', error);
+    return false;
+  }
+};
+
+// Handle move to section from context menu
+const handleMoveToSection = async (targetSection) => {
+  if (selectedCount.value === 0) return;
+  
+  // Use local moveTasksToSection function
+  const success = await moveTasksToSection(
+    Array.from(selectedTaskIds.value),
+    targetSection
+  );
+  
+  if (success) {
+    clearSelection();
+    emit('update');
+  }
 };
 
 // Get all unique DONE-type file columns

@@ -172,7 +172,7 @@ describe('Task Sorting Feature', () => {
     });
   });
 
-  it.only('should handle bidirectional sorting correctly', () => {
+  it('should handle bidirectional sorting correctly', () => {
     const sectionName = 'AUTOSORT TEST';
     
     // Test a complete cycle: unchecked -> completed -> unchecked

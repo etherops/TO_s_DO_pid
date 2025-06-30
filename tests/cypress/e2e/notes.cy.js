@@ -167,8 +167,10 @@ describe('Notes Feature', () => {
     }, 'Multiline note persistence');
   });
 
+  // we have to select a task at the bottom of the TODO column because there is a weird
+  //   scrolling behavior for cypress that it keeps scrolling all the way to the bottom
   it('should toggle note visibility correctly', () => {
-    const taskText = 'Research classes';
+    const taskText = 'Pending decision';
 
     // Add a note
     findTask(taskText).within(() => {

@@ -138,8 +138,11 @@
                 :task="item"
                 :section="section"
                 :is-on-ice="columnData.on_ice || false"
+                :is-selected="isTaskSelected && isTaskSelected(item.id)"
                 @task-updated="$emit('task-updated')"
                 @show-date-picker="$emit('show-date-picker', $event)"
+                @task-click="$emit('task-click', $event)"
+                @task-context-menu="$emit('task-context-menu', $event)"
             />
           </div>
         </template>
@@ -182,10 +185,14 @@ const props = defineProps({
   showRawText: {
     type: Boolean,
     default: false
+  },
+  isTaskSelected: {
+    type: Function,
+    default: null
   }
 });
 
-const emit = defineEmits(['task-updated', 'section-updated', 'show-date-picker']);
+const emit = defineEmits(['task-updated', 'section-updated', 'show-date-picker', 'task-click', 'task-context-menu']);
 
 // Computed properties
 const isRawTextSection = computed(() => props.section.type === 'raw-text');
@@ -198,6 +205,7 @@ const visibleItemsCount = computed(() => {
   // Count non-raw-text items when showRawText is false
   return (props.section.items || []).filter(item => item.type !== 'raw-text').length;
 });
+
 
 // Section editing state
 const isEditingSection = ref(false);

@@ -1,9 +1,9 @@
 # TODO
 ## Quick Features
+* [ ] ADD TASK: "add task" should be a an empty row ready (and create new section focuses there after saving title)
 * [ ] BUG: notes only puts in progress in WIP col
 * [ ] BUG: non-destructive subtasks...
 * [ ] TABS: sortable tabs
-* [ ] ADD TASK: "add task" should be a an empty row ready
 * [ ] BACKUP: Backup rotation
 * [ ] DUE DATE: "Today, Tomorrow" as due dates
 * [ ] MOVE: shift click move bulk items
@@ -40,10 +40,10 @@
 
 # WIP
 ### In Progress
-* [ ] select, multi select, move to section
 
 # ARCHIVE
 ### Just done
+* [x] select, multi select, move to section
 * [x] BUG: delete sections w/ same name! | Thurs, June 26
 * [x] V-BUG: too much vertical whitespace in task cards | Thurs, June 26
 * [x] auto poll/websocket server (take server and backup immedietely if there is conflict) | Tues, June 24

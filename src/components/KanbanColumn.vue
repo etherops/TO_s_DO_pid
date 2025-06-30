@@ -49,9 +49,12 @@
                 :column-type="columnType"
                 :column-data="columnData"
                 :show-raw-text="showRawText"
+                :is-task-selected="isTaskSelected"
                 @task-updated="$emit('task-updated')"
                 @section-updated="$emit('section-updated', $event)"
                 @show-date-picker="$emit('show-date-picker', $event)"
+                @task-click="$emit('task-click', $event)"
+                @task-context-menu="$emit('task-context-menu', $event)"
             />
           </template>
         </draggable>
@@ -97,6 +100,10 @@ const props = defineProps({
   focusMode: {
     type: Boolean,
     default: false
+  },
+  isTaskSelected: {
+    type: Function,
+    default: null
   }
 });
 
@@ -104,7 +111,9 @@ const emit = defineEmits([
   'add-section',
   'task-updated',
   'section-updated',
-  'show-date-picker'
+  'show-date-picker',
+  'task-click',
+  'task-context-menu'
 ]);
 
 // Template refs

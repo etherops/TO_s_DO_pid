@@ -1,7 +1,7 @@
 import { refreshAndWait, findSection } from '../support/helpers.js'
 
 describe('WIP Section CRUD Operations', () => {
-    it.only('should create new section in TODO column, validate raw-text inheritance, and test deletion with second section', () => {
+    it('should create new section in TODO column, validate raw-text inheritance, and test deletion with second section', () => {
         const firstSectionName = 'First Test Section'
         const secondSectionName = 'Second Test Section'
         const editedSecondSectionName = 'Edited Second Section'

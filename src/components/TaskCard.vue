@@ -6,11 +6,13 @@
     'floating': task.isFloating, 
     'sorting': task.isSorting, 
     'floating-up': task.isFloatingUp,
-    'floating-down': task.isFloatingDown
+    'floating-down': task.isFloatingDown,
+    'selected': isSelected
   }"
   :style="(task.isFloatingUp || task.isFloatingDown) && task.floatDistance ? {
     '--float-distance': task.floatDistance
-  } : {}">
+  } : {}"
+  @contextmenu.prevent="handleContextMenu">
     <!-- raw-text display (simple, uneditable) -->
     <div v-if="isRawText" class="raw-text-content">
       <div class="raw-text-text">{{ task.displayText || task.text }}</div>
@@ -114,7 +116,7 @@
       </div>
     </template>
     <template v-else>
-      <div class="task-container">
+      <div class="task-container" @click="handleTaskCardClick">
           <!-- Content area that can flex -->
           <div class="task-content-area">
             <span
@@ -284,10 +286,14 @@ const props = defineProps({
   isOnIce: {
     type: Boolean,
     default: false
-  }
+  },
+  isSelected: {
+    type: Boolean,
+    default: false
+  },
 });
 
-const emit = defineEmits(['task-updated']);
+const emit = defineEmits(['task-updated', 'task-click', 'task-context-menu']);
 
 // Computed properties
 const isRawText = computed(() => props.task.type === 'raw-text');
@@ -684,6 +690,29 @@ const formatInlineNote = (noteText) => {
   return formatted;
 };
 
+// Handle task card click for selection
+const handleTaskCardClick = (event) => {
+  // Don't interfere with button clicks, editing, or if it's a raw text card
+  if (event.target.closest('button') || isEditing.value || isRawText.value) return;
+  
+  // Don't prevent default or stop propagation to allow hover states to work
+  emit('task-click', {
+    taskId: props.task.id,
+    event: event
+  });
+};
+
+// Handle right-click context menu
+const handleContextMenu = (event) => {
+  // Don't show context menu in edit mode or for raw text
+  if (isEditing.value || isRawText.value) return;
+  
+  emit('task-context-menu', {
+    taskId: props.task.id,
+    event: event
+  });
+};
+
 // Process display text on mount if the task is new
 onMounted(() => {
   if (props.task.isNew) nextTick(() => startEditingAll());
@@ -714,6 +743,8 @@ onUnmounted(() => {
   flex-direction: column;
   cursor: grab;
   position: relative;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 
 .task-card:active {
@@ -723,6 +754,16 @@ onUnmounted(() => {
 .task-card:hover {
   height: auto;
   z-index: 100;
+}
+
+.task-card.selected {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+  box-shadow: 0 2px 5px rgba(33, 150, 243, 0.3);
+}
+
+.task-card.selected:hover {
+  border-color: #1976d2;
 }
 
 /* ========================= */
@@ -1374,6 +1415,13 @@ onUnmounted(() => {
 }
 
 .task-card:hover .hover-preview-container {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Ensure hover preview works even with selected tasks */
+.task-card.selected:hover .hover-preview-container {
   visibility: visible;
   opacity: 1;
   transform: translateY(0);
