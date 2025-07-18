@@ -100,7 +100,7 @@ const submenuStyle = (columnName) => {
   const padding = 10;
   
   // Calculate position relative to viewport
-  const leftPosition = menuRect.right + 4;
+  const leftPosition = menuRect.right - 1; // Small overlap to prevent gap
   const rightPosition = leftPosition + submenuWidth;
   
   // Check if submenu would overflow right edge
@@ -108,7 +108,7 @@ const submenuStyle = (columnName) => {
   
   return {
     position: 'fixed',
-    left: showOnLeft ? `${menuRect.left - submenuWidth - 4}px` : `${leftPosition}px`,
+    left: showOnLeft ? `${menuRect.left - submenuWidth + 1}px` : `${leftPosition}px`,
     top: `${menuItemRect.top}px`, // Align with the specific menu item, not the main menu
     zIndex: 10001
   };
@@ -181,6 +181,10 @@ onUnmounted(() => {
   overflow-y: auto;
   z-index: 10000;
   font-size: 14px;
+  
+  /* CSS custom scrollbar that doesn't interfere */
+  scrollbar-width: thin;
+  scrollbar-color: #888 transparent;
 }
 
 .context-menu-header {
@@ -258,27 +262,62 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
+/* Invisible bridge to prevent hover loss between menu and submenu */
+.submenu::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  left: -10px;
+  z-index: 9999;
+}
 
-/* Scrollbar styling */
-.context-menu::-webkit-scrollbar,
-.submenu::-webkit-scrollbar {
+
+/* Minimal custom scrollbar that fades away quickly */
+.context-menu {
+  /* Make scrollbar auto-hide and fade quickly */
+  scrollbar-gutter: stable;
+}
+
+.context-menu::-webkit-scrollbar {
   width: 6px;
 }
 
-.context-menu::-webkit-scrollbar-track,
-.submenu::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
+.context-menu::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
 }
 
-.context-menu::-webkit-scrollbar-thumb,
-.submenu::-webkit-scrollbar-thumb {
-  background: #888;
+.context-menu::-webkit-scrollbar-thumb {
+  background-color: rgba(136, 136, 136, 0.3); /* Start more transparent */
   border-radius: 3px;
+  border: 1px solid white;
+  transition: background-color 0.1s ease-out; /* Quick fade */
 }
 
-.context-menu::-webkit-scrollbar-thumb:hover,
-.submenu::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.context-menu:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(136, 136, 136, 0.6); /* Show on container hover */
+  transition: background-color 0.1s ease-in; /* Quick appear */
+}
+
+.context-menu::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(136, 136, 136, 0.8); /* Full opacity on direct hover */
+}
+
+/* Ensure the scrollbar doesn't create interaction dead zones */
+.context-menu::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Auto-hide scrollbar when not needed (Firefox) */
+.context-menu {
+  scrollbar-color: rgba(136, 136, 136, 0.3) transparent;
+  transition: scrollbar-color 0.1s ease-out;
+}
+
+.context-menu:hover {
+  scrollbar-color: rgba(136, 136, 136, 0.6) transparent;
+  transition: scrollbar-color 0.1s ease-in;
 }
 </style>

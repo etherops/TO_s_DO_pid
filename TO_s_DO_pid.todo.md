@@ -1,21 +1,20 @@
 # TODO
 ## Quick Features
 * [ ] ADD TASK: "add task" should be a an empty row ready (and create new section focuses there after saving title)
-* [ ] BUG: notes only puts in progress in WIP col
-* [ ] BUG: non-destructive subtasks...
-* [ ] TABS: sortable tabs
-* [ ] BACKUP: Backup rotation
-* [ ] DUE DATE: "Today, Tomorrow" as due dates
-* [ ] MOVE: shift click move bulk items
-* [ ] MOVE: right click - move task to ...
-* [ ] EDIT: double click to edit, focus tittle
-* [ ] DUE DATE: due date no parens
-* [ ] TABS: counts in tabs
-* [ ] Show TODO/WIP/ARCHIVE even if none
-* [ ] EFFECT: collapse furls and unfurls like a deck of cards
-* [ ] drag to collapsed section temporarily expands the section
-* [ ] MOVE: unfinished task to section...
+* [ ] COMPLETED DATE: clears on ~/[ ]
+* [ ] Collapse for ALL tasks not just DONE
+* [ ] BUG: notes should only put in progress in WIP col
 * [ ] COLLAPSE: expand on hover
+* [ ] BUG: non-destructive subtasks
+* [ ] DUE DATE: due date no parens
+* [ ] drag to collapsed section temporarily expands the section
+
+## SUGAR
+* [ ] SUGAR (TABS): sortable tabs
+* [ ] SUGAR: "Today, Tomorrow" as due dates
+* [ ] SUGAR: Hyperlinks work
+* [ ] EFFECT: collapse furls and unfurls like a deck of cards
+* [ ] TABS: counts in tabs
 
 ## Fun Stuff
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
@@ -37,12 +36,15 @@
 * [ ] feature: add the preceeding folder name in custom tabs
 * [ ] DELETE - undo
 * [ ] Calendar view
+* [ ] UNDO
+* [ ] BACKUP: Backup rotation
 
 # WIP
 ### In Progress
 
 # ARCHIVE
 ### Just done
+* [x] BUG: right click move to broken | Thurs, July 17
 * [x] select, multi select, move to section
 * [x] BUG: delete sections w/ same name! | Thurs, June 26
 * [x] V-BUG: too much vertical whitespace in task cards | Thurs, June 26
