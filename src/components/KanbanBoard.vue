@@ -119,6 +119,7 @@ import ContextMenu from './ContextMenu.vue';
 import { generateLeftoversSectionName } from '../utils/sectionHelpers.js';
 import { useTaskSelection } from '../composables/useTaskSelection.js';
 import { useTodoData } from '../composables/useTodoData.js';
+import { sortTaskToCorrectPosition } from '../utils/sortHelpers.js';
 
 const props = defineProps({
   todoData: {
@@ -338,6 +339,11 @@ const moveTasksToSection = async (taskIds, targetSection) => {
         
         // Add all tasks to target section
         targetSectionObj.items.push(...tasksToMove);
+        
+        // Auto-sort each moved task to its correct position based on status
+        tasksToMove.forEach(task => {
+          sortTaskToCorrectPosition(targetSectionObj.items, task, emit);
+        });
         
         // Persist changes
         await persistTodoData();

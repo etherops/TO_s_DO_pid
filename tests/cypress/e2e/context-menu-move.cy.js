@@ -234,4 +234,33 @@ describe('Context Menu Move Task Operations', () => {
         // Submenu should hide
         cy.get('.submenu').should('not.exist')
     })
+
+    it.only('should auto-sort moved tasks in destination section by priority', () => {
+        const taskToMove = 'sort8' // This is completed [x]
+        const targetColumn = 'SCHEDULED'
+        const targetSection = 'CURRENT DAY (Thursday May 1)'
+        
+        // Right-click sort8 from AUTOSORT TEST section
+        rightClickTask(taskToMove)
+        
+        // Navigate to SCHEDULED column and CURRENT DAY section
+        cy.get('.context-menu').within(() => {
+            cy.contains('.menu-item.expandable', targetColumn)
+                .trigger('mouseenter')
+        })
+        
+        // Wait for submenu
+        cy.wait(100)
+        
+        // Click on CURRENT DAY section in submenu
+        cy.get('.submenu').contains('.menu-item', targetSection).click()
+        
+        // Wait for move and auto-sort to complete
+        cy.wait(1000)
+        
+        // Verify sort8 is now in CURRENT DAY section at position #2
+        findSection(targetSection).within(() => {
+            cy.get('.task-card').eq(1).should('contain', taskToMove)
+        })
+    })
 })

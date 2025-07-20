@@ -1,17 +1,16 @@
 # TODO
-## Quick Features
-* [ ] ADD TASK: "add task" should be a an empty row ready (and create new section focuses there after saving title)
-* [ ] COMPLETED DATE: clears on ~/[ ]
-* [ ] Collapse for ALL tasks not just DONE
-* [ ] BUG: notes should only put in progress in WIP col
-* [ ] COLLAPSE: expand on hover
+## UP NEXT
+* [ ] DELETE - undo
 * [ ] BUG: non-destructive subtasks
 * [ ] DUE DATE: due date no parens
-* [ ] drag to collapsed section temporarily expands the section
 
 ## SUGAR
+* [ ] drag to collapsed section temporarily expands the section
+* [ ] COLLAPSE: expand on hover
+* [ ] Collapse for ALL tasks not just DONE
 * [ ] SUGAR (TABS): sortable tabs
 * [ ] SUGAR: "Today, Tomorrow" as due dates
+* [ ] ADD TASK: "add task" should be a an empty row ready (and create new section focuses there after saving title)
 * [ ] SUGAR: Hyperlinks work
 * [ ] EFFECT: collapse furls and unfurls like a deck of cards
 * [ ] TABS: counts in tabs
@@ -22,7 +21,9 @@
 ## Bugs
 * [ ] bug: hover preview is showing for full title when the title isn't overflow=true (bug: purge "visualColumn", correctly name column/columnstack)
 * [ ] bug: visual - confrim delete needs higher z-index
+* [ ] BUG: notes should only put in progress in WIP col
 * [ ] BUG: same name section loses tasks!
+* [ ] COMPLETED DATE: clears on ~/[ ]
 
 ## Bigger Features
 * [ ] CONSOLIDATED board (show WIP section for all lists)
@@ -34,7 +35,6 @@
 * [ ] VIEW - diff revisions
 * [ ] SERVER: git push integration
 * [ ] feature: add the preceeding folder name in custom tabs
-* [ ] DELETE - undo
 * [ ] Calendar view
 * [ ] UNDO
 * [ ] BACKUP: Backup rotation
