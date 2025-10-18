@@ -37,7 +37,7 @@
     />
 
     <!-- TODO Columns -->
-    <div class="column-stack todo-stack">
+    <div class="column-stack todo-stack" :class="{ 'drawer-collapsed': !isTodoDrawerExpanded }">
       <template v-for="columnName in props.todoData.columnOrder" :key="`todo-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'TODO'"
@@ -49,6 +49,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
+            :is-drawer-expanded="isTodoDrawerExpanded"
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -56,6 +57,7 @@
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
+            @toggle-drawer="toggleTodoDrawer"
         />
       </template>
     </div>
@@ -187,6 +189,20 @@ const contextMenu = ref({
   currentSection: ''
 });
 
+// Drawer state for TODO column - load from localStorage
+const isTodoDrawerExpanded = ref(
+  localStorage.getItem('todoDrawerExpanded') !== 'false'
+);
+
+const toggleTodoDrawer = () => {
+  isTodoDrawerExpanded.value = !isTodoDrawerExpanded.value;
+};
+
+// Save TODO drawer state to localStorage when it changes
+watch(isTodoDrawerExpanded, (newValue) => {
+  localStorage.setItem('todoDrawerExpanded', String(newValue));
+});
+
 // Drawer state for DONE column - load from localStorage
 const isDoneDrawerExpanded = ref(
   localStorage.getItem('doneDrawerExpanded') !== 'false'
@@ -196,7 +212,7 @@ const toggleDoneDrawer = () => {
   isDoneDrawerExpanded.value = !isDoneDrawerExpanded.value;
 };
 
-// Save drawer state to localStorage when it changes
+// Save DONE drawer state to localStorage when it changes
 watch(isDoneDrawerExpanded, (newValue) => {
   localStorage.setItem('doneDrawerExpanded', String(newValue));
 });
@@ -681,6 +697,17 @@ const handleDateClear = ({ taskId }) => {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+}
+
+/* TODO drawer styles */
+.todo-stack {
+  transition: min-width 0.3s ease-in-out, max-width 0.3s ease-in-out;
+}
+
+.todo-stack.drawer-collapsed {
+  min-width: 50px;
+  max-width: 50px;
+  overflow: hidden;
 }
 
 /* DONE drawer styles */

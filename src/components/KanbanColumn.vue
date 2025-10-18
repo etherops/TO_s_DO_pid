@@ -11,8 +11,10 @@
       <div class="column-header">
         <div class="column-title-container">
           <button v-if="columnType === 'DONE' && isDrawerExpanded !== null" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="isDrawerExpanded ? 'Hide Done' : 'Show Done'">
-            <span v-if="isDrawerExpanded">→</span>
-            <span v-else>←</span>
+            <span>{{ isDrawerExpanded ? '→' : '←' }}</span>
+          </button>
+          <button v-if="columnType === 'TODO' && isDrawerExpanded === false" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Show Todo'">
+            <span>→</span>
           </button>
           {{ title }}
           <div v-if="columnData.on_ice" class="on-ice-badge">
@@ -33,6 +35,9 @@
           </button>
           <button v-if="canAddSection && !columnData.on_ice" class="add-section-btn" @click="$emit('add-section')">
             <span class="add-icon">+</span> Add Section
+          </button>
+          <button v-if="columnType === 'TODO' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Todo'">
+            <span>←</span>
           </button>
         </div>
       </div>
