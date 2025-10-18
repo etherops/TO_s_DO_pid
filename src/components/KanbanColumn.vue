@@ -10,6 +10,10 @@
     <template v-else>
       <div class="column-header">
         <div class="column-title-container">
+          <button v-if="columnType === 'DONE' && isDrawerExpanded !== null" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="isDrawerExpanded ? 'Hide Done' : 'Show Done'">
+            <span v-if="isDrawerExpanded">→</span>
+            <span v-else>←</span>
+          </button>
           {{ title }}
           <div v-if="columnData.on_ice" class="on-ice-badge">
             <svg class="ice-icon" viewBox="0 0 16 16" width="12" height="12">
@@ -99,6 +103,10 @@ const props = defineProps({
   isTaskSelected: {
     type: Function,
     default: null
+  },
+  isDrawerExpanded: {
+    type: Boolean,
+    default: null
   }
 });
 
@@ -108,7 +116,8 @@ const emit = defineEmits([
   'section-updated',
   'show-date-picker',
   'task-click',
-  'task-context-menu'
+  'task-context-menu',
+  'toggle-drawer'
 ]);
 
 // Template refs
@@ -236,6 +245,30 @@ const expandAll = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.drawer-toggle-btn {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  line-height: 1;
+  min-width: 24px;
+}
+
+.drawer-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.1);
+}
+
+.drawer-toggle-btn span {
+  user-select: none;
 }
 
 .column-header-buttons {

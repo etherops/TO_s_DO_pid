@@ -109,7 +109,7 @@
     </div>
 
     <!-- DONE Columns -->
-    <div class="column-stack done-stack">
+    <div class="column-stack done-stack" :class="{ 'drawer-collapsed': !isDoneDrawerExpanded }">
       <template v-for="columnName in props.todoData.columnOrder" :key="`done-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'DONE'"
@@ -121,12 +121,14 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
+            :is-drawer-expanded="isDoneDrawerExpanded"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
+            @toggle-drawer="toggleDoneDrawer"
         />
       </template>
     </div>
@@ -134,7 +136,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
 import DatePicker from './DatePicker.vue';
 import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
@@ -183,6 +185,20 @@ const contextMenu = ref({
   position: { x: 0, y: 0 },
   currentColumn: '',
   currentSection: ''
+});
+
+// Drawer state for DONE column - load from localStorage
+const isDoneDrawerExpanded = ref(
+  localStorage.getItem('doneDrawerExpanded') !== 'false'
+);
+
+const toggleDoneDrawer = () => {
+  isDoneDrawerExpanded.value = !isDoneDrawerExpanded.value;
+};
+
+// Save drawer state to localStorage when it changes
+watch(isDoneDrawerExpanded, (newValue) => {
+  localStorage.setItem('doneDrawerExpanded', String(newValue));
 });
 
 // Helper function to add ice logic to column data
@@ -665,5 +681,16 @@ const handleDateClear = ({ taskId }) => {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
+}
+
+/* DONE drawer styles */
+.done-stack {
+  transition: min-width 0.3s ease-in-out, max-width 0.3s ease-in-out;
+}
+
+.done-stack.drawer-collapsed {
+  min-width: 50px;
+  max-width: 50px;
+  overflow: hidden;
 }
 </style>
