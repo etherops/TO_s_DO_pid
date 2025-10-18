@@ -3,7 +3,8 @@ import { getStrippedDisplayText } from './taskTextHelpers';
 // ColumnStack categories - determines which UI stack a column belongs to
 const COLUMNSTACK_CATEGORIES = {
   TODO: ['TODO', 'BACKLOG', 'INBOX', 'LATER', 'SOMEDAY', 'IDEAS', 'ICE'],
-  WIP: ['WIP', 'SCHEDULED', 'IN PROGRESS', 'IN-PROGRESS', 'DOING', 'CURRENT', 'ACTIVE', 'ONGOING'],
+  SELECTED: ['SELECTED', 'HOLD', 'ONGOING'],
+  WIP: ['WIP', 'SCHEDULED', 'IN PROGRESS', 'IN-PROGRESS', 'DOING', 'CURRENT', 'ACTIVE'],
   DONE: ['DONE', 'COMPLETE', 'COMPLETED', 'ARCHIVE', 'FINISHED', 'RESOLVED']
 };
 

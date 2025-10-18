@@ -60,6 +60,30 @@
       </template>
     </div>
 
+    <!-- SELECTED Columns -->
+    <div class="column-stack selected-stack">
+      <template v-for="columnName in props.todoData.columnOrder" :key="`selected-${columnName}`">
+        <KanbanColumn
+            v-if="props.todoData.columnStacks[columnName]?.name === 'SELECTED'"
+            column-type="SELECTED"
+            :title="columnName"
+            :sections="props.todoData.columnStacks[columnName].sections"
+            :can-add-section="true"
+            :column="columnName"
+            :column-data="getColumnDataWithIce(columnName)"
+            :show-raw-text="props.showRawText"
+            :is-task-selected="isTaskSelected"
+            @add-section="createNewSection('SELECTED', columnName)"
+            @task-updated="handleTaskUpdate"
+            @section-updated="handleSectionUpdate"
+            @show-date-picker="showDatePicker"
+            @update="emit('update')"
+            @task-click="handleTaskClick"
+            @task-context-menu="handleTaskContextMenu"
+        />
+      </template>
+    </div>
+
     <!-- WIP Columns -->
     <div class="column-stack wip-stack" :class="{ 'wip-focus-container': focusMode }">
       <template v-for="columnName in props.todoData.columnOrder" :key="`wip-${columnName}`">
@@ -212,8 +236,8 @@ const createNewSection = (columnStack, column = null) => {
 
   const newSection = {
     name: sectionName,
-    headerStyle: columnStack === 'WIP' ? 'SMALL' : 'LARGE',
-    archivable: columnStack === 'WIP',
+    headerStyle: (columnStack === 'WIP' || columnStack === 'SELECTED') ? 'SMALL' : 'LARGE',
+    archivable: (columnStack === 'WIP' || columnStack === 'SELECTED'),
     on_ice: false,
     items: [],
     isNew: true
@@ -221,7 +245,7 @@ const createNewSection = (columnStack, column = null) => {
 
   // Add to nested structure
   if (!props.todoData.columnStacks[column]) {
-    const nameValue = columnStack === 'TODO' ? 'TODO' : columnStack === 'WIP' ? 'WIP' : 'DONE';
+    const nameValue = columnStack === 'TODO' ? 'TODO' : columnStack === 'SELECTED' ? 'SELECTED' : columnStack === 'WIP' ? 'WIP' : 'DONE';
     props.todoData.columnStacks[column] = {
       name: nameValue,
       sections: []
@@ -229,7 +253,7 @@ const createNewSection = (columnStack, column = null) => {
     props.todoData.columnOrder.push(column);
   }
 
-  // Insert at beginning for TODO columnStacks, end for WIP columnStacks
+  // Insert at beginning for TODO columnStacks, end for SELECTED/WIP columnStacks
   if (columnStack === 'TODO') {
     props.todoData.columnStacks[column].sections.unshift(newSection);
   } else {
