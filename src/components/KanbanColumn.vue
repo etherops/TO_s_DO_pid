@@ -32,13 +32,12 @@
           </button>
         </div>
       </div>
-      <div class="column-content" :class="{ 'focus-mode-content': focusMode && columnType === 'WIP' }">
+      <div class="column-content">
         <draggable
             :list="sections"
             :group="'sections'"
             :item-key="getSectionKey"
             class="section-list"
-            :class="{ 'focus-mode-sections': focusMode && columnType === 'WIP' }"
             ghost-class="ghost-section"
             @end="$emit('update')"
         >
@@ -94,10 +93,6 @@ const props = defineProps({
     default: () => ({})
   },
   showRawText: {
-    type: Boolean,
-    default: false
-  },
-  focusMode: {
     type: Boolean,
     default: false
   },
@@ -382,38 +377,6 @@ const expandAll = () => {
   padding: 8px 12px;
   border-radius: 4px;
   border: 1px solid #e2e8f0;
-}
-
-/* Focus mode content layout */
-.focus-mode-content {
-  width: 100%;
-  height: 100%;
-  flex: 1;
-}
-
-/* Use CSS columns for the section list in focus mode */
-.focus-mode-sections {
-  column-count: 2;
-  column-gap: 20px;
-  column-fill: auto;
-  height: 80vh; /* 80% of viewport height */
-  overflow: visible; /* Allow content to flow naturally */
-}
-
-/* Prevent task cards from breaking across columns */
-.focus-mode-sections .task-card {
-  break-inside: avoid;
-  -webkit-column-break-inside: avoid;
-  page-break-inside: avoid;
-}
-
-/* Hide any draggable placeholder elements in focus mode */
-.focus-mode-sections .sortable-ghost,
-.focus-mode-sections .sortable-drag {
-  opacity: 0 !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
 }
 
 .continuation-header {

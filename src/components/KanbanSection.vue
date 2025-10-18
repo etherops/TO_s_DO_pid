@@ -532,7 +532,7 @@ onMounted(() => {
 
 .section-header.large {
   font-size: 18px;
-  text-align: center;
+  text-align: left;
   color: #2c3e50;
   background-color: rgba(255, 255, 255, 0.8);
   padding: 6px 10px;

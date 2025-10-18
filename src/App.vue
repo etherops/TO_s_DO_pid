@@ -6,10 +6,8 @@
         :selected-file="selectedFile"
         :unparsed-line-count="unparsedLineCount"
         :show-raw-text="showRawText"
-        :focus-mode="focusMode"
         @file-selected="handleFileChange"
         @toggle-raw-text="toggleRawText"
-        @toggle-focus-mode="toggleFocusMode"
     />
 
     <div v-if="parsingError" class="error-message">
@@ -24,7 +22,6 @@
         v-else
         :todo-data="todoData"
         :show-raw-text="showRawText"
-        :focus-mode="focusMode"
         @update="handleUpdate"
     />
   </div>
@@ -43,7 +40,6 @@ const {
   selectedFile,
   parsingError,
   showRawText,
-  focusMode,
   loadAvailableFiles,
   loadTodoData,
   persistTodoData,
@@ -52,11 +48,6 @@ const {
 
 const toggleRawText = () => {
   showRawText.value = !showRawText.value;
-};
-
-const toggleFocusMode = () => {
-  focusMode.value = !focusMode.value;
-  localStorage.setItem('focusMode', focusMode.value);
 };
 
 // Handle updates from KanbanBoard - just save immediately

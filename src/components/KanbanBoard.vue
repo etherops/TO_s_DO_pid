@@ -1,6 +1,6 @@
 <!-- components/KanbanBoard.vue -->
 <template>
-  <div class="kanban-container" :class="{ 'focus-mode': focusMode }">
+  <div class="kanban-container">
     <!-- Date Picker (Global for all columns) -->
     <DatePicker
         v-if="datePickerTaskId !== null"
@@ -85,7 +85,7 @@
     </div>
 
     <!-- WIP Columns -->
-    <div class="column-stack wip-stack" :class="{ 'wip-focus-container': focusMode }">
+    <div class="column-stack wip-stack">
       <template v-for="columnName in props.todoData.columnOrder" :key="`wip-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'WIP'"
@@ -96,7 +96,6 @@
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
-            :focus-mode="focusMode"
             :is-task-selected="isTaskSelected"
             @add-section="createNewSection('WIP', columnName)"
             @task-updated="handleTaskUpdate"
@@ -151,10 +150,6 @@ const props = defineProps({
     default: () => ({ columnOrder: [], columnStacks: {} })
   },
   showRawText: {
-    type: Boolean,
-    default: false
-  },
-  focusMode: {
     type: Boolean,
     default: false
   }
@@ -670,63 +665,5 @@ const handleDateClear = ({ taskId }) => {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  transition: all 0.3s ease;
-}
-
-/* Focus mode styles */
-.kanban-container.focus-mode .todo-stack,
-.kanban-container.focus-mode .done-stack {
-  flex: 0.5;
-  min-width: 150px;
-  opacity: 0.5;
-  overflow: hidden;
-}
-
-.kanban-container.focus-mode .wip-stack {
-  flex: 2;
-  min-width: 800px;
-  opacity: 1;
-}
-
-/* WIP focus container */
-.wip-focus-container {
-  flex: 2;
-  min-width: 800px;
-}
-
-/* Add transition delays to prevent immediate expansion */
-.kanban-container.focus-mode .todo-stack,
-.kanban-container.focus-mode .done-stack {
-  transition-property: flex, min-width, opacity;
-  transition-duration: 0.3s;
-  transition-delay: 0s;
-}
-
-/* Hover states in focus mode with 1 second delay */
-.kanban-container.focus-mode .todo-stack:hover,
-.kanban-container.focus-mode .done-stack:hover {
-  flex: 1;
-  min-width: 300px;
-  opacity: 1;
-  transition-delay: 1s; /* 1 second delay before expanding */
-}
-
-.kanban-container.focus-mode .wip-stack {
-  transition-property: flex, min-width;
-  transition-duration: 0.3s;
-  transition-delay: 0s;
-}
-
-.kanban-container.focus-mode .todo-stack:hover ~ .wip-stack,
-.kanban-container.focus-mode .done-stack:hover ~ .wip-stack {
-  flex: 1;
-  min-width: 300px;
-  transition-delay: 1s; /* Match the delay */
-}
-
-/* When hovering, revert to single column */
-.kanban-container.focus-mode .todo-stack:hover ~ .wip-stack.wip-focus-mode,
-.kanban-container.focus-mode .done-stack:hover ~ .wip-stack.wip-focus-mode {
-  column-count: 1;
 }
 </style>

@@ -17,16 +17,6 @@
       </div>
     </div>
     <div class="toggles-container">
-      <label class="toggle-switch">
-        <input
-            type="checkbox"
-            class="focus-mode-toggle"
-            :checked="focusMode"
-            @change="$emit('toggle-focus-mode')"
-        />
-        <span class="slider"></span>
-        <span class="toggle-label">Focus mode</span>
-      </label>
       <label class="toggle-switch" :class="{ disabled: unparsedLineCount === 0 }">
         <input
             type="checkbox"
@@ -62,14 +52,10 @@ const props = defineProps({
   showRawText: {
     type: Boolean,
     default: false
-  },
-  focusMode: {
-    type: Boolean,
-    default: false
   }
 });
 
-defineEmits(['file-selected', 'toggle-raw-text', 'toggle-focus-mode']);
+defineEmits(['file-selected', 'toggle-raw-text']);
 
 // Format tab name based on file type
 const formatTabName = (file) => {
@@ -245,8 +231,7 @@ const getFileTooltip = (file) => {
   cursor: not-allowed;
 }
 
-.raw-text-toggle,
-.focus-mode-toggle {
+.raw-text-toggle {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -276,13 +261,11 @@ const getFileTooltip = (file) => {
   transition: transform 0.2s ease;
 }
 
-.raw-text-toggle:checked + .slider,
-.focus-mode-toggle:checked + .slider {
+.raw-text-toggle:checked + .slider {
   background-color: #4caf50;
 }
 
-.raw-text-toggle:checked + .slider:before,
-.focus-mode-toggle:checked + .slider:before {
+.raw-text-toggle:checked + .slider:before {
   transform: translateX(20px);
 }
 

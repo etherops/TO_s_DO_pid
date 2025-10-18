@@ -14,7 +14,6 @@ export function useTodoData() {
     const selectedFile = ref({ name: '', path: '', isBuiltIn: true });
     const parsingError = ref('');
     const showRawText = ref(false);
-    const focusMode = ref(localStorage.getItem('focusMode') === 'true');
     
     let ws = null;
     let reconnectTimeout = null;
@@ -230,7 +229,6 @@ export function useTodoData() {
         selectedFile,
         parsingError,
         showRawText,
-        focusMode,
         loadAvailableFiles,
         loadTodoData,
         persistTodoData,
