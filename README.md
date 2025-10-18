@@ -9,6 +9,8 @@ This is a really really stupid to do list web app that shouldn't exist.
 - Only the maintainer knows how to use it - watch the video. Like, thumbs up and subscribe.
 - It's so stupid that the database is a text file.
 - It only runs on your computer machine and you have to be a developer to know how to run it
+- Four-column Kanban layout: TODO → SELECTED → WIP → DONE
+- Sections with H1 (#) headers automatically categorized into columns based on keywords
 
 ## Prerequisites
 
@@ -47,3 +49,29 @@ files:
 ```
 
 Custom files will be displayed with a "Custom" or "Dir" badge in the file tabs.
+
+## Column Organization
+
+The app automatically organizes your H1 (#) section headers into four columns:
+
+- **TODO Column**: TODO, BACKLOG, INBOX, LATER, SOMEDAY, IDEAS, ICE
+- **SELECTED Column**: SELECTED, HOLD, ONGOING
+- **WIP Column**: WIP, SCHEDULED, IN PROGRESS, IN-PROGRESS, DOING, CURRENT, ACTIVE
+- **DONE Column**: DONE, COMPLETE, COMPLETED, ARCHIVE, FINISHED, RESOLVED
+
+Example:
+```markdown
+# TODO
+* [ ] Task 1
+
+# SELECTED
+### Week 1
+* [ ] Prioritized task
+
+# WIP
+### Sprint 2
+* [~] Task in progress
+
+# ARCHIVE
+* [x] Completed task
+```

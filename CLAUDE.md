@@ -41,7 +41,7 @@ This is a Vue.js 3 Kanban board application that intentionally uses plain text f
 
 **Todo File Format:**
 ```
-# LARGE SECTION
+# TODO
 Task description
 Task with note (this is a note)
 Task with due date !!(2024-12-25)
@@ -49,12 +49,27 @@ Task with due date !!(2024-12-25)
 [x] Completed task
 [-] Cancelled task
 
+# SELECTED
+Tasks ready to work on
+
 ### SMALL SECTION
-More tasks...
+More tasks in small sections...
+
+# WIP
+Tasks currently being worked on
 
 # ARCHIVE
 [x] Old completed tasks (hidden by default)
 ```
+
+**Column Categories:**
+The application organizes H1 headers into four visual columns based on keywords:
+- **TODO Column**: TODO, BACKLOG, INBOX, LATER, SOMEDAY, IDEAS, ICE
+- **SELECTED Column**: SELECTED, HOLD, ONGOING
+- **WIP Column**: WIP, SCHEDULED, IN PROGRESS, IN-PROGRESS, DOING, CURRENT, ACTIVE
+- **DONE Column**: DONE, COMPLETE, COMPLETED, ARCHIVE, FINISHED, RESOLVED
+
+These mappings are defined in `src/utils/TodoMdParser.js` in the `COLUMNSTACK_CATEGORIES` constant.
 
 **Key Patterns:**
 - Components use props-based data flow with minimal event emission
