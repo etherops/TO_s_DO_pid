@@ -37,7 +37,7 @@
     />
 
     <!-- TODO Columns -->
-    <div class="column-stack todo-stack" :class="{ 'drawer-collapsed': !isTodoDrawerExpanded }">
+    <div class="column-stack todo-stack" :class="{ 'drawer-collapsed': !effectiveTodoDrawerExpanded }">
       <template v-for="columnName in props.todoData.columnOrder" :key="`todo-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'TODO'"
@@ -49,7 +49,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
-            :is-drawer-expanded="isTodoDrawerExpanded"
+            :is-drawer-expanded="effectiveTodoDrawerExpanded"
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -111,7 +111,7 @@
     </div>
 
     <!-- DONE Columns -->
-    <div class="column-stack done-stack" :class="{ 'drawer-collapsed': !isDoneDrawerExpanded }">
+    <div class="column-stack done-stack" :class="{ 'drawer-collapsed': !effectiveDoneDrawerExpanded }">
       <template v-for="columnName in props.todoData.columnOrder" :key="`done-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'DONE'"
@@ -123,7 +123,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
-            :is-drawer-expanded="isDoneDrawerExpanded"
+            :is-drawer-expanded="effectiveDoneDrawerExpanded"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
@@ -138,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
 import DatePicker from './DatePicker.vue';
 import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
@@ -154,6 +154,10 @@ const props = defineProps({
     default: () => ({ columnOrder: [], columnStacks: {} })
   },
   showRawText: {
+    type: Boolean,
+    default: false
+  },
+  focusMode: {
     type: Boolean,
     default: false
   }
@@ -217,11 +221,20 @@ watch(isDoneDrawerExpanded, (newValue) => {
   localStorage.setItem('doneDrawerExpanded', String(newValue));
 });
 
+// Computed drawer states - focus mode overrides individual drawer states
+const effectiveTodoDrawerExpanded = computed(() => {
+  return props.focusMode ? false : isTodoDrawerExpanded.value;
+});
+
+const effectiveDoneDrawerExpanded = computed(() => {
+  return props.focusMode ? false : isDoneDrawerExpanded.value;
+});
+
 // Helper function to add ice logic to column data
 const getColumnDataWithIce = (columnName) => {
   const baseColumnData = props.todoData.columnStacks[columnName] || {};
   const isIceColumn = columnName.toUpperCase().includes('ICE');
-  
+
   return {
     ...baseColumnData,
     on_ice: isIceColumn
@@ -705,8 +718,8 @@ const handleDateClear = ({ taskId }) => {
 }
 
 .todo-stack.drawer-collapsed {
-  min-width: 50px;
-  max-width: 50px;
+  min-width: 250px;
+  max-width: 250px;
   overflow: hidden;
 }
 
@@ -716,8 +729,8 @@ const handleDateClear = ({ taskId }) => {
 }
 
 .done-stack.drawer-collapsed {
-  min-width: 50px;
-  max-width: 50px;
+  min-width: 250px;
+  max-width: 250px;
   overflow: hidden;
 }
 </style>

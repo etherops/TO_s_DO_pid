@@ -6,8 +6,10 @@
         :selected-file="selectedFile"
         :unparsed-line-count="unparsedLineCount"
         :show-raw-text="showRawText"
+        :focus-mode="focusMode"
         @file-selected="handleFileChange"
         @toggle-raw-text="toggleRawText"
+        @toggle-focus-mode="toggleFocusMode"
     />
 
     <div v-if="parsingError" class="error-message">
@@ -22,13 +24,14 @@
         v-else
         :todo-data="todoData"
         :show-raw-text="showRawText"
+        :focus-mode="focusMode"
         @update="handleUpdate"
     />
   </div>
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue';
+import { onMounted, computed, ref } from 'vue';
 import FileTabBar from './components/FileTabBar.vue';
 import KanbanBoard from './components/KanbanBoard.vue';
 import { useTodoData } from './composables/useTodoData';
@@ -48,6 +51,16 @@ const {
 
 const toggleRawText = () => {
   showRawText.value = !showRawText.value;
+};
+
+// Focus mode state - load from localStorage
+const focusMode = ref(
+  localStorage.getItem('focusMode') === 'true'
+);
+
+const toggleFocusMode = () => {
+  focusMode.value = !focusMode.value;
+  localStorage.setItem('focusMode', String(focusMode.value));
 };
 
 // Handle updates from KanbanBoard - just save immediately
