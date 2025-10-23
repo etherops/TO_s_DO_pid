@@ -26,6 +26,7 @@
         :show-raw-text="showRawText"
         :focus-mode="focusMode"
         @update="handleUpdate"
+        @toggle-focus-mode="toggleFocusMode"
     />
   </div>
 </template>

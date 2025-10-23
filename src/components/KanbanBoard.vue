@@ -37,7 +37,7 @@
     />
 
     <!-- TODO Columns -->
-    <div class="column-stack todo-stack" :class="{ 'drawer-collapsed': !effectiveTodoDrawerExpanded }">
+    <div v-if="hasTodoColumns" class="column-stack todo-stack" :class="{ 'drawer-collapsed': !isTodoDrawerExpanded }">
       <template v-for="columnName in props.todoData.columnOrder" :key="`todo-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'TODO'"
@@ -49,7 +49,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
-            :is-drawer-expanded="effectiveTodoDrawerExpanded"
+            :is-drawer-expanded="isTodoDrawerExpanded"
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -63,7 +63,7 @@
     </div>
 
     <!-- SELECTED Columns -->
-    <div class="column-stack selected-stack">
+    <div v-if="hasSelectedColumns" class="column-stack selected-stack">
       <template v-for="columnName in props.todoData.columnOrder" :key="`selected-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'SELECTED'"
@@ -87,7 +87,7 @@
     </div>
 
     <!-- WIP Columns -->
-    <div class="column-stack wip-stack">
+    <div v-if="hasWipColumns" class="column-stack wip-stack">
       <template v-for="columnName in props.todoData.columnOrder" :key="`wip-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'WIP'"
@@ -111,7 +111,7 @@
     </div>
 
     <!-- DONE Columns -->
-    <div class="column-stack done-stack" :class="{ 'drawer-collapsed': !effectiveDoneDrawerExpanded }">
+    <div v-if="hasDoneColumns" class="column-stack done-stack" :class="{ 'drawer-collapsed': !isDoneDrawerExpanded }">
       <template v-for="columnName in props.todoData.columnOrder" :key="`done-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'DONE'"
@@ -123,7 +123,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
-            :is-drawer-expanded="effectiveDoneDrawerExpanded"
+            :is-drawer-expanded="isDoneDrawerExpanded"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @show-date-picker="showDatePicker"
@@ -163,7 +163,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update']);
+const emit = defineEmits(['update', 'toggle-focus-mode']);
 
 // Date picker state
 const datePickerTaskId = ref(null);
@@ -199,6 +199,10 @@ const isTodoDrawerExpanded = ref(
 );
 
 const toggleTodoDrawer = () => {
+  // If focus mode is on, turn it off first
+  if (props.focusMode) {
+    emit('toggle-focus-mode');
+  }
   isTodoDrawerExpanded.value = !isTodoDrawerExpanded.value;
 };
 
@@ -213,6 +217,10 @@ const isDoneDrawerExpanded = ref(
 );
 
 const toggleDoneDrawer = () => {
+  // If focus mode is on, turn it off first
+  if (props.focusMode) {
+    emit('toggle-focus-mode');
+  }
   isDoneDrawerExpanded.value = !isDoneDrawerExpanded.value;
 };
 
@@ -221,13 +229,42 @@ watch(isDoneDrawerExpanded, (newValue) => {
   localStorage.setItem('doneDrawerExpanded', String(newValue));
 });
 
-// Computed drawer states - focus mode overrides individual drawer states
-const effectiveTodoDrawerExpanded = computed(() => {
-  return props.focusMode ? false : isTodoDrawerExpanded.value;
+// Watch focus mode changes and update drawer states accordingly
+watch(() => props.focusMode, (newFocusMode) => {
+  if (newFocusMode) {
+    // Focus mode ON: collapse both drawers
+    isTodoDrawerExpanded.value = false;
+    isDoneDrawerExpanded.value = false;
+  } else {
+    // Focus mode OFF: expand both drawers
+    isTodoDrawerExpanded.value = true;
+    isDoneDrawerExpanded.value = true;
+  }
 });
 
-const effectiveDoneDrawerExpanded = computed(() => {
-  return props.focusMode ? false : isDoneDrawerExpanded.value;
+// Check if each column stack type has any columns
+const hasTodoColumns = computed(() => {
+  return props.todoData.columnOrder?.some(columnName =>
+    props.todoData.columnStacks[columnName]?.name === 'TODO'
+  ) ?? false;
+});
+
+const hasSelectedColumns = computed(() => {
+  return props.todoData.columnOrder?.some(columnName =>
+    props.todoData.columnStacks[columnName]?.name === 'SELECTED'
+  ) ?? false;
+});
+
+const hasWipColumns = computed(() => {
+  return props.todoData.columnOrder?.some(columnName =>
+    props.todoData.columnStacks[columnName]?.name === 'WIP'
+  ) ?? false;
+});
+
+const hasDoneColumns = computed(() => {
+  return props.todoData.columnOrder?.some(columnName =>
+    props.todoData.columnStacks[columnName]?.name === 'DONE'
+  ) ?? false;
 });
 
 // Helper function to add ice logic to column data
@@ -729,8 +766,8 @@ const handleDateClear = ({ taskId }) => {
 }
 
 .done-stack.drawer-collapsed {
-  min-width: 250px;
-  max-width: 250px;
+  min-width: 50px;
+  max-width: 50px;
   overflow: hidden;
 }
 </style>
