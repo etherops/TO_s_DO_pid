@@ -55,6 +55,7 @@
                 v-if="showRawText || section.type !== 'raw-text'"
                 :section="section"
                 :column-type="columnType"
+                :column="title"
                 :column-data="columnData"
                 :show-raw-text="showRawText"
                 :is-task-selected="isTaskSelected"

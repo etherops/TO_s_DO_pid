@@ -3,13 +3,13 @@
 // Format a date to the completion date format: | Thurs, March 21
 export const formatCompletionDate = (date = new Date()) => {
   const days = ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat'];
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
                   'July', 'August', 'September', 'October', 'November', 'December'];
-  
+
   const dayName = days[date.getDay()];
   const monthName = months[date.getMonth()];
   const dayNumber = date.getDate();
-  
+
   return `| ${dayName}, ${monthName} ${dayNumber}`;
 };
 
@@ -48,10 +48,37 @@ export const removeCompletionDate = (text) => {
   return text.replace(/\s*\|[^|]*$/, '').trim();
 };
 
+// Abbreviate month names in completion date string
+const abbreviateMonths = (dateStr) => {
+  if (!dateStr) return dateStr;
+
+  const monthMap = {
+    'January': 'Jan',
+    'February': 'Feb',
+    'March': 'Mar',
+    'April': 'Apr',
+    'May': 'May',
+    'June': 'Jun',
+    'July': 'Jul',
+    'August': 'Aug',
+    'September': 'Sep',
+    'October': 'Oct',
+    'November': 'Nov',
+    'December': 'Dec'
+  };
+
+  let result = dateStr;
+  for (const [full, abbr] of Object.entries(monthMap)) {
+    result = result.replace(full, abbr);
+  }
+
+  return result;
+};
+
 // Get badge format from completion date text
 export const getCompletionBadgeFromText = (text) => {
   const completionDateStr = extractCompletionDate(text);
   if (!completionDateStr) return null;
 
-  return completionDateStr;
+  return abbreviateMonths(completionDateStr);
 };

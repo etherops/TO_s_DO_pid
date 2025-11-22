@@ -137,6 +137,7 @@
             <TaskCard
                 :task="item"
                 :section="section"
+                :column="column"
                 :is-on-ice="columnData.on_ice || false"
                 :is-selected="isTaskSelected && isTaskSelected(item.id)"
                 @task-updated="$emit('task-updated')"
@@ -175,6 +176,10 @@ const props = defineProps({
     required: true
   },
   columnType: {
+    type: String,
+    required: true
+  },
+  column: {
     type: String,
     required: true
   },

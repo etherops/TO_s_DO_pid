@@ -152,7 +152,7 @@
           </div>
 
           <!-- Fixed buttons container -->
-          <div class="task-buttons-container">
+          <div v-if="!isArchiveColumn" class="task-buttons-container">
 
           <!-- Clock button -->
           <button
@@ -177,10 +177,10 @@
           </button>
 
           <!-- Edit button -->
-          <button 
+          <button
             v-if="!isOnIce"
-            class="task-icon-btn edit-btn" 
-            @click="handleEditClick" 
+            class="task-icon-btn edit-btn"
+            @click="handleEditClick"
             title="Edit task (Shift+click for simple edit)"
           >
             <span class="edit-icon">✎</span>
@@ -195,9 +195,9 @@
               ×
             </button>
           </template>
-          <button 
-            v-else 
-            class="task-icon-btn delete-btn" 
+          <button
+            v-else
+            class="task-icon-btn delete-btn"
             @click.stop="requestDeleteTask"
           >
             <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
@@ -283,6 +283,10 @@ const props = defineProps({
     type: Object,
     required: true
   },
+  column: {
+    type: String,
+    required: true
+  },
   isOnIce: {
     type: Boolean,
     default: false
@@ -297,6 +301,10 @@ const emit = defineEmits(['task-updated', 'task-click', 'task-context-menu']);
 
 // Computed properties
 const isRawText = computed(() => props.task.type === 'raw-text');
+
+const isArchiveColumn = computed(() => {
+  return props.column?.toUpperCase().includes('ARCHIVE') ?? false;
+});
 
 // Check if title is long enough to be truncated
 const isLongTitle = computed(() => {
