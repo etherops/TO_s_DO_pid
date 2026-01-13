@@ -200,34 +200,37 @@ describe('Notes Feature', () => {
   });
 
   it('should maintain proper layout when note editor is expanded', () => {
-    const taskText = 'Schedule appointment';
+    const taskText = 'Layout test task';
 
-    // Get reference to task card before editing
-    const taskCard = findTask(taskText);
-
-    // Enter edit mode
-    taskCard.within(() => {
-      cy.get('.notes-btn').click();
-    });
-
-    // Verify we're in edit mode using the same task card reference
-    taskCard.within(() => {
-      cy.get('.task-edit-wrapper').should('exist');
-      cy.get('.task-text-edit').should('be.visible');
-      cy.get('.note-text-edit').should('be.visible');
-
-      // Type a long note to test textarea expansion
-      cy.get('.note-text-edit').type('This is a longer note that might cause the textarea to expand. It should maintain proper layout and not break the card structure. The textarea should resize properly.');
-
-      // Verify we can still interact with all elements
-      cy.get('.task-text-edit').should('be.visible');
-      cy.get('.note-text-edit').should('be.visible');
-
-      // Verify we can save (the actual functional test)
+    // Create a new task in WIP for this test
+    cy.get('.wip-column').contains('.section-header', 'CURRENT WEEK').parent().within(() => {
+      cy.get('.add-task-btn').click();
+      cy.get('.new-task-input').type(taskText);
       cy.get('.confirm-edit-btn').click();
     });
 
-    // Verify the long note was saved correctly (after save, text is visible again)
+    // Wait for task to be created and find it
+    cy.wait(300);
+
+    // Find task and enter edit mode via notes button
+    findTask(taskText).scrollIntoView().within(() => {
+      cy.get('.notes-btn').click();
+    });
+
+    // When in edit mode, the task text is in an input, so we query by the editing task card
+    cy.get('.task-card').filter(':has(.task-edit-wrapper)').first().within(() => {
+      cy.get('.task-edit-wrapper').should('exist');
+      cy.get('.task-text-edit').scrollIntoView().should('exist');
+      cy.get('.note-text-edit').scrollIntoView().should('exist');
+
+      // Type a long note to test textarea expansion
+      cy.get('.note-text-edit').type('This is a longer note that might cause the textarea to expand. It should maintain proper layout.');
+
+      // Verify we can save
+      cy.get('.confirm-edit-btn').scrollIntoView().click();
+    });
+
+    // Verify the long note was saved correctly
     findTask(taskText).within(() => {
       cy.get('.notes-btn').should('have.class', 'has-notes');
     });

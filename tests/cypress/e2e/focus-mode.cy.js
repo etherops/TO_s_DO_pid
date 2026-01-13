@@ -9,7 +9,7 @@ describe('Focus Mode', () => {
     cy.get('.wip-column').should('contain', existingWipTask);
 
     // Enable focus mode
-    cy.get('.toggle-switch').contains('Focus mode').click();
+    cy.get('.toggle-switch').contains('Focus Mode').click();
     cy.wait(100);
 
     // Verify toggle is checked
@@ -38,7 +38,7 @@ describe('Focus Mode', () => {
 
   it('should allow interaction with TODO column after hover in focus mode', () => {
     // Enable focus mode
-    cy.get('.toggle-switch').contains('Focus mode').click();
+    cy.get('.toggle-switch').contains('Focus Mode').click();
     cy.wait(100);
 
     // Create a new task in TODO after hovering
@@ -69,7 +69,7 @@ describe('Focus Mode', () => {
 
   it('should allow task management across columns in focus mode', () => {
     // Enable focus mode
-    cy.get('.toggle-switch').contains('Focus mode').click();
+    cy.get('.toggle-switch').contains('Focus Mode').click();
     cy.wait(100);
 
     // Verify we can see sections in partially hidden TODO column
@@ -108,37 +108,38 @@ describe('Focus Mode', () => {
 
   it('should persist focus mode across page reload', () => {
     // Enable focus mode
-    cy.get('.toggle-switch').contains('Focus mode').click();
+    cy.get('.toggle-switch').contains('Focus Mode').click();
     cy.wait(100);
 
-    // Verify it's enabled
+    // Verify it's enabled - toggle is checked and drawers are collapsed
     cy.get('.focus-mode-toggle').should('be.checked');
-    cy.get('.kanban-container').should('have.class', 'focus-mode');
+    cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
+    cy.get('.done-stack').should('have.class', 'drawer-collapsed');
 
     // Reload and verify persistence
     refreshAndWait();
 
     // Verify focus mode is still enabled
     cy.get('.focus-mode-toggle').should('be.checked');
-    cy.get('.kanban-container').should('have.class', 'focus-mode');
+    cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
 
     // Verify we can still interact with tasks
     findTask('TECH - Schedule service appointment').should('be.visible');
 
     // Disable focus mode
-    cy.get('.toggle-switch').contains('Focus mode').click();
+    cy.get('.toggle-switch').contains('Focus Mode').click();
     cy.wait(100);
 
     // Reload and verify it stays disabled
     refreshAndWait();
 
     cy.get('.focus-mode-toggle').should('not.be.checked');
-    cy.get('.kanban-container').should('not.have.class', 'focus-mode');
+    cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
   });
 
   it('should add new sections in focus mode', () => {
     // Enable focus mode
-    cy.get('.toggle-switch').contains('Focus mode').click();
+    cy.get('.toggle-switch').contains('Focus Mode').click();
     cy.wait(100);
 
     // Add new section to WIP
@@ -164,9 +165,9 @@ describe('Focus Mode', () => {
     cy.get('.wip-column').should('contain', 'Task in new section');
 
     // Toggle focus mode off and on
-    cy.get('.toggle-switch').contains('Focus mode').click();
+    cy.get('.toggle-switch').contains('Focus Mode').click();
     cy.wait(100);
-    cy.get('.toggle-switch').contains('Focus mode').click();
+    cy.get('.toggle-switch').contains('Focus Mode').click();
     cy.wait(100);
 
     // Verify content still exists

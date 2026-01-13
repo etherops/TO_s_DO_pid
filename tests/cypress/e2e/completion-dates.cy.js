@@ -44,9 +44,9 @@ describe('Completion Date Feature', () => {
     // Should show completion badge
     findTask('PROJECT - Mountain trip planning').within(() => {
       cy.get('.completion-badge').should('exist');
-      // Should contain current month name
+      // Should contain current month name (abbreviated)
       cy.get('.completion-badge').should(($badge) => {
-        const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+        const currentMonth = new Date().toLocaleString('default', { month: 'short' });
         expect($badge.text()).to.contain(currentMonth);
       });
     });
@@ -119,9 +119,9 @@ describe('Completion Date Feature', () => {
     findTask('SOCIAL - Event coordination for friends').within(() => {
       cy.get('.completion-badge').should('exist');
       cy.get('.completion-badge').should('have.class', 'completion-badge-cancelled');
-      // Should contain current month name
+      // Should contain current month name (abbreviated)
       cy.get('.completion-badge').should(($badge) => {
-        const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+        const currentMonth = new Date().toLocaleString('default', { month: 'short' });
         expect($badge.text()).to.contain(currentMonth);
       });
     });
