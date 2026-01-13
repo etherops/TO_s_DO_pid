@@ -62,6 +62,32 @@
       </template>
     </div>
 
+    <!-- PROJECTS Columns -->
+    <div v-if="hasProjectsColumns" class="column-stack projects-stack" :class="{ 'drawer-collapsed': !isProjectsDrawerExpanded }">
+      <template v-for="columnName in props.todoData.columnOrder" :key="`projects-${columnName}`">
+        <KanbanColumn
+            v-if="props.todoData.columnStacks[columnName]?.name === 'PROJECTS'"
+            column-type="PROJECTS"
+            :title="columnName"
+            :sections="props.todoData.columnStacks[columnName].sections"
+            :can-add-section="true"
+            :column="columnName"
+            :column-data="getColumnDataWithIce(columnName)"
+            :show-raw-text="props.showRawText"
+            :is-task-selected="isTaskSelected"
+            :is-drawer-expanded="isProjectsDrawerExpanded"
+            @add-section="createNewSection('PROJECTS', columnName)"
+            @task-updated="handleTaskUpdate"
+            @section-updated="handleSectionUpdate"
+            @show-date-picker="showDatePicker"
+            @update="emit('update')"
+            @task-click="handleTaskClick"
+            @task-context-menu="handleTaskContextMenu"
+            @toggle-drawer="toggleProjectsDrawer"
+        />
+      </template>
+    </div>
+
     <!-- SELECTED Columns -->
     <div v-if="hasSelectedColumns" class="column-stack selected-stack">
       <template v-for="columnName in props.todoData.columnOrder" :key="`selected-${columnName}`">
@@ -211,6 +237,23 @@ watch(isTodoDrawerExpanded, (newValue) => {
   localStorage.setItem('todoDrawerExpanded', String(newValue));
 });
 
+// Drawer state for PROJECTS column - load from localStorage
+const isProjectsDrawerExpanded = ref(
+  localStorage.getItem('projectsDrawerExpanded') !== 'false'
+);
+
+const toggleProjectsDrawer = () => {
+  if (props.focusMode) {
+    emit('toggle-focus-mode');
+  }
+  isProjectsDrawerExpanded.value = !isProjectsDrawerExpanded.value;
+};
+
+// Save PROJECTS drawer state to localStorage when it changes
+watch(isProjectsDrawerExpanded, (newValue) => {
+  localStorage.setItem('projectsDrawerExpanded', String(newValue));
+});
+
 // Drawer state for DONE column - load from localStorage
 const isDoneDrawerExpanded = ref(
   localStorage.getItem('doneDrawerExpanded') !== 'false'
@@ -232,12 +275,14 @@ watch(isDoneDrawerExpanded, (newValue) => {
 // Watch focus mode changes and update drawer states accordingly
 watch(() => props.focusMode, (newFocusMode) => {
   if (newFocusMode) {
-    // Focus mode ON: collapse both drawers
+    // Focus mode ON: collapse TODO, PROJECTS, and DONE drawers
     isTodoDrawerExpanded.value = false;
+    isProjectsDrawerExpanded.value = false;
     isDoneDrawerExpanded.value = false;
   } else {
-    // Focus mode OFF: expand both drawers
+    // Focus mode OFF: expand all drawers
     isTodoDrawerExpanded.value = true;
+    isProjectsDrawerExpanded.value = true;
     isDoneDrawerExpanded.value = true;
   }
 });
@@ -246,6 +291,12 @@ watch(() => props.focusMode, (newFocusMode) => {
 const hasTodoColumns = computed(() => {
   return props.todoData.columnOrder?.some(columnName =>
     props.todoData.columnStacks[columnName]?.name === 'TODO'
+  ) ?? false;
+});
+
+const hasProjectsColumns = computed(() => {
+  return props.todoData.columnOrder?.some(columnName =>
+    props.todoData.columnStacks[columnName]?.name === 'PROJECTS'
   ) ?? false;
 });
 
@@ -322,16 +373,16 @@ const createNewSection = (columnStack, column = null) => {
 
   // Add to nested structure
   if (!props.todoData.columnStacks[column]) {
-    const nameValue = columnStack === 'TODO' ? 'TODO' : columnStack === 'SELECTED' ? 'SELECTED' : columnStack === 'WIP' ? 'WIP' : 'DONE';
+    const nameMap = { TODO: 'TODO', PROJECTS: 'PROJECTS', SELECTED: 'SELECTED', WIP: 'WIP', DONE: 'DONE' };
     props.todoData.columnStacks[column] = {
-      name: nameValue,
+      name: nameMap[columnStack] || 'TODO',
       sections: []
     };
     props.todoData.columnOrder.push(column);
   }
 
-  // Insert at beginning for TODO columnStacks, end for SELECTED/WIP columnStacks
-  if (columnStack === 'TODO') {
+  // Insert at beginning for TODO/PROJECTS columnStacks, end for SELECTED/WIP columnStacks
+  if (columnStack === 'TODO' || columnStack === 'PROJECTS') {
     props.todoData.columnStacks[column].sections.unshift(newSection);
   } else {
     props.todoData.columnStacks[column].sections.push(newSection);
@@ -755,9 +806,28 @@ const handleDateClear = ({ taskId }) => {
 }
 
 .todo-stack.drawer-collapsed {
-  min-width: 250px;
-  max-width: 250px;
+  min-width: 125px;
+  max-width: 125px;
   overflow: hidden;
+}
+
+.todo-stack.drawer-collapsed :deep(.column-header-buttons) {
+  display: none;
+}
+
+/* PROJECTS drawer styles */
+.projects-stack {
+  transition: min-width 0.3s ease-in-out, max-width 0.3s ease-in-out;
+}
+
+.projects-stack.drawer-collapsed {
+  min-width: 125px;
+  max-width: 125px;
+  overflow: hidden;
+}
+
+.projects-stack.drawer-collapsed :deep(.column-header-buttons) {
+  display: none;
 }
 
 /* DONE drawer styles */

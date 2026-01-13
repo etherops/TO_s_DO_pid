@@ -16,6 +16,9 @@
           <button v-if="columnType === 'TODO' && isDrawerExpanded === false" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Show Todo'">
             <span>→</span>
           </button>
+          <button v-if="columnType === 'PROJECTS' && isDrawerExpanded === false" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Show Projects'">
+            <span>→</span>
+          </button>
           {{ title }}
           <div v-if="columnData.on_ice" class="on-ice-badge">
             <svg class="ice-icon" viewBox="0 0 16 16" width="12" height="12">
@@ -37,6 +40,9 @@
             <span class="add-icon">+</span> Add Section
           </button>
           <button v-if="columnType === 'TODO' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Todo'">
+            <span>←</span>
+          </button>
+          <button v-if="columnType === 'PROJECTS' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Projects'">
             <span>←</span>
           </button>
         </div>
@@ -237,6 +243,10 @@ const expandAll = () => {
 
 .todo-column .column-header {
   background-color: #e2e4f1;
+}
+
+.projects-column .column-header {
+  background-color: #f1e8e2;
 }
 
 .wip-column .column-header {

@@ -36,6 +36,23 @@ Cypress.Commands.add('cleanupTestFile', (filePath) => {
     })
 })
 
+// Write custom content to the test file
+Cypress.Commands.add('writeTestFileContent', (content) => {
+    const specName = Cypress.spec.name.replace('.cy.js', '')
+    const testFileName = `fixture-${specName}.todo.md`
+    const testFilePath = `./${testFileName}`
+
+    return cy.task('writeFile', {
+        path: testFilePath,
+        content: content
+    }).then(result => {
+        if (!result.success) {
+            throw new Error(`Failed to write test file: ${result.error}`)
+        }
+        return { fileName: testFileName, filePath: testFilePath }
+    })
+})
+
 // Switch to a specific file tab
 Cypress.Commands.add('switchToFile', (fileName) => {
     const baseFileName = fileName.replace('.todo.md', '')
