@@ -30,11 +30,14 @@
           </div>
         </div>
         <div class="column-header-buttons">
-          <button v-if="columnType === 'DONE' && !columnData.on_ice" class="collapse-all-btn" @click="collapseAll">
-            <span class="collapse-icon">▼</span> Collapse All
+          <button v-if="columnType === 'DONE' && !columnData.on_ice" class="expand-all-btn" @click="expandAll" title="Show all cards (▼)">
+            <span class="expand-icon">▼</span> Expand
           </button>
-          <button v-if="columnType === 'DONE' && !columnData.on_ice" class="expand-all-btn" @click="expandAll">
-            <span class="expand-icon">▶</span> Expand All
+          <button v-if="columnType === 'DONE' && !columnData.on_ice" class="collapse-all-btn" @click="collapseAll" title="Hide completed cards (▶)">
+            <span class="collapse-icon">▶</span> Collapse
+          </button>
+          <button v-if="columnType === 'DONE' && !columnData.on_ice" class="hide-all-btn" @click="hideAll" title="Hide all cards (⏹)">
+            <span class="hide-icon">⏹</span> Hide
           </button>
           <button v-if="canAddSection && !columnData.on_ice" class="add-section-btn" @click="$emit('add-section')">
             <span class="add-icon">+</span> Add Section
@@ -149,36 +152,28 @@ const getSectionKey = (section) => {
   return section.name || 'unnamed';
 };
 
-// Collapse all sections in this column
-const collapseAll = () => {
-  // Find all sections in this column that are expanded and click their collapse button
-  if (columnRef.value) {
-    const collapseButtons = columnRef.value.querySelectorAll('.collapse-completed-btn');
-    collapseButtons.forEach(button => {
-      const icon = button.querySelector('.collapse-icon');
-      // Only click if currently expanded (showing ▼)
-      if (icon && icon.textContent === '▼') {
-        button.click();
-      }
-    });
-  }
+// Set collapse state on all sections via custom event
+const setAllSectionsCollapseState = (targetState) => {
+  if (!columnRef.value) return;
+
+  // Dispatch custom event that sections will listen to
+  const event = new CustomEvent('set-collapse-state', {
+    detail: { state: targetState },
+    bubbles: true
+  });
+  columnRef.value.querySelectorAll('.collapse-completed-btn').forEach(button => {
+    button.dispatchEvent(event);
+  });
 };
 
+// Collapse all sections in this column (set to partial state)
+const collapseAll = () => setAllSectionsCollapseState('partial');
 
-// Expand all sections in this column
-const expandAll = () => {
-  // Find all sections in this column that are collapsed and click their collapse button
-  if (columnRef.value) {
-    const collapseButtons = columnRef.value.querySelectorAll('.collapse-completed-btn');
-    collapseButtons.forEach(button => {
-      const icon = button.querySelector('.collapse-icon');
-      // Only click if currently collapsed (showing ▶)
-      if (icon && icon.textContent === '▶') {
-        button.click();
-      }
-    });
-  }
-};
+// Expand all sections in this column (set to normal state)
+const expandAll = () => setAllSectionsCollapseState('normal');
+
+// Hide all sections in this column (set to full state)
+const hideAll = () => setAllSectionsCollapseState('full');
 </script>
 
 <style scoped>
@@ -364,14 +359,15 @@ const expandAll = () => {
   font-weight: bold;
 }
 
-/* Collapse/Expand All buttons */
+/* Collapse/Expand/Hide All buttons */
 .collapse-all-btn,
-.expand-all-btn {
+.expand-all-btn,
+.hide-all-btn {
   background-color: rgba(220, 220, 220, 0.5);
   border: 1px solid #adb5bd;
   border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
+  padding: 4px 6px;
+  font-size: 11px;
   color: #495057;
   cursor: pointer;
   display: flex;
@@ -380,22 +376,19 @@ const expandAll = () => {
   white-space: nowrap;
 }
 
-.collapse-all-btn:hover {
-  background-color: #e9ecef;
-  border-color: #adb5bd;
-  transform: scale(1.02);
-}
-
-.expand-all-btn:hover {
+.collapse-all-btn:hover,
+.expand-all-btn:hover,
+.hide-all-btn:hover {
   background-color: #e9ecef;
   border-color: #adb5bd;
   transform: scale(1.02);
 }
 
 .collapse-icon,
-.expand-icon {
+.expand-icon,
+.hide-icon {
   font-size: 10px;
-  margin-right: 4px;
+  margin-right: 3px;
 }
 
 /* Raw-text column styles */

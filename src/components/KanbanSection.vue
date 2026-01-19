@@ -9,7 +9,7 @@
   >
     <div
         v-if="!isRawTextSection"
-        :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small']"
+        :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small', { 'fully-collapsed': isFullyCollapsed }]"
         @dblclick="section.archivable && startEditingSection()"
     >
       <template v-if="isEditingSection">
@@ -31,72 +31,98 @@
         </div>
       </template>
       <template v-else>
-        {{ section.name }}
+        <span class="section-title">{{ section.name }}</span>
         <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
         <div class="section-header-actions">
-          <!-- Collapse completed tasks button -->
-          <button 
-            v-if="!columnData.on_ice && hasCompletedTasks" 
+          <!-- Collapse tasks button (tri-state: normal → partial → full) -->
+          <button
+            v-if="!columnData.on_ice"
+            ref="collapseBtn"
             class="collapse-completed-btn"
             @click="toggleCompletedCollapse"
-            :title="isCompletedCollapsed ? 'Expand completed/cancelled tasks' : 'Collapse completed/cancelled tasks'"
+            :title="getCollapseButtonTitle()"
+            :data-collapse-state="collapseState"
           >
-            <span class="collapse-icon">{{ isCompletedCollapsed ? '▶' : '▼' }}</span>
+            <span class="collapse-icon">{{ getCollapseIcon() }}</span>
           </button>
-          <button v-if="!columnData.on_ice" class="add-task-btn" @click="createNewTask">
-            <span class="add-icon">+</span> Add Task
-          </button>
-          <button v-if="!columnData.on_ice" 
-                  :class="['sort-tasks-btn', { 'sorting': isSorting }]" 
-                  @click="sortTasks" 
-                  title="Sort tasks"
-                  :disabled="isSorting">
-            🔀
-          </button>
-          <button v-if="!columnData.on_ice" class="edit-section-btn" @click="startEditingSection">
-            <span class="edit-icon">✎</span>
-          </button>
-          <!-- Archive button for archivable sections -->
-          <button
-              v-if="section.archivable && columnType === 'WIP'"
-              class="archive-section-btn"
-              @click="archiveSection"
-              title="Archive this section"
-          >
-            <svg class="archive-icon" viewBox="0 0 24 24" width="16" height="16">
-              <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/>
-            </svg>
-          </button>
-          <!-- Delete section button -->
-          <template v-if="sectionPendingDelete">
-            <button class="confirm-delete-btn section-confirm-delete-btn" @click.stop="confirmDeleteSection">
-              Delete Section?
+
+          <!-- Inline summary when fully collapsed -->
+          <div v-if="isFullyCollapsed && fullCollapseSummary.total > 0" class="inline-collapse-summary">
+            <span v-if="fullCollapseSummary.todo > 0" class="summary-item">
+              <span class="mini-checkbox unchecked"></span>
+              <span class="summary-text">{{ fullCollapseSummary.todo }}</span>
+            </span>
+            <span v-if="fullCollapseSummary.inProgress > 0" class="summary-item">
+              <span class="mini-checkbox in-progress"></span>
+              <span class="summary-text">{{ fullCollapseSummary.inProgress }}</span>
+            </span>
+            <span v-if="fullCollapseSummary.completed > 0" class="summary-item">
+              <span class="mini-checkbox checked"></span>
+              <span class="summary-text">{{ fullCollapseSummary.completed }}</span>
+            </span>
+            <span v-if="fullCollapseSummary.cancelled > 0" class="summary-item">
+              <span class="mini-checkbox cancelled"></span>
+              <span class="summary-text">{{ fullCollapseSummary.cancelled }}</span>
+            </span>
+          </div>
+
+          <!-- Regular action buttons (hidden when fully collapsed) -->
+          <template v-if="!isFullyCollapsed">
+            <button v-if="!columnData.on_ice" class="add-task-btn" @click="createNewTask">
+              <span class="add-icon">+</span> Add Task
             </button>
-            <button class="cancel-delete-btn" @click.stop="cancelDeleteSection">
-              ×
+            <button v-if="!columnData.on_ice"
+                    :class="['sort-tasks-btn', { 'sorting': isSorting }]"
+                    @click="sortTasks"
+                    title="Sort tasks"
+                    :disabled="isSorting">
+              🔀
+            </button>
+            <button v-if="!columnData.on_ice" class="edit-section-btn" @click="startEditingSection">
+              <span class="edit-icon">✎</span>
+            </button>
+            <!-- Archive button for archivable sections -->
+            <button
+                v-if="section.archivable && columnType === 'WIP'"
+                class="archive-section-btn"
+                @click="archiveSection"
+                title="Archive this section"
+            >
+              <svg class="archive-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"/>
+              </svg>
+            </button>
+            <!-- Delete section button -->
+            <template v-if="sectionPendingDelete">
+              <button class="confirm-delete-btn section-confirm-delete-btn" @click.stop="confirmDeleteSection">
+                Delete Section?
+              </button>
+              <button class="cancel-delete-btn" @click.stop="cancelDeleteSection">
+                ×
+              </button>
+            </template>
+            <button
+                v-else-if="columnType !== 'DONE'"
+                class="delete-section-btn"
+                :class="{ 'non-clickable': section.items.length > 0 }"
+                @click.stop="section.items.length === 0 && requestDeleteSection()"
+            >
+              <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
+                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+              </svg>
             </button>
           </template>
-          <button
-              v-else-if="columnType !== 'DONE'"
-              class="delete-section-btn"
-              :class="{ 'non-clickable': section.items.length > 0 }"
-              @click.stop="section.items.length === 0 && requestDeleteSection()"
-          >
-            <svg class="delete-icon" viewBox="0 0 24 24" width="16" height="16">
-              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
-            </svg>
-          </button>
         </div>
       </template>
     </div>
-    <div 
-      v-if="!isRawTextSection" 
-      class="section-items" 
-      :class="{ 'completed-collapsed': isCompletedCollapsed }"
+    <div
+      v-if="!isRawTextSection"
+      class="section-items"
+      :class="{ 'completed-collapsed': isCompletedCollapsed, 'fully-collapsed': isFullyCollapsed }"
       :style="{ '--collapsed-stack-height': collapsedStackHeight }"
     >
-      <!-- Summary card (only when collapsed) -->
-      <div 
+      <!-- Partial collapse summary card (only when partial collapsed) -->
+      <div
         v-if="isCompletedCollapsed && getContiguousCompletedTasks.length > 0"
         class="task-card-wrapper collapsed-summary"
         :style="getSummaryCardStyle()"
@@ -116,8 +142,9 @@
         </div>
       </div>
 
-      <!-- All tasks in single draggable container -->
+      <!-- All tasks in single draggable container (hidden when fully collapsed) -->
       <draggable
+          v-show="!isFullyCollapsed"
           v-model="section.items"
           :group="'tasks'"
           item-key="id"
@@ -149,7 +176,7 @@
         </template>
       </draggable>
       
-      <div v-if="visibleItemsCount === 0" class="empty-section">
+      <div v-if="visibleItemsCount === 0 && !isFullyCollapsed" class="empty-section">
         No items
       </div>
     </div>
@@ -162,7 +189,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue';
 import draggable from 'vuedraggable';
 import TaskCard from './TaskCard.vue';
 import {
@@ -219,27 +246,74 @@ const sectionPendingDelete = ref(false);
 const isSorting = ref(false);
 
 // Initialize collapse state from localStorage
+// Tri-state: 'normal' (all visible), 'partial' (DONE tasks collapsed), 'full' (all tasks hidden)
 const storageKey = computed(() => `section-collapse-${props.section.name}`);
-const isCompletedCollapsed = ref(false);
+const collapseState = ref('normal'); // 'normal' | 'partial' | 'full'
+
+// Derived boolean for backward compatibility with existing template logic
+const isCompletedCollapsed = computed(() => collapseState.value === 'partial');
+
+// Full collapse state (all cards hidden)
+const isFullyCollapsed = computed(() => collapseState.value === 'full');
 
 // Function to load collapse state from localStorage
 const loadCollapseState = () => {
   const saved = localStorage.getItem(storageKey.value);
   if (saved !== null) {
-    isCompletedCollapsed.value = saved === 'true';
+    // Handle legacy boolean values and new tri-state values
+    if (saved === 'true') {
+      collapseState.value = 'partial';
+    } else if (saved === 'false') {
+      collapseState.value = 'normal';
+    } else if (['normal', 'partial', 'full'].includes(saved)) {
+      collapseState.value = saved;
+    }
   } else {
-    // If no saved state, default to collapsed for DONE columns
-    isCompletedCollapsed.value = props.columnType === 'DONE';
+    // If no saved state, default to partial collapse for DONE columns
+    collapseState.value = props.columnType === 'DONE' ? 'partial' : 'normal';
   }
 };
 
-// Load collapse state on mount
+// Get icon for current collapse state
+const getCollapseIcon = () => {
+  switch (collapseState.value) {
+    case 'normal': return '▼';
+    case 'partial': return '▶';
+    case 'full': return '⏹';
+    default: return '▼';
+  }
+};
+
+// Get button title for current collapse state
+const getCollapseButtonTitle = () => {
+  switch (collapseState.value) {
+    case 'normal': return 'Collapse completed tasks';
+    case 'partial': return 'Hide all cards';
+    case 'full': return 'Show all cards';
+    default: return 'Toggle collapse';
+  }
+};
+
+// Load collapse state on mount and set up event listener
 onMounted(() => {
   loadCollapseState();
+
+  // Listen for set-collapse-state custom event from column
+  if (collapseBtn.value) {
+    collapseBtn.value.addEventListener('set-collapse-state', handleSetCollapseState);
+  }
+});
+
+// Clean up event listener on unmount
+onUnmounted(() => {
+  if (collapseBtn.value) {
+    collapseBtn.value.removeEventListener('set-collapse-state', handleSetCollapseState);
+  }
 });
 
 // Template refs
 const sectionNameInput = ref(null);
+const collapseBtn = ref(null);
 
 // Computed property to check if section has completed/cancelled tasks
 const hasCompletedTasks = computed(() => {
@@ -266,20 +340,50 @@ const getContiguousCompletedTasks = computed(() => {
   return contiguousTasks;
 });
 
-// Toggle collapsed state for completed tasks
+// Toggle collapsed state - cycles through: normal → partial → full → normal
 const toggleCompletedCollapse = () => {
-  isCompletedCollapsed.value = !isCompletedCollapsed.value;
+  const states = ['normal', 'partial', 'full'];
+  const currentIndex = states.indexOf(collapseState.value);
+  const nextIndex = (currentIndex + 1) % states.length;
+  collapseState.value = states[nextIndex];
   // Save to localStorage
-  localStorage.setItem(storageKey.value, isCompletedCollapsed.value.toString());
+  localStorage.setItem(storageKey.value, collapseState.value);
+};
+
+// Set collapse state directly (used by column's Expand/Collapse/Hide All buttons)
+const setCollapseState = (newState) => {
+  if (['normal', 'partial', 'full'].includes(newState)) {
+    collapseState.value = newState;
+    localStorage.setItem(storageKey.value, newState);
+  }
+};
+
+// Handle custom event from column to set collapse state
+const handleSetCollapseState = (event) => {
+  if (event.detail && event.detail.state) {
+    setCollapseState(event.detail.state);
+  }
 };
 
 
-// Computed property to calculate counts for summary card
+// Computed property to calculate counts for partial collapse summary card
 const collapsedSummary = computed(() => {
   const tasks = getContiguousCompletedTasks.value;
   const completed = tasks.filter(task => task.statusChar === 'x').length;
   const cancelled = tasks.filter(task => task.statusChar === '-').length;
   return { completed, cancelled };
+});
+
+// Computed property for full collapse summary (ALL tasks)
+const fullCollapseSummary = computed(() => {
+  const allTasks = (props.section.items || []).filter(item => item.type === 'task');
+  return {
+    todo: allTasks.filter(task => task.statusChar === ' ').length,
+    inProgress: allTasks.filter(task => task.statusChar === '~').length,
+    completed: allTasks.filter(task => task.statusChar === 'x').length,
+    cancelled: allTasks.filter(task => task.statusChar === '-').length,
+    total: allTasks.length
+  };
 });
 
 // Get positioning styles for task cards
@@ -533,6 +637,23 @@ onMounted(() => {
   border-bottom: 1px solid #ddd;
   margin-bottom: 8px;
   position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-header.fully-collapsed {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .section-header.large {
@@ -544,9 +665,10 @@ onMounted(() => {
 }
 
 .section-header.small {
-  font-size: 14px;
+  font-size: 13px;
   color: #555;
-  padding: 8px 10px;
+  padding: 2px 8px;
+  margin-bottom: 4px;
 }
 
 .section-items {
@@ -680,11 +802,12 @@ onMounted(() => {
 /* Section header actions */
 .section-header-actions {
   display: flex;
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 3;
+  align-items: center;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Edit section styles */
@@ -1126,6 +1249,119 @@ onMounted(() => {
   left: 2px;
   right: 2px;
   height: 2px;
+  background-color: #757575;
+  transform: translateY(-50%);
+}
+
+.summary-card .custom-checkbox.unchecked {
+  background-color: #ffffff;
+  border-color: #aaa;
+}
+
+.summary-card .custom-checkbox.in-progress {
+  background-color: #fff3e0;
+  border-color: #ff9800;
+}
+
+.summary-card .custom-checkbox.in-progress:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  right: 3px;
+  height: 2px;
+  background-color: #ff9800;
+  transform: translateY(-50%);
+}
+
+/* Full collapse - hide section items entirely */
+.section-items.fully-collapsed {
+  display: none;
+}
+
+/* Inline collapse summary in header */
+.inline-collapse-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.inline-collapse-summary .summary-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.inline-collapse-summary .summary-text {
+  font-size: 11px;
+  font-weight: 500;
+  color: #495057;
+}
+
+/* Mini checkboxes for inline summary */
+.mini-checkbox {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #aaa;
+  border-radius: 2px;
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.mini-checkbox.unchecked {
+  background-color: #ffffff;
+  border-color: #aaa;
+}
+
+.mini-checkbox.in-progress {
+  background-color: #fff3e0;
+  border-color: #ff9800;
+}
+
+.mini-checkbox.in-progress:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 1.5px;
+  background-color: #ff9800;
+  transform: translateY(-50%);
+}
+
+.mini-checkbox.checked {
+  background-color: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.mini-checkbox.checked:after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  width: 3px;
+  height: 6px;
+  border: solid #4caf50;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.mini-checkbox.cancelled {
+  background-color: #f5f5f5;
+  border-color: #757575;
+}
+
+.mini-checkbox.cancelled:after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 1.5px;
   background-color: #757575;
   transform: translateY(-50%);
 }
