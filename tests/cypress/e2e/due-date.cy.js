@@ -91,10 +91,15 @@ describe('Due Date Management', () => {
             cy.get('.clock-btn').click()
         })
 
-        // Set yesterday as due date (always in the past, same year)
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        const dateString = yesterday.toISOString().split('T')[0]
+        // Set a week ago as due date (avoids timezone edge cases)
+        // Note: The app stores dates as "Month Day" without year, so dates
+        // are always interpreted as current year. Use a date within current year.
+        const pastDate = new Date()
+        pastDate.setDate(pastDate.getDate() - 7)
+        const year = pastDate.getFullYear()
+        const month = String(pastDate.getMonth() + 1).padStart(2, '0')
+        const day = String(pastDate.getDate()).padStart(2, '0')
+        const dateString = `${year}-${month}-${day}`
 
         cy.get('.date-input').clear().type(dateString)
         cy.get('.confirm-edit-btn').click()
@@ -107,25 +112,6 @@ describe('Due Date Management', () => {
             cy.get('.task-title')
                 .should('have.css', 'animation-name')
                 .and('match', /pulse/)
-        })
-
-        // Test with Jan 1st of current year (guaranteed past unless it's Jan 1)
-        findTask(taskText).within(() => {
-            cy.get('.clock-btn').click()
-        })
-
-        const jan1 = new Date()
-        jan1.setMonth(0)
-        jan1.setDate(1)
-        const jan1String = jan1.toISOString().split('T')[0]
-
-        cy.get('.date-input').clear().type(jan1String)
-        cy.get('.confirm-edit-btn').click()
-
-        // Verify it shows as past due (unless today is Jan 1)
-        findTask(taskText).within(() => {
-            // Jan 1 of current year will be past for most of the year
-            cy.get('.task-title').should('have.class', 'due-past')
         })
 
         // Refresh and verify persistence

@@ -20,6 +20,13 @@
             <span>→</span>
           </button>
           {{ title }}
+          <div v-if="taskCounts.total > 0" class="column-counts">
+            <span class="count-badge total-count">{{ taskCounts.total }}</span>
+            <span v-if="taskCounts.todo > 0" class="count-badge todo-count">{{ taskCounts.todo }}</span>
+            <span v-if="taskCounts.inProgress > 0" class="count-badge in-progress-count">{{ taskCounts.inProgress }}</span>
+            <span v-if="taskCounts.completed > 0" class="count-badge completed-count">{{ taskCounts.completed }}</span>
+            <span v-if="taskCounts.cancelled > 0" class="count-badge cancelled-count">{{ taskCounts.cancelled }}</span>
+          </div>
           <div v-if="columnData.on_ice" class="on-ice-badge">
             <svg class="ice-icon" viewBox="0 0 16 16" width="12" height="12">
               <g fill="currentColor">
@@ -40,7 +47,7 @@
             <span class="hide-icon">⏹</span> Hide
           </button>
           <button v-if="canAddSection && !columnData.on_ice" class="add-section-btn" @click="$emit('add-section')">
-            <span class="add-icon">+</span> Add Section
+            <span class="add-icon">+</span> Add
           </button>
           <button v-if="columnType === 'TODO' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Todo'">
             <span>←</span>
@@ -140,6 +147,27 @@ const columnRef = ref(null);
 
 // Computed properties
 const isRawTextColumn = computed(() => props.columnData?.type === 'raw-text');
+
+// Count tasks by status across all sections
+const taskCounts = computed(() => {
+  const counts = { todo: 0, inProgress: 0, completed: 0, cancelled: 0, total: 0 };
+
+  for (const section of props.sections) {
+    if (section.type === 'raw-text') continue;
+    for (const item of (section.items || [])) {
+      if (item.type !== 'task') continue;
+      counts.total++;
+      switch (item.statusChar) {
+        case ' ': counts.todo++; break;
+        case '~': counts.inProgress++; break;
+        case 'x': counts.completed++; break;
+        case '-': counts.cancelled++; break;
+      }
+    }
+  }
+
+  return counts;
+});
 
 
 // Generate unique key for sections (including raw-text sections)
@@ -258,6 +286,49 @@ const hideAll = () => setAllSectionsCollapseState('full');
   gap: 8px;
 }
 
+.column-counts {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.count-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 8px;
+  min-width: 14px;
+  text-align: center;
+}
+
+.total-count {
+  background-color: #333;
+  color: #fff;
+}
+
+.todo-count {
+  background-color: #e3e3e3;
+  color: #666;
+}
+
+.in-progress-count {
+  background-color: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+
+.completed-count {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.cancelled-count {
+  background-color: #f5f5f5;
+  color: #757575;
+  border: 1px solid #bdbdbd;
+}
+
 .drawer-toggle-btn {
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid #dee2e6;
@@ -333,7 +404,7 @@ const hideAll = () => setAllSectionsCollapseState('full');
   border-radius: 5px;
 }
 
-/* Add Section button styles */
+/* Add button styles */
 .add-section-btn {
   background-color: #e8f5e9;
   border: 1px solid #a5d6a7;

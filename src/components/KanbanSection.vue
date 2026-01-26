@@ -34,19 +34,37 @@
         <span class="section-title">{{ section.name }}</span>
         <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
         <div class="section-header-actions">
-          <!-- Collapse tasks button (tri-state: normal → partial → full) -->
+          <!-- Expand icon when fully collapsed -->
           <button
-            v-if="!columnData.on_ice"
+            v-if="!columnData.on_ice && isFullyCollapsed"
+            class="expand-icon-btn"
+            @click="toggleState('full')"
+            title="Expand section"
             ref="collapseBtn"
-            class="collapse-completed-btn"
-            @click="toggleCompletedCollapse"
-            :title="getCollapseButtonTitle()"
-            :data-collapse-state="collapseState"
           >
-            <span class="collapse-icon">{{ getCollapseIcon() }}</span>
+            <span class="expand-icon">▶</span>
           </button>
 
-          <!-- Inline summary when fully collapsed -->
+          <!-- 3-button toggle: Focus | Collapse | Summary (hidden when fully collapsed) -->
+          <div v-if="!columnData.on_ice && !isFullyCollapsed" class="collapse-toggle-group" ref="collapseBtn">
+            <button
+              :class="['toggle-btn', { active: collapseState === 'partial' }]"
+              @click="toggleState('partial')"
+              title="Focus: Stack completed, fan in-progress"
+            >Focus</button>
+            <button
+              :class="['toggle-btn', { active: collapseState === 'summary' }]"
+              @click="toggleState('summary')"
+              title="Collapse: Show summary card only"
+            >Collapse</button>
+            <button
+              :class="['toggle-btn', { active: collapseState === 'full' }]"
+              @click="toggleState('full')"
+              title="Summary: Header only with counts"
+            >Summary</button>
+          </div>
+
+          <!-- Inline summary when fully collapsed (header only mode) -->
           <div v-if="isFullyCollapsed && fullCollapseSummary.total > 0" class="inline-collapse-summary">
             <span v-if="fullCollapseSummary.todo > 0" class="summary-item">
               <span class="mini-checkbox unchecked"></span>
@@ -66,7 +84,7 @@
             </span>
           </div>
 
-          <!-- Regular action buttons (hidden when fully collapsed) -->
+          <!-- Regular action buttons (hidden only in Summary/header-only mode) -->
           <template v-if="!isFullyCollapsed">
             <button v-if="!columnData.on_ice" class="add-task-btn" @click="createNewTask">
               <span class="add-icon">+</span> Add Task
@@ -118,12 +136,12 @@
     <div
       v-if="!isRawTextSection"
       class="section-items"
-      :class="{ 'completed-collapsed': isCompletedCollapsed, 'fully-collapsed': isFullyCollapsed }"
+      :class="{ 'completed-collapsed': isCompletedCollapsed, 'fully-collapsed': isFullyCollapsed, 'summary-collapsed': isSummaryCollapsed }"
       :style="{ '--collapsed-stack-height': collapsedStackHeight }"
     >
-      <!-- Partial collapse summary card (only when partial collapsed) -->
+      <!-- Partial collapse summary card (only for completed/cancelled, not in-progress) -->
       <div
-        v-if="isCompletedCollapsed && getContiguousCompletedTasks.length > 0"
+        v-if="isCompletedCollapsed && collapsedSummary.total > 0"
         class="task-card-wrapper collapsed-summary"
         :style="getSummaryCardStyle()"
       >
@@ -142,9 +160,36 @@
         </div>
       </div>
 
-      <!-- All tasks in single draggable container (hidden when fully collapsed) -->
+      <!-- Summary-only mode: show full summary card with all 4 states -->
+      <div
+        v-if="isSummaryCollapsed && fullCollapseSummary.total > 0"
+        class="task-card-wrapper summary-only-card"
+      >
+        <div class="task-card summary-card full-summary">
+          <div class="summary-content">
+            <span v-if="fullCollapseSummary.todo > 0" class="summary-item">
+              <div class="custom-checkbox unchecked"></div>
+              <span class="summary-text">{{ fullCollapseSummary.todo }} todo</span>
+            </span>
+            <span v-if="fullCollapseSummary.inProgress > 0" class="summary-item">
+              <div class="custom-checkbox in-progress"></div>
+              <span class="summary-text">{{ fullCollapseSummary.inProgress }} in progress</span>
+            </span>
+            <span v-if="fullCollapseSummary.completed > 0" class="summary-item">
+              <div class="custom-checkbox checked"></div>
+              <span class="summary-text">{{ fullCollapseSummary.completed }} completed</span>
+            </span>
+            <span v-if="fullCollapseSummary.cancelled > 0" class="summary-item">
+              <div class="custom-checkbox cancelled"></div>
+              <span class="summary-text">{{ fullCollapseSummary.cancelled }} cancelled</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- All tasks in single draggable container (hidden when fully collapsed or summary collapsed) -->
       <draggable
-          v-show="!isFullyCollapsed"
+          v-show="!isFullyCollapsed && !isSummaryCollapsed"
           v-model="section.items"
           :group="'tasks'"
           item-key="id"
@@ -154,10 +199,11 @@
           @end="onDragEnd"
       >
         <template #item="{ element: item, index }">
-          <div 
+          <div
             v-if="showRawText || item.type !== 'raw-text'"
             :class="['task-card-wrapper', {
-              'collapsed-completed': isCompletedCollapsed && getContiguousCompletedTasks.includes(item)
+              'collapsed-completed': isCompletedCollapsed && getContiguousCompletedTasks.includes(item),
+              'collapsed-in-progress': isCompletedCollapsed && getContiguousInProgressTasks.includes(item)
             }]"
             :style="getTaskCardStyle(item, index)"
           >
@@ -260,12 +306,12 @@ const isFullyCollapsed = computed(() => collapseState.value === 'full');
 const loadCollapseState = () => {
   const saved = localStorage.getItem(storageKey.value);
   if (saved !== null) {
-    // Handle legacy boolean values and new tri-state values
+    // Handle legacy boolean values and new state values
     if (saved === 'true') {
       collapseState.value = 'partial';
     } else if (saved === 'false') {
       collapseState.value = 'normal';
-    } else if (['normal', 'partial', 'full'].includes(saved)) {
+    } else if (['normal', 'partial', 'summary', 'full'].includes(saved)) {
       collapseState.value = saved;
     }
   } else {
@@ -274,25 +320,9 @@ const loadCollapseState = () => {
   }
 };
 
-// Get icon for current collapse state
-const getCollapseIcon = () => {
-  switch (collapseState.value) {
-    case 'normal': return '▼';
-    case 'partial': return '▶';
-    case 'full': return '⏹';
-    default: return '▼';
-  }
-};
+// Summary collapsed state (shows only summary card with all 4 states)
+const isSummaryCollapsed = computed(() => collapseState.value === 'summary');
 
-// Get button title for current collapse state
-const getCollapseButtonTitle = () => {
-  switch (collapseState.value) {
-    case 'normal': return 'Collapse completed tasks';
-    case 'partial': return 'Hide all cards';
-    case 'full': return 'Show all cards';
-    default: return 'Toggle collapse';
-  }
-};
 
 // Load collapse state on mount and set up event listener
 onMounted(() => {
@@ -322,13 +352,14 @@ const hasCompletedTasks = computed(() => {
   );
 });
 
-// Get contiguous completed/cancelled tasks from the top of the list
+// Get contiguous completed/cancelled tasks from the top (x, -)
 const getContiguousCompletedTasks = computed(() => {
   const items = props.section.items || [];
   const contiguousTasks = [];
-  
+
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
+    // Only include completed (x) and cancelled (-) tasks
     if (item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')) {
       contiguousTasks.push(item);
     } else {
@@ -336,23 +367,40 @@ const getContiguousCompletedTasks = computed(() => {
       break;
     }
   }
-  
+
   return contiguousTasks;
 });
 
-// Toggle collapsed state - cycles through: normal → partial → full → normal
-const toggleCompletedCollapse = () => {
-  const states = ['normal', 'partial', 'full'];
-  const currentIndex = states.indexOf(collapseState.value);
-  const nextIndex = (currentIndex + 1) % states.length;
-  collapseState.value = states[nextIndex];
-  // Save to localStorage
+// Get contiguous in-progress tasks that come after the completed tasks
+const getContiguousInProgressTasks = computed(() => {
+  const items = props.section.items || [];
+  const completedCount = getContiguousCompletedTasks.value.length;
+  const inProgressTasks = [];
+
+  // Start after the completed tasks
+  for (let i = completedCount; i < items.length; i++) {
+    const item = items[i];
+    // Only include in-progress (~) tasks
+    if (item.type === 'task' && item.statusChar === '~') {
+      inProgressTasks.push(item);
+    } else {
+      // Stop at first non-in-progress task
+      break;
+    }
+  }
+
+  return inProgressTasks;
+});
+
+// Toggle a specific state - if already in that state, return to normal
+const toggleState = (state) => {
+  collapseState.value = collapseState.value === state ? 'normal' : state;
   localStorage.setItem(storageKey.value, collapseState.value);
 };
 
 // Set collapse state directly (used by column's Expand/Collapse/Hide All buttons)
 const setCollapseState = (newState) => {
-  if (['normal', 'partial', 'full'].includes(newState)) {
+  if (['normal', 'partial', 'summary', 'full'].includes(newState)) {
     collapseState.value = newState;
     localStorage.setItem(storageKey.value, newState);
   }
@@ -366,12 +414,12 @@ const handleSetCollapseState = (event) => {
 };
 
 
-// Computed property to calculate counts for partial collapse summary card
+// Computed property to calculate counts for partial collapse summary card (only completed/cancelled)
 const collapsedSummary = computed(() => {
   const tasks = getContiguousCompletedTasks.value;
   const completed = tasks.filter(task => task.statusChar === 'x').length;
   const cancelled = tasks.filter(task => task.statusChar === '-').length;
-  return { completed, cancelled };
+  return { completed, cancelled, total: completed + cancelled };
 });
 
 // Computed property for full collapse summary (ALL tasks)
@@ -386,52 +434,107 @@ const fullCollapseSummary = computed(() => {
   };
 });
 
+// Check if this is the ARCHIVE column (uses wider fanning)
+const isArchiveColumn = computed(() => {
+  return props.column && props.column.toUpperCase().includes('ARCHIVE');
+});
+
+// Get fanning distance for completed/cancelled cards based on column type
+const getCompletedFanningDistance = () => isArchiveColumn.value ? 15 : 2;
+
+// Get fanning distance for in-progress cards (always 15px like old DONE behavior)
+const getInProgressFanningDistance = () => 15;
+
 // Get positioning styles for task cards
 const getTaskCardStyle = (item, index) => {
   if (!isCompletedCollapsed.value) {
     return {}; // Normal positioning when not collapsed
   }
-  
-  const contiguousTasks = getContiguousCompletedTasks.value;
-  const isInCollapsed = contiguousTasks.includes(item);
-  
-  if (isInCollapsed) {
-    // Apply absolute positioning for collapsed cards relative to section-items
-    const collapsedIndex = contiguousTasks.findIndex(t => t.id === item.id);
+
+  const completedTasks = getContiguousCompletedTasks.value;
+  const inProgressTasks = getContiguousInProgressTasks.value;
+  const isInCompleted = completedTasks.includes(item);
+  const isInInProgress = inProgressTasks.includes(item);
+
+  if (isInCompleted) {
+    // Completed/cancelled cards - tight fanning at top
+    const completedFanDistance = getCompletedFanningDistance();
+    const collapsedIndex = completedTasks.findIndex(t => t.id === item.id);
     return {
       position: 'absolute',
-      top: `${8 + collapsedIndex * 15}px`, // 8px for section padding
+      top: `${8 + collapsedIndex * completedFanDistance}px`, // 8px for section padding
       zIndex: 100 + collapsedIndex,
-      height: '45px',
+      height: isArchiveColumn.value ? '45px' : '20px',
       overflow: 'hidden',
       width: '100%',
       left: '0',
     };
   }
-  
-  // For uncompleted tasks, return normal styling (padding-top on container handles spacing)
+
+  if (isInInProgress) {
+    // In-progress cards - fanned out (15px) below the completed stack + summary card
+    const completedFanDistance = getCompletedFanningDistance();
+    const inProgressFanDistance = getInProgressFanningDistance();
+    const completedStackTop = completedTasks.length * completedFanDistance;
+    const summaryCardHeight = completedTasks.length > 0 ? 36 : 0; // Summary card is 28px + 8px margin
+    const inProgressIndex = inProgressTasks.findIndex(t => t.id === item.id);
+
+    return {
+      position: 'absolute',
+      top: `${12 + completedStackTop + summaryCardHeight + inProgressIndex * inProgressFanDistance}px`,
+      zIndex: 200 + inProgressIndex, // Higher z-index than completed cards
+      height: '45px', // Same height as ARCHIVE column completed cards
+      overflow: 'hidden',
+      width: '100%',
+      left: '0',
+    };
+  }
+
+  // For todo tasks, return normal styling (padding-top on container handles spacing)
   return {};
 };
 
-// Get positioning styles for summary card
+// Get positioning styles for summary card (appears right after completed cards)
 const getSummaryCardStyle = () => {
   const completedCount = getContiguousCompletedTasks.value.length;
+  const completedFanDistance = getCompletedFanningDistance();
   return {
     position: 'absolute',
-    top: `${8 + completedCount * 15}px`, // 8px for section padding
+    top: `${8 + completedCount * completedFanDistance}px`, // 8px for section padding
     zIndex: 100 + completedCount,
     width: '100%',
     left: '0',
   };
 };
 
-// Calculate the height needed for the collapsed stack
+// Calculate the height needed for the collapsed stack (completed + summary + in-progress)
 const collapsedStackHeight = computed(() => {
   if (!isCompletedCollapsed.value) return 0;
+
   const completedCount = getContiguousCompletedTasks.value.length;
-  if (completedCount === 0) return 0;
-  // Height calculation: last card top position + summary card height + spacing to prevent overlap
-  return completedCount * 15 + 45; // 45px for summary card + spacing to clear uncompleted tasks
+  const inProgressCount = getContiguousInProgressTasks.value.length;
+
+  if (completedCount === 0 && inProgressCount === 0) return 0;
+
+  const completedFanDistance = getCompletedFanningDistance();
+  const inProgressFanDistance = getInProgressFanningDistance();
+
+  // Height = completed stack + summary card + in-progress stack + final card height
+  let height = 0;
+
+  if (completedCount > 0) {
+    height += completedCount * completedFanDistance; // Completed cards fanning
+    height += 36; // Summary card (28px height + 8px margin)
+  }
+
+  if (inProgressCount > 0) {
+    height += (inProgressCount - 1) * inProgressFanDistance; // In-progress cards fanning (last card index)
+    height += 45; // Final in-progress card height (matches inline style)
+  } else if (completedCount > 0) {
+    height += 8; // Just a small gap after summary card if no in-progress
+  }
+
+  return height;
 });
 
 // Start editing section name
@@ -1097,34 +1200,67 @@ onMounted(() => {
   transform: scale(1.1);
 }
 
-/* Collapse completed tasks button */
-.collapse-completed-btn {
-  background: none;
+/* Collapse toggle button group */
+.collapse-toggle-group {
+  display: flex;
+  border: 1px solid rgba(200, 200, 200, 0.5);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 8px;
+}
+
+.toggle-btn {
+  background: rgba(250, 250, 250, 0.8);
   border: none;
+  border-right: 1px solid rgba(200, 200, 200, 0.5);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
-  padding: 4px 6px;
-  margin-right: 5px;
-  opacity: 0.7;
-  transition: all 0.2s;
-  border-radius: 3px;
-  background-color: rgba(220, 220, 220, 0.3);
+  padding: 3px 6px;
+  transition: all 0.15s;
+}
+
+.toggle-btn:last-child {
+  border-right: none;
+}
+
+.toggle-btn:hover {
+  background: rgba(33, 150, 243, 0.1);
+  color: #2196f3;
+}
+
+.toggle-btn.active {
+  background: rgba(33, 150, 243, 0.15);
+  color: #1976d2;
+  font-weight: 500;
+}
+
+.toggle-btn.active:hover {
+  background: rgba(33, 150, 243, 0.25);
+  color: #1565c0;
+}
+
+/* Expand icon button (shown when fully collapsed) */
+.expand-icon-btn {
+  background: rgba(33, 150, 243, 0.15);
+  border: 1px solid rgba(33, 150, 243, 0.3);
+  cursor: pointer;
+  padding: 3px 6px;
+  margin-right: 8px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s;
 }
 
-.collapse-completed-btn:hover {
-  opacity: 1;
-  color: #4caf50;
-  background-color: rgba(76, 175, 80, 0.1);
-  transform: scale(1.05);
+.expand-icon-btn:hover {
+  background: rgba(33, 150, 243, 0.25);
 }
 
-.collapse-icon {
+.expand-icon {
+  color: #1976d2;
   font-size: 10px;
-  margin-right: 2px;
 }
 
 /* Collapsed completed tasks styles */
@@ -1151,8 +1287,16 @@ onMounted(() => {
   border: 1px solid #e9ecef;
 }
 
+/* When collapsed, in-progress tasks get fanned styling (visible below completed stack) */
+.task-card-wrapper.collapsed-in-progress .task-card {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  background-color: #fff8e1;
+  border: 1px solid #ffe082;
+}
+
 /* Ensure dragging still works with collapsed items */
-.task-card-wrapper.collapsed-completed.sortable-drag {
+.task-card-wrapper.collapsed-completed.sortable-drag,
+.task-card-wrapper.collapsed-in-progress.sortable-drag {
   height: auto !important;
   position: relative !important;
   top: auto !important;
@@ -1168,21 +1312,23 @@ onMounted(() => {
   left: 0;
   right: 0;
   display: flex;
-  justify-content: center; /* Center the summary card */
 }
 
 .summary-card {
-  background-color: #f8f9fa;
+  background-color: rgba(248, 249, 250, 0.6);
   border: 1px solid #e9ecef;
   border-radius: 5px;
   padding: 2px 8px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
+  justify-content: center;
   cursor: default;
   font-size: 12px;
-  width: auto; /* Only as wide as needed */
-  height: 28px; /* Make it shorter */
+  width: calc(100% - 8px); /* Match task card width (accounts for section padding) */
+  height: 28px;
+  backdrop-filter: blur(2px);
+  margin: 0 4px;
 }
 
 .summary-content {
@@ -1277,6 +1423,34 @@ onMounted(() => {
 /* Full collapse - hide section items entirely */
 .section-items.fully-collapsed {
   display: none;
+}
+
+/* Summary-only collapsed state */
+.section-items.summary-collapsed {
+  padding: 0 4px 8px;
+}
+
+.section-items.summary-collapsed .task-list {
+  display: none;
+}
+
+/* Summary-only card (shown in summary state) */
+.summary-only-card {
+  display: flex;
+  width: 100%;
+}
+
+.summary-only-card .summary-card.full-summary {
+  background-color: rgba(248, 249, 250, 0.8);
+  border: 1px solid #dee2e6;
+  width: 100%;
+  padding: 2px 8px;
+  height: 28px;
+}
+
+.summary-only-card .summary-content {
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 /* Inline collapse summary in header */
