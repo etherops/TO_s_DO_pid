@@ -199,6 +199,7 @@
           ghost-class="ghost-card"
           handle=".task-card"
           @end="onDragEnd"
+          @add="onDragAdd"
       >
         <template #item="{ element: item, index }">
           <div
@@ -707,8 +708,23 @@ const sortTasks = async () => {
   emit('task-updated');
 };
 
-// Handle drag end
+// Handle drag end (same-section reorder)
 const onDragEnd = () => {
+  emit('task-updated');
+};
+
+// Handle item added from another section - auto-sort if collapsed
+const onDragAdd = async (event) => {
+  // If section has any collapse state, auto-sort the dropped task
+  if (collapseState.value !== 'normal') {
+    const newIndex = event.newIndex;
+    if (newIndex !== undefined && props.section.items[newIndex]) {
+      const droppedTask = props.section.items[newIndex];
+      if (droppedTask.type === 'task') {
+        await sortSingleTask(droppedTask);
+      }
+    }
+  }
   emit('task-updated');
 };
 
