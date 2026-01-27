@@ -113,7 +113,7 @@
     </div>
 
     <!-- WIP Columns -->
-    <div v-if="hasWipColumns" class="column-stack wip-stack">
+    <div v-if="hasWipColumns" class="column-stack wip-stack" :class="{ 'drawer-collapsed': !isWipDrawerExpanded }">
       <template v-for="columnName in props.todoData.columnOrder" :key="`wip-${columnName}`">
         <KanbanColumn
             v-if="props.todoData.columnStacks[columnName]?.name === 'WIP'"
@@ -125,6 +125,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
+            :is-drawer-expanded="isWipDrawerExpanded"
             @add-section="createNewSection('WIP', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -132,6 +133,7 @@
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
+            @toggle-drawer="toggleWipDrawer"
         />
       </template>
     </div>
@@ -183,13 +185,14 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  focusMode: {
-    type: Boolean,
-    default: false
+  viewMode: {
+    type: String,
+    default: 'normal',
+    validator: (value) => ['normal', 'triage', 'focus'].includes(value)
   }
 });
 
-const emit = defineEmits(['update', 'toggle-focus-mode']);
+const emit = defineEmits(['update', 'set-view-mode', 'clear-view-mode']);
 
 // Date picker state
 const datePickerTaskId = ref(null);
@@ -219,15 +222,19 @@ const contextMenu = ref({
   currentSection: ''
 });
 
+// Flag to preserve drawer states when exiting view mode via column toggle
+const preserveDrawersOnExit = ref(false);
+
 // Drawer state for TODO column - load from localStorage
 const isTodoDrawerExpanded = ref(
   localStorage.getItem('todoDrawerExpanded') !== 'false'
 );
 
 const toggleTodoDrawer = () => {
-  // If focus mode is on, turn it off first
-  if (props.focusMode) {
-    emit('toggle-focus-mode');
+  // If in a view mode, exit it (but preserve other drawer states)
+  if (props.viewMode !== 'normal') {
+    preserveDrawersOnExit.value = true;
+    emit('clear-view-mode');
   }
   isTodoDrawerExpanded.value = !isTodoDrawerExpanded.value;
 };
@@ -243,8 +250,9 @@ const isProjectsDrawerExpanded = ref(
 );
 
 const toggleProjectsDrawer = () => {
-  if (props.focusMode) {
-    emit('toggle-focus-mode');
+  if (props.viewMode !== 'normal') {
+    preserveDrawersOnExit.value = true;
+    emit('clear-view-mode');
   }
   isProjectsDrawerExpanded.value = !isProjectsDrawerExpanded.value;
 };
@@ -260,9 +268,9 @@ const isDoneDrawerExpanded = ref(
 );
 
 const toggleDoneDrawer = () => {
-  // If focus mode is on, turn it off first
-  if (props.focusMode) {
-    emit('toggle-focus-mode');
+  if (props.viewMode !== 'normal') {
+    preserveDrawersOnExit.value = true;
+    emit('clear-view-mode');
   }
   isDoneDrawerExpanded.value = !isDoneDrawerExpanded.value;
 };
@@ -272,18 +280,48 @@ watch(isDoneDrawerExpanded, (newValue) => {
   localStorage.setItem('doneDrawerExpanded', String(newValue));
 });
 
-// Watch focus mode changes and update drawer states accordingly
-watch(() => props.focusMode, (newFocusMode) => {
-  if (newFocusMode) {
-    // Focus mode ON: collapse TODO, PROJECTS, and DONE drawers
+// Drawer state for WIP column - load from localStorage
+const isWipDrawerExpanded = ref(
+  localStorage.getItem('wipDrawerExpanded') !== 'false'
+);
+
+const toggleWipDrawer = () => {
+  if (props.viewMode !== 'normal') {
+    preserveDrawersOnExit.value = true;
+    emit('clear-view-mode');
+  }
+  isWipDrawerExpanded.value = !isWipDrawerExpanded.value;
+};
+
+// Save WIP drawer state to localStorage when it changes
+watch(isWipDrawerExpanded, (newValue) => {
+  localStorage.setItem('wipDrawerExpanded', String(newValue));
+});
+
+// Watch view mode changes and update drawer states accordingly
+watch(() => props.viewMode, (newViewMode) => {
+  if (newViewMode === 'focus') {
+    // Focus mode: collapse TODO, PROJECTS, DONE; expand SELECTED, WIP
     isTodoDrawerExpanded.value = false;
     isProjectsDrawerExpanded.value = false;
     isDoneDrawerExpanded.value = false;
-  } else {
-    // Focus mode OFF: expand all drawers
+    isWipDrawerExpanded.value = true;
+  } else if (newViewMode === 'triage') {
+    // Triage mode: expand TODO, PROJECTS, SELECTED; collapse WIP, DONE
+    isTodoDrawerExpanded.value = true;
+    isProjectsDrawerExpanded.value = true;
+    isDoneDrawerExpanded.value = false;
+    isWipDrawerExpanded.value = false;
+  } else if (newViewMode === 'normal') {
+    // Normal mode: expand all drawers UNLESS exiting via manual column toggle
+    if (preserveDrawersOnExit.value) {
+      preserveDrawersOnExit.value = false;
+      return; // Keep current drawer states
+    }
     isTodoDrawerExpanded.value = true;
     isProjectsDrawerExpanded.value = true;
     isDoneDrawerExpanded.value = true;
+    isWipDrawerExpanded.value = true;
   }
 });
 
@@ -827,6 +865,21 @@ const handleDateClear = ({ taskId }) => {
 }
 
 .projects-stack.drawer-collapsed :deep(.column-header-buttons) {
+  display: none;
+}
+
+/* WIP drawer styles */
+.wip-stack {
+  transition: min-width 0.3s ease-in-out, max-width 0.3s ease-in-out;
+}
+
+.wip-stack.drawer-collapsed {
+  min-width: 125px;
+  max-width: 125px;
+  overflow: hidden;
+}
+
+.wip-stack.drawer-collapsed :deep(.column-header-buttons) {
   display: none;
 }
 

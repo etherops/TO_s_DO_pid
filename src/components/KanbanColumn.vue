@@ -19,6 +19,9 @@
           <button v-if="columnType === 'PROJECTS' && isDrawerExpanded === false" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Show Projects'">
             <span>→</span>
           </button>
+          <button v-if="columnType === 'WIP' && isDrawerExpanded === false" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Show WIP'">
+            <span>→</span>
+          </button>
           {{ title }}
           <div v-if="taskCounts.total > 0" class="column-counts">
             <span class="count-badge total-count">{{ taskCounts.total }}</span>
@@ -53,6 +56,9 @@
             <span>←</span>
           </button>
           <button v-if="columnType === 'PROJECTS' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Projects'">
+            <span>←</span>
+          </button>
+          <button v-if="columnType === 'WIP' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide WIP'">
             <span>←</span>
           </button>
         </div>
@@ -189,8 +195,9 @@ const setAllSectionsCollapseState = (targetState) => {
     detail: { state: targetState },
     bubbles: true
   });
-  columnRef.value.querySelectorAll('.collapse-completed-btn').forEach(button => {
-    button.dispatchEvent(event);
+  // Target the collapse-controls wrapper in each section
+  columnRef.value.querySelectorAll('.collapse-controls').forEach(el => {
+    el.dispatchEvent(event);
   });
 };
 

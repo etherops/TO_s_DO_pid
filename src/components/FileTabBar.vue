@@ -17,18 +17,24 @@
       </div>
     </div>
     <div class="toggles-container">
-      <label class="toggle-switch">
-        <input
-            type="checkbox"
-            class="focus-mode-toggle"
-            :checked="focusMode"
-            @change="$emit('toggle-focus-mode')"
-        />
-        <span class="slider"></span>
-        <span class="toggle-label">
-          Focus Mode
-        </span>
-      </label>
+      <div class="view-mode-buttons">
+        <button
+            class="view-mode-btn"
+            :class="{ active: viewMode === 'triage' }"
+            @click="$emit('set-view-mode', 'triage')"
+            title="Triage Mode: Expand TODO, PROJECTS, SELECTED; Collapse WIP, ARCHIVE"
+        >
+          Triage
+        </button>
+        <button
+            class="view-mode-btn"
+            :class="{ active: viewMode === 'focus' }"
+            @click="$emit('set-view-mode', 'focus')"
+            title="Focus Mode: Expand SELECTED, WIP; Collapse TODO, PROJECTS, ARCHIVE"
+        >
+          Focus
+        </button>
+      </div>
       <label class="toggle-switch" :class="{ disabled: unparsedLineCount === 0 }">
         <input
             type="checkbox"
@@ -65,13 +71,13 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  focusMode: {
-    type: Boolean,
-    default: false
+  viewMode: {
+    type: String,
+    default: 'normal'
   }
 });
 
-defineEmits(['file-selected', 'toggle-raw-text', 'toggle-focus-mode']);
+defineEmits(['file-selected', 'toggle-raw-text', 'set-view-mode']);
 
 // Format tab name based on file type
 const formatTabName = (file) => {
@@ -230,7 +236,45 @@ const getFileTooltip = (file) => {
   display: flex;
   gap: 15px;
   padding: 0 20px;
-  flex-shrink: 0; /* Prevent toggles from shrinking */
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.view-mode-buttons {
+  display: flex;
+  gap: 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.view-mode-btn {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #f5f5f5;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.view-mode-btn:first-child {
+  border-right: 1px solid #ccc;
+}
+
+.view-mode-btn:hover {
+  background-color: #e8e8e8;
+}
+
+.view-mode-btn.active {
+  background-color: #4caf50;
+  color: white;
+}
+
+.view-mode-btn.active:hover {
+  background-color: #43a047;
 }
 
 .toggle-switch {
@@ -247,7 +291,6 @@ const getFileTooltip = (file) => {
   cursor: not-allowed;
 }
 
-.focus-mode-toggle,
 .raw-text-toggle {
   position: absolute;
   opacity: 0;
@@ -278,12 +321,10 @@ const getFileTooltip = (file) => {
   transition: transform 0.2s ease;
 }
 
-.focus-mode-toggle:checked + .slider,
 .raw-text-toggle:checked + .slider {
   background-color: #4caf50;
 }
 
-.focus-mode-toggle:checked + .slider:before,
 .raw-text-toggle:checked + .slider:before {
   transform: translateX(20px);
 }

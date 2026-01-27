@@ -6,10 +6,10 @@
         :selected-file="selectedFile"
         :unparsed-line-count="unparsedLineCount"
         :show-raw-text="showRawText"
-        :focus-mode="focusMode"
+        :view-mode="viewMode"
         @file-selected="handleFileChange"
         @toggle-raw-text="toggleRawText"
-        @toggle-focus-mode="toggleFocusMode"
+        @set-view-mode="setViewMode"
     />
 
     <div v-if="parsingError" class="error-message">
@@ -24,9 +24,10 @@
         v-else
         :todo-data="todoData"
         :show-raw-text="showRawText"
-        :focus-mode="focusMode"
+        :view-mode="viewMode"
         @update="handleUpdate"
-        @toggle-focus-mode="toggleFocusMode"
+        @set-view-mode="setViewMode"
+        @clear-view-mode="clearViewMode"
     />
   </div>
 </template>
@@ -54,14 +55,22 @@ const toggleRawText = () => {
   showRawText.value = !showRawText.value;
 };
 
-// Focus mode state - load from localStorage
-const focusMode = ref(
-  localStorage.getItem('focusMode') === 'true'
+// View mode state - load from localStorage ('normal', 'triage', 'focus')
+const viewMode = ref(
+  localStorage.getItem('viewMode') || 'normal'
 );
 
-const toggleFocusMode = () => {
-  focusMode.value = !focusMode.value;
-  localStorage.setItem('focusMode', String(focusMode.value));
+const setViewMode = (mode) => {
+  // If clicking the same mode, toggle back to normal (which resets all drawers)
+  viewMode.value = (viewMode.value === mode) ? 'normal' : mode;
+  localStorage.setItem('viewMode', viewMode.value);
+};
+
+// Clear view mode without resetting drawer states (used when manually toggling columns)
+// The KanbanBoard sets a flag before emitting this, so the watcher knows to preserve drawers
+const clearViewMode = () => {
+  viewMode.value = 'normal';
+  localStorage.setItem('viewMode', 'normal');
 };
 
 // Handle updates from KanbanBoard - just save immediately

@@ -34,34 +34,36 @@
         <span class="section-title">{{ section.name }}</span>
         <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
         <div class="section-header-actions">
-          <!-- Expand icon when fully collapsed -->
-          <button
-            v-if="!columnData.on_ice && isFullyCollapsed"
-            class="expand-icon-btn"
-            @click="toggleState('full')"
-            title="Expand section"
-            ref="collapseBtn"
-          >
-            <span class="expand-icon">▶</span>
-          </button>
-
-          <!-- 3-button toggle: Focus | Collapse | Summary (hidden when fully collapsed) -->
-          <div v-if="!columnData.on_ice && !isFullyCollapsed" class="collapse-toggle-group" ref="collapseBtn">
+          <!-- Collapse controls wrapper (event target for column-level collapse/expand) -->
+          <div v-if="!columnData.on_ice" class="collapse-controls" ref="collapseBtn">
+            <!-- Expand icon when fully collapsed -->
             <button
-              :class="['toggle-btn', { active: collapseState === 'partial' }]"
-              @click="toggleState('partial')"
-              title="Focus: Stack completed, fan in-progress"
-            >Focus</button>
-            <button
-              :class="['toggle-btn', { active: collapseState === 'summary' }]"
-              @click="toggleState('summary')"
-              title="Collapse: Show summary card only"
-            >Collapse</button>
-            <button
-              :class="['toggle-btn', { active: collapseState === 'full' }]"
+              v-if="isFullyCollapsed"
+              class="expand-icon-btn"
               @click="toggleState('full')"
-              title="Summary: Header only with counts"
-            >Summary</button>
+              title="Expand section"
+            >
+              <span class="expand-icon">▶</span>
+            </button>
+
+            <!-- 3-button toggle: Focus | Collapse | Summary (hidden when fully collapsed) -->
+            <div v-else class="collapse-toggle-group">
+              <button
+                :class="['toggle-btn', { active: collapseState === 'partial' }]"
+                @click="toggleState('partial')"
+                title="Focus: Stack completed, fan in-progress"
+              >Focus</button>
+              <button
+                :class="['toggle-btn', { active: collapseState === 'summary' }]"
+                @click="toggleState('summary')"
+                title="Collapse: Show summary card only"
+              >Collapse</button>
+              <button
+                :class="['toggle-btn', { active: collapseState === 'full' }]"
+                @click="toggleState('full')"
+                title="Summary: Header only with counts"
+              >Summary</button>
+            </div>
           </div>
 
           <!-- Inline summary when fully collapsed (header only mode) -->
@@ -1198,6 +1200,11 @@ onMounted(() => {
   background-color: rgba(229, 115, 115, 0.1);
   border-color: rgba(229, 115, 115, 0.3);
   transform: scale(1.1);
+}
+
+/* Collapse controls wrapper */
+.collapse-controls {
+  display: contents;
 }
 
 /* Collapse toggle button group */

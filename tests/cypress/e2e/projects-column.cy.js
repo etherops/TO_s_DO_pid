@@ -141,7 +141,7 @@ describe('Projects Column', () => {
 
     it('should collapse PROJECTS in focus mode', () => {
         // Enable focus mode
-        cy.get('.toggle-switch').contains('Focus Mode').click();
+        cy.get('.view-mode-btn').contains('Focus').click();
         cy.wait(400);
 
         // PROJECTS should be collapsed
@@ -151,10 +151,13 @@ describe('Projects Column', () => {
         cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
 
         // Disable focus mode
-        cy.get('.toggle-switch').contains('Focus Mode').click();
+        cy.get('.view-mode-btn').contains('Focus').click();
         cy.wait(400);
 
-        // Both should be expanded
+        // View mode buttons should be deactivated
+        cy.get('.view-mode-btn').contains('Focus').should('not.have.class', 'active');
+
+        // Columns return to default (expanded) when mode is disabled
         cy.get('.projects-stack').should('not.have.class', 'drawer-collapsed');
         cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
     });
