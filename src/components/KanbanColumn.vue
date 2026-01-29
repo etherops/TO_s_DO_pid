@@ -50,7 +50,7 @@
             <span class="hide-icon">⏹</span> Hide
           </button>
           <button v-if="canAddSection && !columnData.on_ice" class="add-section-btn" @click="$emit('add-section')">
-            <span class="add-icon">+</span> Add
+            <span class="add-icon">+</span> Section
           </button>
           <button v-if="columnType === 'TODO' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Todo'">
             <span>←</span>
@@ -81,6 +81,7 @@
                 :column-data="columnData"
                 :show-raw-text="showRawText"
                 :is-task-selected="isTaskSelected"
+                :is-column-collapsed="isDrawerExpanded === false"
                 @task-updated="$emit('task-updated')"
                 @section-updated="$emit('section-updated', $event)"
                 @show-date-picker="$emit('show-date-picker', $event)"

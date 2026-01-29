@@ -32,38 +32,16 @@
       </template>
       <template v-else>
         <span class="section-title">{{ section.name }}</span>
+        <!-- Collapse/Expand link after title -->
+        <span
+          v-if="!columnData.on_ice && !isColumnCollapsed"
+          class="collapse-expand-link"
+          @click="toggleFullCollapse"
+        >({{ isFullyCollapsed ? 'expand' : 'collapse' }})</span>
         <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
-        <div class="section-header-actions">
+        <div v-if="!isColumnCollapsed" class="section-header-actions">
           <!-- Collapse controls wrapper (event target for column-level collapse/expand) -->
-          <div v-if="!columnData.on_ice" class="collapse-controls" ref="collapseBtn">
-            <!-- Expand icon when fully collapsed -->
-            <button
-              v-if="isFullyCollapsed"
-              class="expand-icon-btn"
-              @click="toggleState('full')"
-              title="Expand section"
-            >
-              <span class="expand-icon">▶</span>
-            </button>
-
-            <!-- 3-button toggle: Focus | Collapse | Summary (hidden when fully collapsed) -->
-            <div v-else class="collapse-toggle-group">
-              <button
-                :class="['toggle-btn', { active: collapseState === 'partial' }]"
-                @click="toggleState('partial')"
-                title="Focus: Stack completed, fan in-progress"
-              >Focus</button>
-              <button
-                :class="['toggle-btn', { active: collapseState === 'summary' }]"
-                @click="toggleState('summary')"
-                title="Collapse: Show summary card only"
-              >Collapse</button>
-              <button
-                :class="['toggle-btn', { active: collapseState === 'full' }]"
-                @click="toggleState('full')"
-                title="Summary: Header only with counts"
-              >Summary</button>
-            </div>
+          <div v-if="!columnData.on_ice && !isFullyCollapsed" class="collapse-controls" ref="collapseBtn">
           </div>
 
           <!-- Inline summary when fully collapsed (header only mode) -->
@@ -89,7 +67,7 @@
           <!-- Regular action buttons (hidden only in Summary/header-only mode) -->
           <template v-if="!isFullyCollapsed">
             <button v-if="!columnData.on_ice" class="add-task-btn" @click="createNewTask">
-              <span class="add-icon">+</span> Add Task
+              <span class="add-icon">+</span> Task
             </button>
             <button v-if="!columnData.on_ice"
                     :class="['sort-tasks-btn', { 'sorting': isSorting }]"
@@ -132,6 +110,26 @@
               </svg>
             </button>
           </template>
+
+          <!-- Tri-state caret: ▼ normal → ◢ Focus → ▶ Collapse (summary) -->
+          <button
+            v-if="!columnData.on_ice && !isFullyCollapsed"
+            :class="['caret-toggle-btn', caretStateClass]"
+            @click="cycleCaretState"
+            :title="caretTitle"
+          >
+            <span class="caret-icon">▶</span>
+          </button>
+
+          <!-- Solid square when fully collapsed - click to expand -->
+          <button
+            v-if="!columnData.on_ice && isFullyCollapsed"
+            class="caret-toggle-btn collapsed"
+            @click="toggleFullCollapse"
+            title="Expand section"
+          >
+            <span class="square-icon">■</span>
+          </button>
         </div>
       </template>
     </div>
@@ -270,6 +268,10 @@ const props = defineProps({
   isTaskSelected: {
     type: Function,
     default: null
+  },
+  isColumnCollapsed: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -400,6 +402,39 @@ const toggleState = (state) => {
   collapseState.value = collapseState.value === state ? 'normal' : state;
   localStorage.setItem(storageKey.value, collapseState.value);
 };
+
+// Toggle between fully collapsed and fully expanded
+const toggleFullCollapse = () => {
+  collapseState.value = collapseState.value === 'full' ? 'normal' : 'full';
+  localStorage.setItem(storageKey.value, collapseState.value);
+};
+
+// Cycle through caret states: normal → partial → summary → normal
+const cycleCaretState = () => {
+  const cycle = { 'normal': 'partial', 'partial': 'summary', 'summary': 'normal' };
+  // If currently in 'full', treat as 'normal' for cycling purposes
+  const currentState = collapseState.value === 'full' ? 'normal' : collapseState.value;
+  collapseState.value = cycle[currentState] || 'normal';
+  localStorage.setItem(storageKey.value, collapseState.value);
+};
+
+// Computed class for caret based on state
+const caretStateClass = computed(() => {
+  switch (collapseState.value) {
+    case 'partial': return 'state-focus';
+    case 'summary': return 'state-collapse';
+    default: return 'state-normal';
+  }
+});
+
+// Computed title for caret based on state
+const caretTitle = computed(() => {
+  switch (collapseState.value) {
+    case 'partial': return 'Currently: Focus mode (click for Collapse)';
+    case 'summary': return 'Currently: Collapse mode (click for Normal)';
+    default: return 'Currently: Normal (click for Focus)';
+  }
+});
 
 // Set collapse state directly (used by column's Expand/Collapse/Hide All buttons)
 const setCollapseState = (newState) => {
@@ -929,6 +964,7 @@ onMounted(() => {
   flex-shrink: 1;
   min-width: 0;
   overflow: hidden;
+  min-height: 26px;
 }
 
 /* Edit section styles */
@@ -1028,9 +1064,6 @@ onMounted(() => {
   background-color: #f1f8e9;
   border: 1px solid #c5e1a5;
   border-radius: 4px;
-  padding: 4px 8px;
-  height: 70%;
-  margin-top: 4px;
   font-size: 12px;
   color: #558b2f;
   cursor: pointer;
@@ -1059,7 +1092,6 @@ onMounted(() => {
   cursor: pointer;
   font-size: 16px;
   color: #666;
-  padding: 4px 6px;
   margin-left: 5px;
   opacity: 0.7;
   transition: all 0.2s;
@@ -1263,27 +1295,75 @@ onMounted(() => {
   color: #1565c0;
 }
 
-/* Expand icon button (shown when fully collapsed) */
-.expand-icon-btn {
-  background: rgba(33, 150, 243, 0.15);
-  border: 1px solid rgba(33, 150, 243, 0.3);
+/* Caret toggle button (always at far right, rotates when expanded) */
+.caret-toggle-btn {
+  background: transparent;
+  border: none;
   cursor: pointer;
-  padding: 3px 6px;
-  margin-right: 8px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: 4px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
+  flex-shrink: 0;
+  height: 24px;
+  width: 24px;
 }
 
-.expand-icon-btn:hover {
-  background: rgba(33, 150, 243, 0.25);
+.caret-toggle-btn:hover {
+  background: rgba(33, 150, 243, 0.15);
 }
 
-.expand-icon {
+.caret-toggle-btn.collapsed {
+  background: transparent;
+}
+
+.caret-icon {
   color: #1976d2;
   font-size: 10px;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+/* Caret rotation states */
+.caret-toggle-btn.state-normal .caret-icon {
+  transform: rotate(90deg); /* ▼ pointing down */
+}
+
+.caret-toggle-btn.state-focus .caret-icon {
+  transform: rotate(45deg); /* ◢ 45° diagonal */
+}
+
+.caret-toggle-btn.state-collapse .caret-icon {
+  transform: rotate(0deg); /* ▶ pointing right */
+}
+
+.caret-toggle-btn.collapsed .caret-icon {
+  transform: rotate(0deg); /* ▶ pointing right when fully collapsed */
+}
+
+/* Square icon for fully collapsed state */
+.square-icon {
+  color: #1976d2;
+  font-size: 8px;
+  display: inline-block;
+}
+
+/* Collapse/Expand link after title */
+.collapse-expand-link {
+  color: #888;
+  font-size: 11px;
+  font-weight: normal;
+  cursor: pointer;
+  margin-left: -4px;
+  flex-shrink: 0;
+}
+
+.collapse-expand-link:hover {
+  color: #1976d2;
+  text-decoration: underline;
 }
 
 /* Collapsed completed tasks styles */
@@ -1480,29 +1560,30 @@ onMounted(() => {
 .inline-collapse-summary {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-left: 4px;
   flex-wrap: nowrap;
   overflow: hidden;
+  min-height: 24px;
 }
 
 .inline-collapse-summary .summary-item {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
 }
 
 .inline-collapse-summary .summary-text {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   color: #495057;
 }
 
 /* Mini checkboxes for inline summary */
 .mini-checkbox {
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid #aaa;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #aaa;
   border-radius: 2px;
   position: relative;
   display: inline-block;
@@ -1523,9 +1604,9 @@ onMounted(() => {
   content: "";
   position: absolute;
   top: 50%;
-  left: 2px;
-  right: 2px;
-  height: 1.5px;
+  left: 3px;
+  right: 3px;
+  height: 2px;
   background-color: #ff9800;
   transform: translateY(-50%);
 }
@@ -1538,12 +1619,12 @@ onMounted(() => {
 .mini-checkbox.checked:after {
   content: "";
   position: absolute;
-  top: 1px;
-  left: 3px;
-  width: 3px;
-  height: 6px;
+  top: 2px;
+  left: 4px;
+  width: 4px;
+  height: 8px;
   border: solid #4caf50;
-  border-width: 0 1.5px 1.5px 0;
+  border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
 
@@ -1556,9 +1637,9 @@ onMounted(() => {
   content: "";
   position: absolute;
   top: 50%;
-  left: 2px;
-  right: 2px;
-  height: 1.5px;
+  left: 3px;
+  right: 3px;
+  height: 2px;
   background-color: #757575;
   transform: translateY(-50%);
 }

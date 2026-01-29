@@ -96,35 +96,26 @@ describe('View Modes (Triage & Focus)', () => {
       cy.get('.selected-stack').should('be.visible');
     });
 
-    it('should allow interaction with TODO column after hover in focus mode', () => {
+    it('should hide section action buttons when column is collapsed in focus mode', () => {
       // Enable focus mode
       cy.get('.view-mode-btn').contains('Focus').click();
       cy.wait(100);
 
-      // Create a new task in TODO after hovering
-      cy.get('.todo-stack').trigger('mouseenter');
-      cy.wait(1100); // Wait for 1 second hover delay
+      // TODO and PROJECTS should be collapsed
+      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
+      cy.get('.projects-stack').should('have.class', 'drawer-collapsed');
 
-      // Scroll to the PROJECTS section to ensure it's visible
-      findSection('PROJECTS').scrollIntoView();
-      cy.wait(100);
+      // Section action buttons should be hidden in collapsed columns
+      cy.get('.todo-column .section-header-actions').should('not.exist');
+      cy.get('.projects-column .section-header-actions').should('not.exist');
 
-      // Add new task to PROJECTS section
-      findSection('PROJECTS').within(() => {
-        cy.get('.add-task-btn').click({ force: true });
-        cy.get('.new-task-input').type('New task in focus mode');
-        cy.get('.confirm-edit-btn').click();
-      });
+      // But section titles should still be visible
+      cy.get('.todo-column .section-title').should('exist');
+      cy.get('.projects-column .section-title').should('exist');
 
-      // Verify task was created
-      findTask('New task in focus mode').should('exist');
-
-      // Move mouse away and verify TODO column still contains our task
-      cy.get('.todo-stack').trigger('mouseleave');
-      cy.wait(100);
-
-      // Task should still be there even when column is partially hidden
-      cy.get('.todo-column').should('contain', 'New task in focus mode');
+      // Expanded columns (SELECTED, WIP) should still have action buttons
+      cy.get('.selected-column .section-header-actions').should('exist');
+      cy.get('.wip-column .section-header-actions').should('exist');
     });
 
     it('should persist focus mode across page reload', () => {
@@ -222,27 +213,27 @@ describe('View Modes (Triage & Focus)', () => {
       findTask('Triage mode task').should('exist');
     });
 
-    it('should allow interaction with collapsed WIP column after hover in triage mode', () => {
+    it('should hide section action buttons when column is collapsed in triage mode', () => {
       // Enable triage mode
       cy.get('.view-mode-btn').contains('Triage').click();
       cy.wait(100);
 
-      // WIP should be collapsed
+      // WIP and DONE should be collapsed
       cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
+      cy.get('.done-stack').should('have.class', 'drawer-collapsed');
 
-      // Hover to expand
-      cy.get('.wip-stack').trigger('mouseenter');
-      cy.wait(1100);
+      // Section action buttons should be hidden in collapsed columns
+      cy.get('.wip-column .section-header-actions').should('not.exist');
+      cy.get('.done-column .section-header-actions').should('not.exist');
 
-      // Add task to WIP
-      cy.get('.wip-column').contains('.section-header', 'CURRENT WEEK').parent().within(() => {
-        cy.get('.add-task-btn').click({ force: true });
-        cy.get('.new-task-input').type('WIP task in triage mode');
-        cy.get('.confirm-edit-btn').click();
-      });
+      // But section titles should still be visible
+      cy.get('.wip-column .section-title').should('exist');
+      cy.get('.done-column .section-title').should('exist');
 
-      // Verify task was created
-      cy.get('.wip-column').should('contain', 'WIP task in triage mode');
+      // Expanded columns (TODO, PROJECTS, SELECTED) should still have action buttons
+      cy.get('.todo-column .section-header-actions').should('exist');
+      cy.get('.projects-column .section-header-actions').should('exist');
+      cy.get('.selected-column .section-header-actions').should('exist');
     });
 
     it('should persist triage mode across page reload', () => {

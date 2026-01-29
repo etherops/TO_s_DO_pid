@@ -2,113 +2,83 @@ import { refreshAndWait, findSection, findTask, withRefresh } from '../support/h
 
 describe('Collapse Completed Tasks Feature', () => {
 
-  it('should show collapse toggle group when section exists', () => {
+  it('should show collapse controls when section exists', () => {
     const sectionName = 'test archive';
 
     // Find section with completed tasks
     findSection(sectionName).within(() => {
-      // Verify toggle group exists with 3 buttons
-      cy.get('.collapse-toggle-group').should('exist');
-      cy.get('.collapse-toggle-group').should('be.visible');
-      cy.get('.toggle-btn').should('have.length', 3);
-      cy.get('.toggle-btn').eq(0).should('contain', 'Focus');
-      cy.get('.toggle-btn').eq(1).should('contain', 'Collapse');
-      cy.get('.toggle-btn').eq(2).should('contain', 'Summary');
+      // Verify collapse/expand link exists before title
+      cy.get('.collapse-expand-link').should('exist').and('contain', 'collapse');
+      // Tri-state caret toggle should exist at far right
+      cy.get('.caret-toggle-btn').should('exist');
     });
   });
 
-  it('should collapse and expand completed tasks with Focus button', () => {
+  it('should cycle through caret states: normal → Focus → Collapse → normal', () => {
     const sectionName = 'test archive';
 
     findSection(sectionName).scrollIntoView().within(() => {
-      // Count completed tasks
-      cy.get('.task-card').then($cards => {
-        const totalCards = $cards.length;
+      // Start in normal state
+      cy.get('.caret-toggle-btn').should('have.class', 'state-normal');
 
-        // Click Focus button to enter partial collapse
-        cy.get('.toggle-btn').contains('Focus').click();
+      // Click to enter Focus state (partial collapse)
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').should('have.class', 'state-focus');
+      cy.get('.task-card-wrapper.collapsed-completed').should('exist');
+      cy.get('.summary-card').should('exist');
 
-        // Verify Focus button is active
-        cy.get('.toggle-btn').contains('Focus').should('have.class', 'active');
+      // Click to enter Collapse state (summary only)
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').should('have.class', 'state-collapse');
+      cy.get('.summary-only-card').should('exist');
 
-        // Verify completed tasks are collapsed
-        cy.get('.task-card-wrapper.collapsed-completed').should('exist');
-
-        // Verify summary card exists
-        cy.get('.task-card-wrapper.collapsed-summary').should('exist');
-        cy.get('.summary-card').should('exist');
-
-        // All original cards plus summary card should be in DOM
-        cy.get('.task-card').should('have.length', totalCards + 1);
-
-        // Click Focus again to return to normal
-        cy.get('.toggle-btn').contains('Focus').click();
-
-        // Verify Focus button is no longer active
-        cy.get('.toggle-btn').contains('Focus').should('not.have.class', 'active');
-
-        // Verify no collapsed classes
-        cy.get('.task-card-wrapper.collapsed-completed').should('not.exist');
-        cy.get('.task-card-wrapper.collapsed-summary').should('not.exist');
-
-        // Should be back to original count
-        cy.get('.task-card').should('have.length', totalCards);
-      });
+      // Click to return to normal
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').should('have.class', 'state-normal');
+      cy.get('.task-card-wrapper.collapsed-completed').should('not.exist');
     });
   });
 
   it('should persist collapse state after refresh', () => {
     const sectionName = 'test archive';
 
-    // Collapse the section with Focus button
+    // Click caret to enter Focus state
     findSection(sectionName).scrollIntoView().within(() => {
-      cy.get('.toggle-btn').contains('Focus').click();
-      cy.get('.toggle-btn').contains('Focus').should('have.class', 'active');
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').should('have.class', 'state-focus');
     });
 
     // Refresh and verify state persisted
     refreshAndWait();
 
     findSection(sectionName).scrollIntoView().within(() => {
-      cy.get('.toggle-btn').contains('Focus').should('have.class', 'active');
+      cy.get('.caret-toggle-btn').should('have.class', 'state-focus');
       cy.get('.task-card-wrapper.collapsed-completed').should('exist');
     });
 
-    // Clean up - click Focus again to return to normal
+    // Clean up - click twice to return to normal
     findSection(sectionName).scrollIntoView().within(() => {
-      cy.get('.toggle-btn').contains('Focus').click();
+      cy.get('.caret-toggle-btn').click(); // Focus → Collapse
+      cy.get('.caret-toggle-btn').click(); // Collapse → Normal
     });
   });
 
-  it('should show toggle group for all sections', () => {
+  it('should show caret controls for all sections', () => {
     const sectionName = 'BACKLOG';
 
     findSection(sectionName).within(() => {
-      // Toggle group always exists
-      cy.get('.collapse-toggle-group').should('exist');
-      cy.get('.toggle-btn').should('have.length', 3);
+      // Caret toggle always exists
+      cy.get('.caret-toggle-btn').should('exist');
+      cy.get('.collapse-expand-link').should('exist');
 
-      // Test Focus and Collapse buttons toggle correctly
-      // Focus
-      cy.get('.toggle-btn').contains('Focus').click();
-      cy.get('.toggle-btn').contains('Focus').should('have.class', 'active');
-      cy.get('.toggle-btn').contains('Focus').click();
-      cy.get('.toggle-btn').contains('Focus').should('not.have.class', 'active');
-
-      // Collapse (summary card only)
-      cy.get('.toggle-btn').contains('Collapse').click();
-      cy.get('.toggle-btn').contains('Collapse').should('have.class', 'active');
-      cy.get('.toggle-btn').contains('Collapse').click();
-      cy.get('.toggle-btn').contains('Collapse').should('not.have.class', 'active');
-
-      // Summary (header only) - this hides the toggle group, so test separately
-      cy.get('.toggle-btn').contains('Summary').click();
-      // Toggle group replaced with expand icon
-      cy.get('.expand-icon-btn').should('exist');
-      // Click expand to return to normal
-      cy.get('.expand-icon-btn').click();
-      cy.get('.collapse-toggle-group').should('exist');
-      cy.get('.toggle-btn.active').should('not.exist');
+      // Test caret cycling
+      cy.get('.caret-toggle-btn').should('have.class', 'state-normal');
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').should('have.class', 'state-focus');
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').should('have.class', 'state-collapse');
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').should('have.class', 'state-normal');
     });
   });
 
@@ -116,31 +86,34 @@ describe('Collapse Completed Tasks Feature', () => {
     const sectionName = 'test archive';
 
     findSection(sectionName).scrollIntoView().within(() => {
-      cy.get('.toggle-btn').contains('Focus').click();
+      // Click caret to enter Focus state
+      cy.get('.caret-toggle-btn').click();
 
       // Check that completed tasks have proper stacking
       cy.get('.task-card-wrapper.collapsed-completed').each(($el, index) => {
-        // Each card should have a z-index
         cy.wrap($el).should('have.css', 'z-index');
       });
 
-      // Clean up
-      cy.get('.toggle-btn').contains('Focus').click();
+      // Clean up - click twice to return to normal
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').click();
     });
   });
 
-  it('should keep non-completed tasks visible when collapsed', () => {
-    const sectionName = 'test archive'; // This section has mixed completed and incomplete tasks
+  it('should keep non-completed tasks visible when in Focus state', () => {
+    const sectionName = 'test archive';
 
     findSection(sectionName).scrollIntoView().within(() => {
-      cy.get('.toggle-btn').contains('Focus').click();
+      // Click caret to enter Focus state
+      cy.get('.caret-toggle-btn').click();
 
       // Non-completed tasks should be visible
       cy.get('.task-card-wrapper:not(.collapsed-completed)').should('exist');
       cy.get('.task-card-wrapper:not(.collapsed-completed)').should('be.visible');
 
       // Clean up
-      cy.get('.toggle-btn').contains('Focus').click();
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').click();
     });
   });
 
@@ -148,8 +121,8 @@ describe('Collapse Completed Tasks Feature', () => {
     const sectionName = 'test archive';
 
     findSection(sectionName).scrollIntoView().within(() => {
-      // Collapse the section
-      cy.get('.toggle-btn').contains('Focus').click();
+      // Click caret to enter Focus state
+      cy.get('.caret-toggle-btn').click();
 
       // Verify collapsed state
       cy.get('.task-card-wrapper.collapsed-completed').should('have.length.at.least', 1);
@@ -160,19 +133,20 @@ describe('Collapse Completed Tasks Feature', () => {
       });
 
       // Verify state persists
-      cy.get('.toggle-btn').contains('Focus').should('have.class', 'active');
+      cy.get('.caret-toggle-btn').should('have.class', 'state-focus');
 
       // Clean up
-      cy.get('.toggle-btn').contains('Focus').click();
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').click();
     });
   });
 
-  it('should show summary card with correct counts', () => {
+  it('should show summary card with correct counts in Focus state', () => {
     const sectionName = 'test archive';
 
     findSection(sectionName).scrollIntoView().within(() => {
-      // Collapse the section
-      cy.get('.toggle-btn').contains('Focus').click();
+      // Click caret to enter Focus state
+      cy.get('.caret-toggle-btn').click();
 
       // Verify summary card exists and is visible
       cy.get('.task-card-wrapper.collapsed-summary').should('exist');
@@ -183,11 +157,12 @@ describe('Collapse Completed Tasks Feature', () => {
       cy.get('.summary-card .summary-text').should('contain', 'completed');
 
       // Clean up
-      cy.get('.toggle-btn').contains('Focus').click();
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').click();
     });
   });
 
-  it('should default to collapsed for sections in DONE/ARCHIVE column', () => {
+  it('should default to Focus state for sections in DONE/ARCHIVE column', () => {
     // Clear localStorage to test default behavior
     cy.clearLocalStorage();
 
@@ -198,16 +173,16 @@ describe('Collapse Completed Tasks Feature', () => {
     cy.get('.done-column').contains('ARCHIVE').parent().parent().within(() => {
       // MAY Week 4 is in the ARCHIVE column
       cy.contains('.section', 'MAY Week 4').within(() => {
-        // Should be collapsed by default (Focus button active)
-        cy.get('.toggle-btn').contains('Focus').should('have.class', 'active');
+        // Should be in Focus state by default
+        cy.get('.caret-toggle-btn').should('have.class', 'state-focus');
         cy.get('.task-card-wrapper.collapsed-completed').should('exist');
         cy.get('.summary-card').should('exist');
       });
 
       // MAY Week 3 is also in ARCHIVE column
       cy.contains('.section', 'MAY Week 3').within(() => {
-        // Should be collapsed by default
-        cy.get('.toggle-btn').contains('Focus').should('have.class', 'active');
+        // Should be in Focus state by default
+        cy.get('.caret-toggle-btn').should('have.class', 'state-focus');
         cy.get('.task-card-wrapper.collapsed-completed').should('exist');
         cy.get('.summary-card').should('exist');
       });
@@ -224,8 +199,8 @@ describe('Collapse Completed Tasks Feature', () => {
     // Check WIP column sections
     cy.get('.wip-column').within(() => {
       cy.contains('.section', 'test archive').within(() => {
-        // Should not be collapsed by default (no active button)
-        cy.get('.toggle-btn.active').should('not.exist');
+        // Should be in normal state by default
+        cy.get('.caret-toggle-btn').should('have.class', 'state-normal');
         cy.get('.task-card-wrapper.collapsed-completed').should('not.exist');
       });
     });
@@ -241,10 +216,10 @@ describe('Collapse Completed Tasks Feature', () => {
       // Click Collapse All button
       cy.get('.collapse-all-btn').click();
 
-      // Check that all sections are collapsed (Focus button active)
+      // Check that all sections are in Focus state
       cy.get('.section').each($section => {
         cy.wrap($section).within(() => {
-          cy.get('.toggle-btn').contains('Focus').should('have.class', 'active');
+          cy.get('.caret-toggle-btn').should('have.class', 'state-focus');
           cy.get('.task-card-wrapper.collapsed-completed').should('exist');
         });
       });
@@ -256,20 +231,16 @@ describe('Collapse Completed Tasks Feature', () => {
     cy.get('.done-column').contains('ARCHIVE').parent().parent().within(() => {
       // First collapse all
       cy.get('.collapse-all-btn').click();
-
-      // Wait a moment for the collapse to complete
       cy.wait(500);
 
       // Then click Expand All
       cy.get('.expand-all-btn').click();
-
-      // Wait a moment for the expand to complete
       cy.wait(500);
 
-      // Check that all sections are expanded (no active toggle button)
+      // Check that all sections are in normal state
       cy.get('.section').each($section => {
         cy.wrap($section).within(() => {
-          cy.get('.toggle-btn.active').should('not.exist');
+          cy.get('.caret-toggle-btn').should('have.class', 'state-normal');
           cy.get('.task-card-wrapper.collapsed-completed').should('not.exist');
         });
       });
@@ -280,9 +251,10 @@ describe('Collapse Completed Tasks Feature', () => {
     const sectionName = 'test archive';
 
     findSection(sectionName).scrollIntoView().within(() => {
-      // Click Collapse button (summary card only mode)
-      cy.get('.toggle-btn').contains('Collapse').click();
-      cy.get('.toggle-btn').contains('Collapse').should('have.class', 'active');
+      // Click caret twice to enter Collapse state (normal → Focus → Collapse)
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').click();
+      cy.get('.caret-toggle-btn').should('have.class', 'state-collapse');
 
       // Should show summary-only card
       cy.get('.summary-only-card').should('exist');
@@ -291,21 +263,21 @@ describe('Collapse Completed Tasks Feature', () => {
       // Task list should be hidden
       cy.get('.task-list').should('not.be.visible');
 
-      // Clean up
-      cy.get('.toggle-btn').contains('Collapse').click();
+      // Clean up - click to return to normal
+      cy.get('.caret-toggle-btn').click();
     });
   });
 
-  it('should show Summary state with header only and expand icon', () => {
+  it('should show fully collapsed state with header only via collapse link', () => {
     const sectionName = 'test archive';
 
     findSection(sectionName).scrollIntoView().within(() => {
-      // Click Summary button (header only mode)
-      cy.get('.toggle-btn').contains('Summary').click();
+      // Click collapse link to fully collapse (header only mode)
+      cy.get('.collapse-expand-link').should('contain', 'collapse').click();
 
-      // Toggle group should be replaced with expand icon
-      cy.get('.collapse-toggle-group').should('not.exist');
-      cy.get('.expand-icon-btn').should('exist');
+      // Link should now say "expand", caret shows square
+      cy.get('.collapse-expand-link').should('contain', 'expand');
+      cy.get('.caret-toggle-btn').should('have.class', 'collapsed');
 
       // Section items should be hidden
       cy.get('.section-items').should('not.be.visible');
@@ -313,12 +285,12 @@ describe('Collapse Completed Tasks Feature', () => {
       // Inline summary should show in header
       cy.get('.inline-collapse-summary').should('exist');
 
-      // Click expand icon to return to normal
-      cy.get('.expand-icon-btn').click();
+      // Click caret (square) to return to normal
+      cy.get('.caret-toggle-btn').click();
 
-      // Should be back to normal with toggle group
-      cy.get('.collapse-toggle-group').should('exist');
-      cy.get('.toggle-btn.active').should('not.exist');
+      // Should be back to normal with controls visible
+      cy.get('.collapse-expand-link').should('contain', 'collapse');
+      cy.get('.caret-toggle-btn').should('have.class', 'state-normal');
     });
   });
 });

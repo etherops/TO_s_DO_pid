@@ -1,6 +1,7 @@
 # TODO
 ## UP NEXT
 * [x]: small: autosort on drag/drop to partial collapse
+* [ ]: bug - complete task reloads whole page
 * [ ] VIEW: COLLAPSE - separate Full Collapose carrot up/down from other 2 modes
 * [ ] VIEW: REVIEW mode
 * [ ] BUG: right click send to, can't see sub menu's below the screen fold
