@@ -52,6 +52,15 @@
           <button v-if="canAddSection && !columnData.on_ice" class="add-section-btn" @click="$emit('add-section')">
             <span class="add-icon">+</span> Section
           </button>
+          <!-- Tri-state caret for column-wide section collapse control -->
+          <button
+            v-if="!columnData.on_ice && nonRawTextSections.length > 0"
+            :class="['column-caret-btn', columnCaretClass]"
+            @click="cycleColumnCollapseState"
+            :title="columnCaretTitle"
+          >
+            <span class="caret-icon">▶</span>
+          </button>
           <button v-if="columnType === 'TODO' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Todo'">
             <span>←</span>
           </button>
@@ -185,6 +194,74 @@ const getSectionKey = (section) => {
   }
   // For regular sections, use name
   return section.name || 'unnamed';
+};
+
+// Get non-raw-text sections for collapse state management
+const nonRawTextSections = computed(() =>
+  props.sections.filter(s => s.type !== 'raw-text')
+);
+
+// Read collapse state from localStorage for a section
+const getSectionCollapseState = (section) => {
+  const storageKey = `sectionCollapseState-${props.columnType}-${section.name}`;
+  return localStorage.getItem(storageKey) || 'normal';
+};
+
+// Determine the unified collapse state of all sections in this column
+const columnCollapseState = computed(() => {
+  if (nonRawTextSections.value.length === 0) return 'normal';
+
+  const states = nonRawTextSections.value.map(s => getSectionCollapseState(s));
+  const uniqueStates = [...new Set(states)];
+
+  // If all sections have the same state, return that state
+  if (uniqueStates.length === 1) {
+    const state = uniqueStates[0];
+    // Only return normal, partial, or summary (ignore 'full' for tri-state)
+    if (['normal', 'partial', 'summary'].includes(state)) {
+      return state;
+    }
+    return 'normal';
+  }
+
+  // Mixed states
+  return 'mixed';
+});
+
+// CSS class for the column caret based on state
+const columnCaretClass = computed(() => {
+  switch (columnCollapseState.value) {
+    case 'partial': return 'state-focus';
+    case 'summary': return 'state-collapse';
+    case 'mixed': return 'state-mixed';
+    default: return 'state-normal';
+  }
+});
+
+// Title for the column caret
+const columnCaretTitle = computed(() => {
+  switch (columnCollapseState.value) {
+    case 'partial': return 'All sections: Focus (click for Collapse)';
+    case 'summary': return 'All sections: Collapse (click for Normal)';
+    case 'mixed': return 'Mixed states (click to expand all)';
+    default: return 'All sections: Normal (click for Focus)';
+  }
+});
+
+// Cycle through column-wide collapse states
+const cycleColumnCollapseState = () => {
+  let nextState;
+
+  if (columnCollapseState.value === 'mixed') {
+    // From mixed, go to normal (expand all)
+    nextState = 'normal';
+  } else {
+    // Cycle: normal → partial → summary → normal
+    const cycle = { 'normal': 'partial', 'partial': 'summary', 'summary': 'normal' };
+    nextState = cycle[columnCollapseState.value] || 'normal';
+  }
+
+  setAllSectionsCollapseState(nextState);
 };
 
 // Set collapse state on all sections via custom event
@@ -509,5 +586,52 @@ const hideAll = () => setAllSectionsCollapseState('full');
   border-radius: 4px;
   margin-bottom: 10px;
   text-align: center;
+}
+
+/* Column-wide caret toggle button */
+.column-caret-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  margin-left: 4px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  height: 24px;
+  width: 24px;
+}
+
+.column-caret-btn:hover {
+  background: rgba(33, 150, 243, 0.15);
+}
+
+.column-caret-btn .caret-icon {
+  color: #1976d2;
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+
+/* Caret rotation states */
+.column-caret-btn.state-normal .caret-icon {
+  transform: rotate(90deg); /* ▼ pointing down */
+}
+
+.column-caret-btn.state-focus .caret-icon {
+  transform: rotate(45deg); /* ◢ 45° diagonal */
+}
+
+.column-caret-btn.state-collapse .caret-icon {
+  transform: rotate(0deg); /* ▶ pointing right */
+}
+
+/* Mixed state - blurred down arrow */
+.column-caret-btn.state-mixed .caret-icon {
+  transform: rotate(90deg); /* ▼ pointing down */
+  opacity: 0.4;
 }
 </style>

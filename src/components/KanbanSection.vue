@@ -1347,7 +1347,7 @@ onMounted(() => {
 /* Square icon for fully collapsed state */
 .square-icon {
   color: #1976d2;
-  font-size: 8px;
+  font-size: 12px;
   display: inline-block;
 }
 

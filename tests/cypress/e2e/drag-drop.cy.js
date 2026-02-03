@@ -39,7 +39,7 @@ describe('Drag and Drop Tasks', () => {
 
         // Enable partial collapse (Focus) on Test Section
         findSection('Test Section').within(() => {
-            cy.get('.toggle-btn').contains('Focus').click();
+            cy.get('.caret-toggle-btn').click(); // Click to enter Focus state
         });
         cy.wait(300);
 

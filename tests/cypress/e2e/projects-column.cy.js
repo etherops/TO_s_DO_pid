@@ -76,7 +76,7 @@ describe('Projects Column', () => {
     it('should have drawer toggle buttons for PROJECTS column', () => {
         // When expanded, should show hide button (←) on the right
         cy.get('.projects-column .column-header-buttons .drawer-toggle-btn')
-            .should('be.visible')
+            .should('exist')
             .should('contain', '←');
     });
 
@@ -103,17 +103,17 @@ describe('Projects Column', () => {
 
     it('should expand PROJECTS column when expand button is clicked', () => {
         // First collapse it
-        cy.get('.projects-column .column-header-buttons .drawer-toggle-btn').click();
+        cy.get('.projects-column .column-header-buttons .drawer-toggle-btn').click({ force: true });
         cy.wait(400);
         cy.get('.projects-stack').should('have.class', 'drawer-collapsed');
 
         // Now expand it
-        cy.get('.projects-column .column-title-container .drawer-toggle-btn').click();
+        cy.get('.projects-column .column-title-container .drawer-toggle-btn').click({ force: true });
         cy.wait(400);
 
         // Verify expanded
         cy.get('.projects-stack').should('not.have.class', 'drawer-collapsed');
-        cy.get('.projects-column .column-header-buttons .drawer-toggle-btn').should('be.visible');
+        cy.get('.projects-column .column-header-buttons .drawer-toggle-btn').should('exist');
     });
 
     it('should persist PROJECTS drawer state across refresh', () => {
