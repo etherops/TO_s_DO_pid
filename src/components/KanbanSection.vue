@@ -480,8 +480,8 @@ const isArchiveColumn = computed(() => {
 // Get fanning distance for completed/cancelled cards based on column type
 const getCompletedFanningDistance = () => isArchiveColumn.value ? 15 : 2;
 
-// Get fanning distance for in-progress cards (always 15px like old DONE behavior)
-const getInProgressFanningDistance = () => 15;
+// Get fanning distance for in-progress cards - enough to read the task text
+const getInProgressFanningDistance = () => 22;
 
 // Get positioning styles for task cards
 const getTaskCardStyle = (item, index) => {
@@ -521,7 +521,7 @@ const getTaskCardStyle = (item, index) => {
       position: 'absolute',
       top: `${12 + completedStackTop + summaryCardHeight + inProgressIndex * inProgressFanDistance}px`,
       zIndex: 200 + inProgressIndex, // Higher z-index than completed cards
-      height: '45px', // Same height as ARCHIVE column completed cards
+      height: '52px', // Taller so task text is readable in partial collapse
       overflow: 'hidden',
       width: '100%',
       left: '0',
@@ -567,7 +567,7 @@ const collapsedStackHeight = computed(() => {
 
   if (inProgressCount > 0) {
     height += (inProgressCount - 1) * inProgressFanDistance; // In-progress cards fanning (last card index)
-    height += 45; // Final in-progress card height (matches inline style)
+    height += 45; // Final in-progress card height
   } else if (completedCount > 0) {
     height += 8; // Just a small gap after summary card if no in-progress
   }

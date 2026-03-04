@@ -1,8 +1,10 @@
 # TODO
 ## UP NEXT
-* [x]: small: autosort on drag/drop to partial collapse
-* [ ]: bug - complete task reloads whole page
-* [ ] VIEW: COLLAPSE - separate Full Collapose carrot up/down from other 2 modes
+* [x] small: autosort on drag/drop to partial collapse
+* [x] VIEW: COLLAPSE - separate Full Collapose carrot up/down from other 2 modes
+* [x] BUG!: same section name different column sometimes deletes from section! bad!
+* [ ] bug - complete task reloads whole page
+* [ ] SEARCH
 * [ ] VIEW: REVIEW mode
 * [ ] BUG: right click send to, can't see sub menu's below the screen fold
 * [ ] DELETE - undo

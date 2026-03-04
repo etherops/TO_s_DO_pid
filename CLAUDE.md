@@ -26,7 +26,7 @@ npm run server  # Backend only on port 3001
 ## High-Level Architecture
 
 This is a Vue.js 3 Kanban board application that intentionally uses plain text files as its database ("stupid simple" philosophy).
-
+    
 **Frontend Architecture:**
 - Vue 3 with Composition API and `<script setup>` syntax
 - State management via composables in `src/composables/`:
