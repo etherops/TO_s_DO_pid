@@ -99,5 +99,8 @@ npm run test:e2e:parallel # Parallel execution (4 threads)
 npx cypress run --spec "cypress/e2e/task-crud.cy.js"  # Single test
 ```
 
+## Git
+- Commit messages should be a single line
+
 ## Code Best Practices
 See parent directory CLAUDE.md

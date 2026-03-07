@@ -84,8 +84,8 @@ describe('Duplicate Section Name Deletion', () => {
                 })
             })
 
-            // Add task to identify each section
-            cy.get('.section').last().within(() => {
+            // Add task to identify each section - re-query within the column to avoid stale references
+            cy.get('.column-stack').eq(1).find('.wip-column').first().find('.section').last().within(() => {
                 cy.get('.add-task-btn').click()
                 cy.get('.new-task-input').should('be.visible')
                 cy.get('.new-task-input').type(`Task ${i}`)
