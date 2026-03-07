@@ -86,7 +86,7 @@ const menuStyle = computed(() => {
   
   return {
     left: `${Math.min(props.position.x, maxWidth - 220)}px`,
-    top: `${Math.min(props.position.y, maxHeight - 300)}px`
+    top: `${Math.min(props.position.y, maxHeight - 400)}px`
   };
 });
 
@@ -105,12 +105,21 @@ const submenuStyle = (columnName) => {
   
   // Check if submenu would overflow right edge
   const showOnLeft = rightPosition > window.innerWidth - padding;
-  
+
+  // Check if submenu would overflow bottom edge
+  const columnData = otherColumns.value[columnName];
+  const submenuHeight = Math.min((columnData?.sections?.length || 5) * 36, 300);
+  let top = menuItemRect.top;
+  if (top + submenuHeight > window.innerHeight - padding) {
+    top = window.innerHeight - submenuHeight - padding;
+  }
+
   return {
     position: 'fixed',
     left: showOnLeft ? `${menuRect.left - submenuWidth + 1}px` : `${leftPosition}px`,
-    top: `${menuItemRect.top}px`, // Align with the specific menu item, not the main menu
-    zIndex: 10001
+    top: `${top}px`,
+    zIndex: 10001,
+    '--bridge-side': showOnLeft ? 'right' : 'left'
   };
 };
 
@@ -271,6 +280,12 @@ onUnmounted(() => {
   width: 10px;
   left: -10px;
   z-index: 9999;
+}
+
+/* When submenu flips to left side, bridge goes on the right */
+.submenu[style*="--bridge-side: right"]::before {
+  left: auto;
+  right: -10px;
 }
 
 

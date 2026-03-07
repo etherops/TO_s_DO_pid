@@ -3,6 +3,7 @@
 * [x] small: autosort on drag/drop to partial collapse
 * [x] VIEW: COLLAPSE - separate Full Collapose carrot up/down from other 2 modes
 * [x] BUG!: same section name different column sometimes deletes from section! bad!
+* [x] BUG: right click context menu dissapears under fold of page
 * [ ] bug - complete task reloads whole page
 * [ ] SEARCH
 * [ ] VIEW: REVIEW mode
