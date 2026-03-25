@@ -101,6 +101,7 @@ npx cypress run --spec "cypress/e2e/task-crud.cy.js"  # Single test
 
 ## Git
 - Commit messages should be a single line
+- Do not add Co-Authored-By or any attribution lines
 
 ## Code Best Practices
 See parent directory CLAUDE.md

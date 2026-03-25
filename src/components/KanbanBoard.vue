@@ -49,6 +49,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
+            :selected-task-ids="selectedTaskIds"
             :is-drawer-expanded="isTodoDrawerExpanded"
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
@@ -58,6 +59,7 @@
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
             @toggle-drawer="toggleTodoDrawer"
+            @multi-drag-complete="handleMultiDragComplete"
         />
       </template>
     </div>
@@ -75,6 +77,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
+            :selected-task-ids="selectedTaskIds"
             :is-drawer-expanded="isProjectsDrawerExpanded"
             @add-section="createNewSection('PROJECTS', columnName)"
             @task-updated="handleTaskUpdate"
@@ -84,6 +87,7 @@
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
             @toggle-drawer="toggleProjectsDrawer"
+            @multi-drag-complete="handleMultiDragComplete"
         />
       </template>
     </div>
@@ -101,6 +105,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
+            :selected-task-ids="selectedTaskIds"
             @add-section="createNewSection('SELECTED', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -108,6 +113,7 @@
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
+            @multi-drag-complete="handleMultiDragComplete"
         />
       </template>
     </div>
@@ -125,6 +131,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
+            :selected-task-ids="selectedTaskIds"
             :is-drawer-expanded="isWipDrawerExpanded"
             @add-section="createNewSection('WIP', columnName)"
             @task-updated="handleTaskUpdate"
@@ -134,6 +141,7 @@
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
             @toggle-drawer="toggleWipDrawer"
+            @multi-drag-complete="handleMultiDragComplete"
         />
       </template>
     </div>
@@ -151,6 +159,7 @@
             :column-data="getColumnDataWithIce(columnName)"
             :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
+            :selected-task-ids="selectedTaskIds"
             :is-drawer-expanded="isDoneDrawerExpanded"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
@@ -159,6 +168,7 @@
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
             @toggle-drawer="toggleDoneDrawer"
+            @multi-drag-complete="handleMultiDragComplete"
         />
       </template>
     </div>
@@ -564,6 +574,53 @@ const handleMoveToSection = async (targetSection) => {
     clearSelection();
     emit('update');
   }
+};
+
+// Handle multi-drag completion - move remaining selected tasks to where the dragged task landed
+const handleMultiDragComplete = async ({ draggedTaskId }) => {
+  if (selectedCount.value <= 1) return;
+
+  // Find the section containing the dragged task (vuedraggable already moved it)
+  let targetSection = null;
+  for (const columnName of props.todoData.columnOrder) {
+    const columnStack = props.todoData.columnStacks[columnName];
+    if (!columnStack?.sections) continue;
+    for (const section of columnStack.sections) {
+      if (section.items?.some(item => item.id === draggedTaskId)) {
+        targetSection = section;
+        break;
+      }
+    }
+    if (targetSection) break;
+  }
+  if (!targetSection) return;
+
+  // Collect other selected tasks (not the already-moved dragged task)
+  const otherTaskIds = Array.from(selectedTaskIds.value).filter(id => id !== draggedTaskId);
+  const tasksToMove = [];
+
+  for (const columnName of props.todoData.columnOrder) {
+    const columnStack = props.todoData.columnStacks[columnName];
+    if (!columnStack?.sections) continue;
+    for (const section of columnStack.sections) {
+      if (!section.items) continue;
+      const found = section.items.filter(item => otherTaskIds.includes(item.id));
+      if (found.length) {
+        tasksToMove.push(...found);
+        section.items = section.items.filter(item => !otherTaskIds.includes(item.id));
+      }
+    }
+  }
+
+  if (tasksToMove.length === 0) return;
+
+  // Insert after the dragged task
+  const draggedIndex = targetSection.items.findIndex(item => item.id === draggedTaskId);
+  targetSection.items.splice(draggedIndex + 1, 0, ...tasksToMove);
+
+  clearSelection();
+  await persistTodoData();
+  emit('update');
 };
 
 // Get all unique DONE-type file columns

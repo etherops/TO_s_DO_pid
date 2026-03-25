@@ -196,6 +196,7 @@
           class="task-list"
           ghost-class="ghost-card"
           handle=".task-card"
+          @start="onDragStart"
           @end="onDragEnd"
           @add="onDragAdd"
       >
@@ -269,13 +270,17 @@ const props = defineProps({
     type: Function,
     default: null
   },
+  selectedTaskIds: {
+    type: Object,
+    default: null
+  },
   isColumnCollapsed: {
     type: Boolean,
     default: false
   }
 });
 
-const emit = defineEmits(['task-updated', 'section-updated', 'show-date-picker', 'task-click', 'task-context-menu']);
+const emit = defineEmits(['task-updated', 'section-updated', 'show-date-picker', 'task-click', 'task-context-menu', 'multi-drag-complete']);
 
 // Computed properties
 const isRawTextSection = computed(() => props.section.type === 'raw-text');
@@ -743,24 +748,70 @@ const sortTasks = async () => {
   emit('task-updated');
 };
 
-// Handle drag end (same-section reorder)
-const onDragEnd = () => {
+// Multi-drag state (local to this component instance)
+let isMultiDragging = false;
+
+const isMultiSelected = (taskId) =>
+  taskId && props.selectedTaskIds?.has(taskId) && props.selectedTaskIds.size > 1;
+
+// Handle drag start - detect multi-drag, clone selected tasks into dragged element
+const onDragStart = (event) => {
+  const draggedItem = props.section.items[event.oldIndex];
+  if (!draggedItem) return;
+
+  isMultiDragging = isMultiSelected(draggedItem.id);
+  if (!isMultiDragging) return;
+
+  // Defer DOM manipulation so the drag event pipeline completes first
+  const dragItem = event.item;
+  setTimeout(() => {
+    document.querySelectorAll('.task-card.selected').forEach(card => {
+      const wrapper = card.closest('.task-card-wrapper');
+      if (wrapper && wrapper !== dragItem) {
+        const clone = card.cloneNode(true);
+        clone.classList.add('multi-drag-clone');
+        dragItem.appendChild(clone);
+        wrapper.classList.add('multi-drag-hidden');
+      }
+    });
+  }, 0);
+};
+
+// Handle drag end (fires on SOURCE section)
+const onDragEnd = (event) => {
+  // Clean up multi-drag visual state
+  document.querySelectorAll('.multi-drag-hidden').forEach(el => el.classList.remove('multi-drag-hidden'));
+  document.querySelectorAll('.multi-drag-clone').forEach(el => el.remove());
+
+  // For same-section reorder during multi-drag, emit completion
+  if (isMultiDragging && event.from === event.to) {
+    const draggedItem = props.section.items[event.newIndex];
+    if (draggedItem) {
+      emit('multi-drag-complete', { draggedTaskId: draggedItem.id });
+    }
+  }
+
+  isMultiDragging = false;
   emit('task-updated');
 };
 
-// Handle item added from another section - auto-sort if collapsed
+// Handle item added from another section (fires on TARGET section)
 const onDragAdd = async (event) => {
-  // If section has any collapse state, auto-sort the dropped task
-  if (collapseState.value !== 'normal') {
-    const newIndex = event.newIndex;
-    if (newIndex !== undefined && props.section.items[newIndex]) {
-      const droppedTask = props.section.items[newIndex];
-      if (droppedTask.type === 'task') {
-        await sortSingleTask(droppedTask);
-      }
+  const newItem = props.section.items[event.newIndex];
+  const isMultiDrop = isMultiSelected(newItem?.id);
+
+  // Auto-sort single drops in collapsed sections (skip for multi-drag, board handles placement)
+  if (!isMultiDrop && collapseState.value !== 'normal') {
+    if (event.newIndex !== undefined && newItem?.type === 'task') {
+      await sortSingleTask(newItem);
     }
   }
+
   emit('task-updated');
+
+  if (isMultiDrop) {
+    emit('multi-drag-complete', { draggedTaskId: newItem.id });
+  }
 };
 
 // Check if section is new and enter edit mode
@@ -1642,5 +1693,21 @@ onMounted(() => {
   height: 2px;
   background-color: #757575;
   transform: translateY(-50%);
+}
+
+/* Multi-drag styles */
+.multi-drag-hidden {
+  visibility: hidden !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.multi-drag-clone {
+  margin-top: 4px;
+  pointer-events: none;
+  opacity: 0.9;
+  border-radius: 4px;
 }
 </style>

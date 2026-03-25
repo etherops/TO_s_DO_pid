@@ -90,12 +90,14 @@
                 :column-data="columnData"
                 :show-raw-text="showRawText"
                 :is-task-selected="isTaskSelected"
+                :selected-task-ids="selectedTaskIds"
                 :is-column-collapsed="isDrawerExpanded === false"
                 @task-updated="$emit('task-updated')"
                 @section-updated="$emit('section-updated', $event)"
                 @show-date-picker="$emit('show-date-picker', $event)"
                 @task-click="$emit('task-click', $event)"
                 @task-context-menu="$emit('task-context-menu', $event)"
+                @multi-drag-complete="$emit('multi-drag-complete', $event)"
             />
           </template>
         </draggable>
@@ -142,6 +144,10 @@ const props = defineProps({
     type: Function,
     default: null
   },
+  selectedTaskIds: {
+    type: Object,
+    default: null
+  },
   isDrawerExpanded: {
     type: Boolean,
     default: null
@@ -155,7 +161,8 @@ const emit = defineEmits([
   'show-date-picker',
   'task-click',
   'task-context-menu',
-  'toggle-drawer'
+  'toggle-drawer',
+  'multi-drag-complete'
 ]);
 
 // Template refs
