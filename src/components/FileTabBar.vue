@@ -17,6 +17,17 @@
       </div>
     </div>
     <div class="toggles-container">
+      <button
+          class="history-btn"
+          @click="$emit('show-history')"
+          :disabled="!selectedFile?.path"
+          title="Version history"
+          aria-label="Version history"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path fill="currentColor" d="M13 3a9 9 0 1 0 8.94 10h-2.02A7 7 0 1 1 13 5v3l4-4-4-4v3zm-1 5v5l4.25 2.52.75-1.23L13.5 12.25V8z"/>
+        </svg>
+      </button>
       <div class="view-mode-buttons">
         <button
             class="view-mode-btn"
@@ -77,7 +88,7 @@ const props = defineProps({
   }
 });
 
-defineEmits(['file-selected', 'toggle-raw-text', 'set-view-mode']);
+defineEmits(['file-selected', 'toggle-raw-text', 'set-view-mode', 'show-history']);
 
 // Format tab name based on file type
 const formatTabName = (file) => {
@@ -234,8 +245,8 @@ const getFileTooltip = (file) => {
 
 .toggles-container {
   display: flex;
-  gap: 15px;
-  padding: 0 20px;
+  gap: 10px;
+  padding: 0 12px 0 8px;
   flex-shrink: 0;
   align-items: center;
 }
@@ -335,5 +346,32 @@ const getFileTooltip = (file) => {
 
 .toggle-label {
   color: #555;
+}
+
+.history-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #666;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.history-btn:hover:not(:disabled) {
+  background-color: #e8e8e8;
+  border-color: #ccc;
+  color: #333;
+}
+
+.history-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 </style>

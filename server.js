@@ -377,6 +377,72 @@ app.post('/api/todos', (req, res) => {
   }
 });
 
+// Resolve the backup directory for a given todo file path.
+// Mirrors the layout created by createBackup:
+//   <fileDir>/.TO_s_DO_pid.bak/<fileNameWithoutExt>/
+const resolveBackupDir = (filePath) => {
+  const fileDir = path.dirname(filePath);
+  const fileName = path.basename(filePath);
+  const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+  return {
+    dir: path.join(fileDir, '.TO_s_DO_pid.bak', fileNameWithoutExt),
+    fileNameWithoutExt,
+    fileExt: path.extname(fileName),
+  };
+};
+
+// Parse YYYY-MM-DD out of a backup filename like "foo.bak.2025-05-05.md".
+const parseBackupDate = (backupFileName) => {
+  const match = backupFileName.match(/\.bak\.(\d{4}-\d{2}-\d{2})\./);
+  return match ? match[1] : null;
+};
+
+// List backup versions for a given todo file.
+app.get('/api/history', (req, res) => {
+  try {
+    const filePath = req.query.path;
+    if (!filePath) return res.status(400).json({ error: 'Path parameter is required' });
+
+    const { dir } = resolveBackupDir(filePath);
+    if (!fs.existsSync(dir)) return res.json({ versions: [] });
+
+    const versions = fs.readdirSync(dir)
+      .map(name => {
+        const date = parseBackupDate(name);
+        if (!date) return null;
+        const stat = fs.statSync(path.join(dir, name));
+        return { date, filename: name, size: stat.size, mtime: stat.mtimeMs };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    res.json({ versions });
+  } catch (error) {
+    logger.error('Error listing history:', error);
+    res.status(500).json({ error: 'Failed to list history' });
+  }
+});
+
+// Return the content of a single backup version.
+app.get('/api/history/version', (req, res) => {
+  try {
+    const filePath = req.query.path;
+    const date = req.query.date;
+    if (!filePath || !date) return res.status(400).json({ error: 'path and date are required' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+
+    const { dir, fileNameWithoutExt, fileExt } = resolveBackupDir(filePath);
+    const backupFile = path.join(dir, `${fileNameWithoutExt}.bak.${date}${fileExt}`);
+    if (!fs.existsSync(backupFile)) return res.status(404).json({ error: 'Backup version not found' });
+
+    const content = fs.readFileSync(backupFile, 'utf8');
+    res.json({ content, date, filename: path.basename(backupFile) });
+  } catch (error) {
+    logger.error('Error reading history version:', error);
+    res.status(500).json({ error: 'Failed to read history version' });
+  }
+});
+
 // Start server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

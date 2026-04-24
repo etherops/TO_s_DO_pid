@@ -10,6 +10,16 @@
         @file-selected="handleFileChange"
         @toggle-raw-text="toggleRawText"
         @set-view-mode="setViewMode"
+        @show-history="showHistory = true"
+    />
+
+    <HistoryPanel
+        v-if="showHistory && selectedFile.path"
+        :file-path="selectedFile.path"
+        :file-label="selectedFile.name"
+        :current-content="currentRenderedContent"
+        @close="showHistory = false"
+        @restored="handleHistoryRestored"
     />
 
     <div v-if="parsingError" class="error-message">
@@ -36,7 +46,9 @@
 import { onMounted, computed, ref } from 'vue';
 import FileTabBar from './components/FileTabBar.vue';
 import KanbanBoard from './components/KanbanBoard.vue';
+import HistoryPanel from './components/HistoryPanel.vue';
 import { useTodoData } from './composables/useTodoData';
+import { renderTodoMdFile } from './utils/TodoMdParser';
 
 const {
   todoData,
@@ -76,6 +88,17 @@ const clearViewMode = () => {
 // Handle updates from KanbanBoard - just save immediately
 const handleUpdate = async () => {
   await persistTodoData();
+};
+
+const showHistory = ref(false);
+
+const currentRenderedContent = computed(() => {
+  try { return renderTodoMdFile(todoData.value) || ''; }
+  catch { return ''; }
+});
+
+const handleHistoryRestored = async () => {
+  await loadTodoData();
 };
 
 // Calculate unparsed line count in view layer
