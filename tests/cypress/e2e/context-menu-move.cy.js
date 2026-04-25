@@ -212,30 +212,62 @@ describe('Context Menu Move Task Operations', () => {
 
     it('should handle submenu hover interactions', () => {
         const taskText = 'WORK - Follow up with client'
-        
+
         rightClickTask(taskText)
-        
+
         cy.get('.context-menu').within(() => {
             // Hover over column to show submenu
             cy.contains('.menu-item.expandable', 'SCHEDULED')
                 .trigger('mouseenter')
         })
-        
+
         // Wait for submenu
         cy.wait(100)
         cy.get('.submenu').should('exist')
-        
+
         // Move mouse away from menu item
         cy.get('.context-menu').within(() => {
             cy.contains('.menu-item.expandable', 'SCHEDULED')
                 .trigger('mouseleave')
         })
-        
-        // Submenu should hide
+
+        // Submenu should hide (close is delayed ~200ms; should retries up to defaultCommandTimeout)
         cy.get('.submenu').should('not.exist')
     })
 
-    it.only('should auto-sort moved tasks in destination section by priority', () => {
+    // Regression: when the cursor leaves the parent .menu-item.expandable and
+    // briefly traverses sibling DOM (the diagonal gap to the submenu), the
+    // submenu used to vanish before the user could reach it. Close is now
+    // scheduled on a short timer and cancelled by mouseenter on the submenu.
+    it('should keep submenu open when cursor traverses gap to submenu', () => {
+        const taskText = 'WORK - Follow up with client'
+
+        rightClickTask(taskText)
+
+        cy.contains('.menu-item.expandable', 'SCHEDULED').trigger('mouseenter')
+        cy.get('.submenu').should('exist')
+
+        // Simulate the diagonal traverse: mouseleave on parent immediately
+        // followed by mouseenter on the submenu. Without the close-delay
+        // bridge, the submenu would already be unmounted by the time
+        // mouseenter fires.
+        cy.contains('.menu-item.expandable', 'SCHEDULED').trigger('mouseleave')
+        cy.get('.submenu').trigger('mouseenter')
+
+        // Submenu should still be there a beat later, and we can click an item.
+        cy.wait(300)
+        cy.get('.submenu').should('be.visible')
+        cy.get('.submenu .menu-item').contains('CURRENT WEEK').click()
+
+        // Verify the move actually happened — proves the submenu was clickable.
+        cy.get('.wip-column').first().within(() => {
+            findSection('CURRENT WEEK').within(() => {
+                cy.contains('.task-card', taskText).should('exist')
+            })
+        })
+    })
+
+    it('should auto-sort moved tasks in destination section by priority', () => {
         const taskToMove = 'sort8' // This is completed [x]
         const targetColumn = 'SCHEDULED'
         const targetSection = 'CURRENT DAY (Thursday May 1)'

@@ -27,24 +27,24 @@
     </div>
     
     <!-- Other columns -->
-    <div 
-      v-for="(columnData, columnName) in otherColumns" 
-      :key="columnName" 
+    <div
+      v-for="(columnData, columnName) in otherColumns"
+      :key="columnName"
       :ref="el => menuItemRefs[columnName] = el"
       class="menu-item expandable"
-      @mouseenter="expandedColumn = columnName"
-      @mouseleave="expandedColumn = null"
+      @mouseenter="openSubmenu(columnName)"
+      @mouseleave="scheduleCloseSubmenu()"
     >
       {{ columnName }}
       <span class="expand-arrow">›</span>
-      
+
       <!-- Submenu -->
-      <div 
+      <div
         v-if="expandedColumn === columnName"
         class="submenu"
         :style="submenuStyle(columnName)"
-        @mouseenter="expandedColumn = columnName"
-        @mouseleave="expandedColumn = null"
+        @mouseenter="openSubmenu(columnName)"
+        @mouseleave="scheduleCloseSubmenu()"
       >
         <div 
           v-for="section in columnData.sections"
@@ -77,6 +77,32 @@ const emit = defineEmits(['close', 'move-to-section']);
 const menuRef = ref(null);
 const expandedColumn = ref(null);
 const menuItemRefs = ref({});
+
+// Submenu open/close uses a short delay on close so the cursor can traverse
+// the diagonal gap between parent menu item and submenu without triggering
+// a stray mouseleave on intervening sibling items.
+const SUBMENU_CLOSE_DELAY_MS = 200;
+let submenuCloseTimer = null;
+
+const cancelCloseSubmenu = () => {
+  if (submenuCloseTimer !== null) {
+    clearTimeout(submenuCloseTimer);
+    submenuCloseTimer = null;
+  }
+};
+
+const openSubmenu = (columnName) => {
+  cancelCloseSubmenu();
+  expandedColumn.value = columnName;
+};
+
+const scheduleCloseSubmenu = () => {
+  cancelCloseSubmenu();
+  submenuCloseTimer = setTimeout(() => {
+    expandedColumn.value = null;
+    submenuCloseTimer = null;
+  }, SUBMENU_CLOSE_DELAY_MS);
+};
 
 // Simple position calculation
 const menuStyle = computed(() => {
@@ -172,6 +198,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  cancelCloseSubmenu();
   document.removeEventListener('click', handleClickOutside);
   document.removeEventListener('contextmenu', handleClickOutside);
   document.removeEventListener('keydown', handleEscape);
