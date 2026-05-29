@@ -600,14 +600,21 @@ const saveEditedSection = () => {
     return;
   }
 
-  if (editSectionName.value.trim() !== props.section.name) {
-    props.section.name = editSectionName.value.trim();
-    emit('section-updated');
+  const wasNewSection = Boolean(props.section.isNew);
+  const nextSectionName = editSectionName.value.trim();
+  const sectionNameChanged = nextSectionName !== props.section.name;
+
+  if (sectionNameChanged) {
+    props.section.name = nextSectionName;
   }
 
-  // Remove isNew flag after saving
-  if (props.section.isNew) {
+  // Remove isNew before emitting so undo history records the finalized section.
+  if (wasNewSection) {
     delete props.section.isNew;
+  }
+
+  if (sectionNameChanged || wasNewSection) {
+    emit('section-updated');
   }
 
   isEditingSection.value = false;

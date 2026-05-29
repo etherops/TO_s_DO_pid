@@ -183,7 +183,6 @@ import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
 import ContextMenu from './ContextMenu.vue';
 import { generateLeftoversSectionName } from '../utils/sectionHelpers.js';
 import { useTaskSelection } from '../composables/useTaskSelection.js';
-import { useTodoData } from '../composables/useTodoData.js';
 import { sortTaskToCorrectPosition } from '../utils/sortHelpers.js';
 
 const props = defineProps({
@@ -220,9 +219,6 @@ const {
   clearSelection,
   handleTaskClick: handleTaskSelection
 } = useTaskSelection();
-
-// Data persistence
-const { persistTodoData } = useTodoData();
 
 // Context menu state
 const contextMenu = ref({
@@ -545,9 +541,6 @@ const moveTasksToSection = async (taskIds, targetSection) => {
           sortTaskToCorrectPosition(targetSectionObj.items, task, emit);
         });
         
-        // Persist changes
-        await persistTodoData();
-        
         return true;
       }
     }
@@ -619,7 +612,6 @@ const handleMultiDragComplete = async ({ draggedTaskId }) => {
   targetSection.items.splice(draggedIndex + 1, 0, ...tasksToMove);
 
   clearSelection();
-  await persistTodoData();
   emit('update');
 };
 

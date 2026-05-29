@@ -17,6 +17,30 @@
       </div>
     </div>
     <div class="toggles-container">
+      <div class="history-controls">
+        <button
+            class="history-btn"
+            @click="$emit('undo')"
+            :disabled="!canUndo"
+            title="Undo"
+            aria-label="Undo"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path fill="currentColor" d="M12 5c-2.65 0-5.02 1.15-6.66 2.97L2 4.63V13h8.37L6.76 9.39A7.1 7.1 0 0 1 12 7c3.31 0 6 2.69 6 6 0 1.61-.63 3.12-1.76 4.24l1.41 1.41A7.94 7.94 0 0 0 20 13c0-4.42-3.58-8-8-8z"/>
+          </svg>
+        </button>
+        <button
+            class="history-btn"
+            @click="$emit('redo')"
+            :disabled="!canRedo"
+            title="Redo"
+            aria-label="Redo"
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path fill="currentColor" d="M12 5c2.65 0 5.02 1.15 6.66 2.97L22 4.63V13h-8.37l3.61-3.61A7.1 7.1 0 0 0 12 7c-3.31 0-6 2.69-6 6 0 1.61.63 3.12 1.76 4.24l-1.41 1.41A7.94 7.94 0 0 1 4 13c0-4.42 3.58-8 8-8z"/>
+          </svg>
+        </button>
+      </div>
       <button
           class="history-btn"
           @click="$emit('show-history')"
@@ -85,10 +109,18 @@ const props = defineProps({
   viewMode: {
     type: String,
     default: 'normal'
+  },
+  canUndo: {
+    type: Boolean,
+    default: false
+  },
+  canRedo: {
+    type: Boolean,
+    default: false
   }
 });
 
-defineEmits(['file-selected', 'toggle-raw-text', 'set-view-mode', 'show-history']);
+defineEmits(['file-selected', 'toggle-raw-text', 'set-view-mode', 'show-history', 'undo', 'redo']);
 
 // Format tab name based on file type
 const formatTabName = (file) => {
@@ -248,6 +280,12 @@ const getFileTooltip = (file) => {
   gap: 10px;
   padding: 0 12px 0 8px;
   flex-shrink: 0;
+  align-items: center;
+}
+
+.history-controls {
+  display: flex;
+  gap: 2px;
   align-items: center;
 }
 

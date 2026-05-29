@@ -7,10 +7,14 @@
         :unparsed-line-count="unparsedLineCount"
         :show-raw-text="showRawText"
         :view-mode="viewMode"
-        @file-selected="handleFileChange"
+        :can-undo="canUndo"
+        :can-redo="canRedo"
+        @file-selected="handleFileSelected"
         @toggle-raw-text="toggleRawText"
         @set-view-mode="setViewMode"
         @show-history="showHistory = true"
+        @undo="undo"
+        @redo="redo"
     />
 
     <HistoryPanel
@@ -43,11 +47,12 @@
 </template>
 
 <script setup>
-import { onMounted, computed, ref } from 'vue';
+import { onMounted, onUnmounted, computed, ref } from 'vue';
 import FileTabBar from './components/FileTabBar.vue';
 import KanbanBoard from './components/KanbanBoard.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import { useTodoData } from './composables/useTodoData';
+import { useUndoRedo } from './composables/useUndoRedo';
 import { renderTodoMdFile } from './utils/TodoMdParser';
 
 const {
@@ -60,7 +65,9 @@ const {
   loadAvailableFiles,
   loadTodoData,
   persistTodoData,
-  handleFileChange
+  handleFileChange,
+  registerAfterPersist,
+  registerAfterLoad
 } = useTodoData();
 
 const toggleRawText = () => {
@@ -85,7 +92,19 @@ const clearViewMode = () => {
   localStorage.setItem('viewMode', 'normal');
 };
 
-// Handle updates from KanbanBoard - just save immediately
+const {
+  canUndo,
+  canRedo,
+  resetHistory,
+  recordPersistedContent,
+  undo,
+  redo
+} = useUndoRedo(todoData, { persist: (options) => persistTodoData(options) });
+
+const unregisterAfterPersist = registerAfterPersist(recordPersistedContent);
+const unregisterAfterLoad = registerAfterLoad(resetHistory);
+
+// Handle updates from KanbanBoard - the save layer records undo diffs after a successful write
 const handleUpdate = async () => {
   await persistTodoData();
 };
@@ -99,6 +118,35 @@ const currentRenderedContent = computed(() => {
 
 const handleHistoryRestored = async () => {
   await loadTodoData();
+};
+
+const handleFileSelected = async (file) => {
+  await handleFileChange(file);
+};
+
+const isEditableTarget = (target) => {
+  return target?.closest?.('input, textarea, select, [contenteditable="true"]');
+};
+
+const handleUndoRedoShortcut = (event) => {
+  const key = event.key.toLowerCase();
+  const modifierPressed = event.metaKey || event.ctrlKey;
+
+  if (!modifierPressed || isEditableTarget(event.target)) {
+    return;
+  }
+
+  if (key === 'z') {
+    event.preventDefault();
+    if (event.shiftKey) {
+      redo();
+    } else {
+      undo();
+    }
+  } else if (key === 'y') {
+    event.preventDefault();
+    redo();
+  }
 };
 
 // Calculate unparsed line count in view layer
@@ -137,6 +185,13 @@ const unparsedLineCount = computed(() => {
 onMounted(async () => {
   await loadAvailableFiles();
   await loadTodoData();
+  window.addEventListener('keydown', handleUndoRedoShortcut);
+});
+
+onUnmounted(() => {
+  unregisterAfterPersist();
+  unregisterAfterLoad();
+  window.removeEventListener('keydown', handleUndoRedoShortcut);
 });
 </script>
 

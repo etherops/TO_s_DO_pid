@@ -14,9 +14,31 @@ export function useTodoData() {
     const selectedFile = ref({ name: '', path: '', isBuiltIn: true });
     const parsingError = ref('');
     const showRawText = ref(false);
+    const afterPersistCallbacks = new Set();
+    const afterLoadCallbacks = new Set();
     
     let ws = null;
     let reconnectTimeout = null;
+
+    const registerAfterPersist = (callback) => {
+        afterPersistCallbacks.add(callback);
+        return () => afterPersistCallbacks.delete(callback);
+    };
+
+    const registerAfterLoad = (callback) => {
+        afterLoadCallbacks.add(callback);
+        return () => afterLoadCallbacks.delete(callback);
+    };
+
+    const notifyAfterLoad = () => {
+        afterLoadCallbacks.forEach(callback => callback());
+    };
+
+    const notifyAfterPersist = async (content) => {
+        for (const callback of afterPersistCallbacks) {
+            await callback(content);
+        }
+    };
 
     // Load available text files from the server
     const loadAvailableFiles = async () => {
@@ -57,6 +79,7 @@ export function useTodoData() {
 
             try {
                 todoData.value = parseTodoMdFile(response.data.content);
+                notifyAfterLoad();
             } catch (parseError) {
                 console.error('Error parsing server todo file:', parseError);
                 parsingError.value = `Error parsing file: ${parseError.message || 'Invalid format'}`;
@@ -70,6 +93,7 @@ export function useTodoData() {
             if (error.response && error.response.status === 404) {
                 parsingError.value = 'File no longer exists. Please select a different file.';
                 todoData.value = { columnOrder: [], columnStacks: {} };
+                notifyAfterLoad();
                 
                 // Clear the saved file from localStorage if it no longer exists
                 localStorage.removeItem('selectedTodoFilePath');
@@ -91,8 +115,10 @@ export function useTodoData() {
     };
 
     // Save todo data to the server
-    const persistTodoData = async () => {
+    const persistTodoData = async (options = {}) => {
         try {
+            const { skipHistory = false } = options;
+
             // Render using nested structure
             const content = renderTodoMdFile(todoData.value);
 
@@ -111,6 +137,10 @@ export function useTodoData() {
                 content,
                 path: selectedFile.value.path
             });
+
+            if (!skipHistory) {
+                await notifyAfterPersist(content);
+            }
             
             return true;
         } catch (error) {
@@ -232,6 +262,8 @@ export function useTodoData() {
         loadAvailableFiles,
         loadTodoData,
         persistTodoData,
-        handleFileChange
+        handleFileChange,
+        registerAfterPersist,
+        registerAfterLoad
     };
 }
