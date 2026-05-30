@@ -13,7 +13,6 @@ export function useTodoData() {
     const availableFiles = ref([]);
     const selectedFile = ref({ name: '', path: '', isBuiltIn: true });
     const parsingError = ref('');
-    const showRawText = ref(false);
     const afterPersistCallbacks = new Set();
     const afterLoadCallbacks = new Set();
     
@@ -258,7 +257,6 @@ export function useTodoData() {
         availableFiles,
         selectedFile,
         parsingError,
-        showRawText,
         loadAvailableFiles,
         loadTodoData,
         persistTodoData,

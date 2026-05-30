@@ -16,7 +16,7 @@
         {{ formatTabName(file) }}
       </div>
     </div>
-    <div class="toggles-container">
+    <div class="toolbar-controls">
       <div class="history-controls">
         <button
             class="history-btn"
@@ -70,20 +70,6 @@
           Focus
         </button>
       </div>
-      <label class="toggle-switch" :class="{ disabled: unparsedLineCount === 0 }">
-        <input
-            type="checkbox"
-            class="raw-text-toggle"
-            :disabled="unparsedLineCount === 0"
-            :checked="showRawText"
-            @change="$emit('toggle-raw-text')"
-        />
-        <span class="slider"></span>
-        <span class="toggle-label">
-          {{ showRawText ? 'Hide' : 'Show' }} raw text
-          <span v-if="unparsedLineCount > 0">({{ unparsedLineCount }} lines)</span>
-        </span>
-      </label>
     </div>
   </div>
 </template>
@@ -97,14 +83,6 @@ const props = defineProps({
   selectedFile: {
     type: Object,
     default: () => ({ name: '', path: '', isBuiltIn: true })
-  },
-  unparsedLineCount: {
-    type: Number,
-    default: 0
-  },
-  showRawText: {
-    type: Boolean,
-    default: false
   },
   viewMode: {
     type: String,
@@ -120,7 +98,7 @@ const props = defineProps({
   }
 });
 
-defineEmits(['file-selected', 'toggle-raw-text', 'set-view-mode', 'show-history', 'undo', 'redo']);
+defineEmits(['file-selected', 'set-view-mode', 'show-history', 'undo', 'redo']);
 
 // Format tab name based on file type
 const formatTabName = (file) => {
@@ -275,7 +253,7 @@ const getFileTooltip = (file) => {
 }
 
 
-.toggles-container {
+.toolbar-controls {
   display: flex;
   gap: 10px;
   padding: 0 12px 0 8px;
@@ -324,66 +302,6 @@ const getFileTooltip = (file) => {
 
 .view-mode-btn.active:hover {
   background-color: #43a047;
-}
-
-.toggle-switch {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.toggle-switch.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.raw-text-toggle {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 20px;
-  background-color: #ccc;
-  border-radius: 20px;
-  transition: background-color 0.2s ease;
-  margin-right: 8px;
-}
-
-.slider:before {
-  content: "";
-  position: absolute;
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  border-radius: 50%;
-  transition: transform 0.2s ease;
-}
-
-.raw-text-toggle:checked + .slider {
-  background-color: #4caf50;
-}
-
-.raw-text-toggle:checked + .slider:before {
-  transform: translateX(20px);
-}
-
-.raw-text-toggle:disabled + .slider {
-  background-color: #ddd;
-}
-
-.toggle-label {
-  color: #555;
 }
 
 .history-btn {

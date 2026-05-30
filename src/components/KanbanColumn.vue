@@ -1,6 +1,6 @@
 <!-- components/KanbanColumn.vue -->
 <template>
-  <div v-if="showRawText || !isRawTextColumn" ref="columnRef" :class="['kanban-column', `${columnType.toLowerCase()}-column`, { 'raw-text-column': isRawTextColumn, 'ice-column': columnData.on_ice }]" :data-on-ice="columnData.on_ice">
+  <div v-if="!isRawTextColumn" ref="columnRef" :class="['kanban-column', `${columnType.toLowerCase()}-column`, { 'raw-text-column': isRawTextColumn, 'ice-column': columnData.on_ice }]" :data-on-ice="columnData.on_ice">
     <!-- Raw-text column content (text only) -->
     <div v-if="isRawTextColumn" class="raw-text-column-content">
       <div class="raw-text-column-text">{{ columnData.displayText || columnData.text }}</div>
@@ -83,12 +83,11 @@
         >
           <template #item="{ element: section }">
             <KanbanSection
-                v-if="showRawText || section.type !== 'raw-text'"
+                v-if="section.type !== 'raw-text'"
                 :section="section"
                 :column-type="columnType"
                 :column="title"
                 :column-data="columnData"
-                :show-raw-text="showRawText"
                 :is-task-selected="isTaskSelected"
                 :selected-task-ids="selectedTaskIds"
                 :is-column-collapsed="isDrawerExpanded === false"
@@ -135,10 +134,6 @@ const props = defineProps({
   columnData: {
     type: Object,
     default: () => ({})
-  },
-  showRawText: {
-    type: Boolean,
-    default: false
   },
   isTaskSelected: {
     type: Function,

@@ -47,7 +47,6 @@
             :can-add-section="true"
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
-            :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
             :selected-task-ids="selectedTaskIds"
             :is-drawer-expanded="isTodoDrawerExpanded"
@@ -75,7 +74,6 @@
             :can-add-section="true"
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
-            :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
             :selected-task-ids="selectedTaskIds"
             :is-drawer-expanded="isProjectsDrawerExpanded"
@@ -103,7 +101,6 @@
             :can-add-section="true"
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
-            :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
             :selected-task-ids="selectedTaskIds"
             @add-section="createNewSection('SELECTED', columnName)"
@@ -129,7 +126,6 @@
             :can-add-section="true"
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
-            :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
             :selected-task-ids="selectedTaskIds"
             :is-drawer-expanded="isWipDrawerExpanded"
@@ -157,7 +153,6 @@
             :can-add-section="false"
             :column="columnName"
             :column-data="getColumnDataWithIce(columnName)"
-            :show-raw-text="props.showRawText"
             :is-task-selected="isTaskSelected"
             :selected-task-ids="selectedTaskIds"
             :is-drawer-expanded="isDoneDrawerExpanded"
@@ -189,10 +184,6 @@ const props = defineProps({
   todoData: {
     type: Object,
     default: () => ({ columnOrder: [], columnStacks: {} })
-  },
-  showRawText: {
-    type: Boolean,
-    default: false
   },
   viewMode: {
     type: String,

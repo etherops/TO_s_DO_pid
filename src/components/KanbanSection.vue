@@ -202,7 +202,7 @@
       >
         <template #item="{ element: item, index }">
           <div
-            v-if="showRawText || item.type !== 'raw-text'"
+            v-if="item.type !== 'raw-text'"
             :class="['task-card-wrapper', {
               'collapsed-completed': isCompletedCollapsed && getContiguousCompletedTasks.includes(item),
               'collapsed-in-progress': isCompletedCollapsed && getContiguousInProgressTasks.includes(item)
@@ -262,10 +262,6 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
-  showRawText: {
-    type: Boolean,
-    default: false
-  },
   isTaskSelected: {
     type: Function,
     default: null
@@ -287,10 +283,6 @@ const isRawTextSection = computed(() => props.section.type === 'raw-text');
 
 // Count visible items for empty section display
 const visibleItemsCount = computed(() => {
-  if (props.showRawText) {
-    return (props.section.items || []).length;
-  }
-  // Count non-raw-text items when showRawText is false
   return (props.section.items || []).filter(item => item.type !== 'raw-text').length;
 });
 

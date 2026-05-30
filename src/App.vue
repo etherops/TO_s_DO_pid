@@ -4,13 +4,10 @@
     <FileTabBar
         :available-files="availableFiles"
         :selected-file="selectedFile"
-        :unparsed-line-count="unparsedLineCount"
-        :show-raw-text="showRawText"
         :view-mode="viewMode"
         :can-undo="canUndo"
         :can-redo="canRedo"
         @file-selected="handleFileSelected"
-        @toggle-raw-text="toggleRawText"
         @set-view-mode="setViewMode"
         @show-history="showHistory = true"
         @undo="undo"
@@ -37,7 +34,6 @@
     <KanbanBoard
         v-else
         :todo-data="todoData"
-        :show-raw-text="showRawText"
         :view-mode="viewMode"
         @update="handleUpdate"
         @set-view-mode="setViewMode"
@@ -61,7 +57,6 @@ const {
   availableFiles,
   selectedFile,
   parsingError,
-  showRawText,
   loadAvailableFiles,
   loadTodoData,
   persistTodoData,
@@ -69,10 +64,6 @@ const {
   registerAfterPersist,
   registerAfterLoad
 } = useTodoData();
-
-const toggleRawText = () => {
-  showRawText.value = !showRawText.value;
-};
 
 // View mode state - load from localStorage ('normal', 'triage', 'focus')
 const viewMode = ref(
@@ -148,39 +139,6 @@ const handleUndoRedoShortcut = (event) => {
     redo();
   }
 };
-
-// Calculate unparsed line count in view layer
-const unparsedLineCount = computed(() => {
-  let count = 0;
-  
-  // Count raw-text column stacks
-  todoData.value.columnOrder?.forEach(columnName => {
-    const columnStackData = todoData.value.columnStacks[columnName];
-    if (columnStackData?.type === 'raw-text') {
-      count++;
-    }
-  });
-  
-  // Count raw-text sections and items within sections
-  todoData.value.columnOrder?.forEach(columnName => {
-    const columnStackData = todoData.value.columnStacks[columnName];
-    if (columnStackData?.sections) {
-      columnStackData.sections.forEach(section => {
-        if (section.type === 'raw-text') {
-          count++;
-        } else if (section.items) {
-          section.items.forEach(item => {
-            if (item.type === 'raw-text') {
-              count++;
-            }
-          });
-        }
-      });
-    }
-  });
-  
-  return count;
-});
 
 onMounted(async () => {
   await loadAvailableFiles();
