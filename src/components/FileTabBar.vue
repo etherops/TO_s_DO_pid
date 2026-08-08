@@ -143,6 +143,9 @@ const getFileTooltip = (file) => {
   background-color: #f5f5f5;
   border-bottom: 1px solid #e0e0e0;
   margin-top: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .logo-container {
@@ -172,8 +175,8 @@ const getFileTooltip = (file) => {
 .file-tabs {
   display: flex;
   overflow-x: auto;
-  padding: 0 20px;
-  flex: 1;
+  padding: 0 6px;
+  flex: 1 1 auto;
   min-width: 0; /* Allow flex item to shrink below content width */
 }
 
@@ -255,10 +258,11 @@ const getFileTooltip = (file) => {
 
 .toolbar-controls {
   display: flex;
-  gap: 10px;
-  padding: 0 12px 0 8px;
+  gap: 8px;
+  padding: 0 25px 0 6px;
   flex-shrink: 0;
   align-items: center;
+  box-sizing: border-box;
 }
 
 .history-controls {
@@ -276,7 +280,7 @@ const getFileTooltip = (file) => {
 }
 
 .view-mode-btn {
-  padding: 5px 12px;
+  padding: 5px 10px;
   font-size: 12px;
   font-weight: 500;
   background-color: #f5f5f5;
