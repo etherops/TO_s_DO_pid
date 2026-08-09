@@ -52,6 +52,14 @@
           <path fill="currentColor" d="M13 3a9 9 0 1 0 8.94 10h-2.02A7 7 0 1 1 13 5v3l4-4-4-4v3zm-1 5v5l4.25 2.52.75-1.23L13.5 12.25V8z"/>
         </svg>
       </button>
+      <button
+          class="history-btn theme-toggle-btn"
+          @click="$emit('cycle-theme')"
+          :title="`Theme: ${themePreference} — click to switch`"
+          aria-label="Toggle theme"
+      >
+        {{ themeGlyph }}
+      </button>
       <div class="view-mode-buttons">
         <button
             class="view-mode-btn"
@@ -63,9 +71,17 @@
         </button>
         <button
             class="view-mode-btn"
+            :class="{ active: viewMode === 'plan' }"
+            @click="$emit('set-view-mode', 'plan')"
+            title="Plan Mode: Expand SELECTED, WIP; Collapse TODO, PROJECTS, ARCHIVE"
+        >
+          Plan
+        </button>
+        <button
+            class="view-mode-btn focus-mode-btn"
             :class="{ active: viewMode === 'focus' }"
             @click="$emit('set-view-mode', 'focus')"
-            title="Focus Mode: Expand SELECTED, WIP; Collapse TODO, PROJECTS, ARCHIVE"
+            title="Focus Mode: Execute this week — NOW / UP NEXT / DONE pulled from SELECTED and WIP"
         >
           Focus
         </button>
@@ -75,6 +91,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
+
 const props = defineProps({
   availableFiles: {
     type: Array,
@@ -88,6 +106,10 @@ const props = defineProps({
     type: String,
     default: 'normal'
   },
+  themePreference: {
+    type: String,
+    default: 'auto'
+  },
   canUndo: {
     type: Boolean,
     default: false
@@ -98,7 +120,9 @@ const props = defineProps({
   }
 });
 
-defineEmits(['file-selected', 'set-view-mode', 'show-history', 'undo', 'redo']);
+defineEmits(['file-selected', 'set-view-mode', 'cycle-theme', 'show-history', 'undo', 'redo']);
+
+const themeGlyph = computed(() => ({ auto: '◐', dark: '☾', light: '☀' }[props.themePreference] || '◐'));
 
 // Format tab name based on file type
 const formatTabName = (file) => {
@@ -291,8 +315,8 @@ const getFileTooltip = (file) => {
   white-space: nowrap;
 }
 
-.view-mode-btn:first-child {
-  border-right: 1px solid #ccc;
+.view-mode-btn + .view-mode-btn {
+  border-left: 1px solid #ccc;
 }
 
 .view-mode-btn:hover {
@@ -306,6 +330,15 @@ const getFileTooltip = (file) => {
 
 .view-mode-btn.active:hover {
   background-color: #43a047;
+}
+
+.focus-mode-btn.active {
+  background-color: #1e232b;
+  color: #ffb347;
+}
+
+.focus-mode-btn.active:hover {
+  background-color: #2b3341;
 }
 
 .history-btn {

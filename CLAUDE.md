@@ -41,8 +41,9 @@ A Vue 3 Kanban board whose "database" is one or more plain markdown files. Every
   - `useTaskDisplay.js` — task filtering and display helpers.
   - `useTaskSelection.js` — multi-select set of task ids and click handler (normal click, cmd/ctrl click, shift click).
 - Components (`src/components/`):
-  - `FileTabBar.vue` — tabs, view-mode buttons (Triage/Focus), raw-text toggle, History button.
-  - `KanbanBoard.vue` — renders the five column stacks, owns drag/drop glue, date-picker, archive-confirm modal, context menu, multi-drag handler.
+  - `FileTabBar.vue` — tabs, view-mode buttons (Triage/Plan/Focus), undo/redo, History button.
+  - `KanbanBoard.vue` — renders the five column stacks, owns drag/drop glue, date-picker, archive-confirm modal, context menu, multi-drag handler. Drawer presets per view mode: `triage` (expand TODO/PROJECTS, collapse WIP/DONE) and `plan` (expand SELECTED/WIP, collapse the rest).
+  - `FocusMode.vue` — full-screen execution view (view mode `focus`): a 4-panel carousel (UP NEXT / IN PROGRESS & QUEUED / NOW / DONE) pulled from SELECTED and WIP columns only. A task is **on deck** if staged into WIP or due by the Saturday closing this Sunday–Saturday week. IN PROGRESS / QUEUED combines every `[~]` task with unstarted work due later this week; NOW holds the remaining unstarted deck, including everything due today or overdue. Both execution panels group cards by Today (including overdue), General, then each upcoming due day. UP NEXT keeps the rest of SELECTED and DONE keeps completed SELECTED/WIP work. A sliding 2-wide spotlight keeps adjacent panels fully visible; off-window panels peek from the edges. Cards carry their board section as a badge and cluster by section within each due day. Row actions complete, start (▶), pause (↜), and reopen work; start/reopen pull non-WIP tasks into the active WIP section, and quick-add appends there as unstarted NOW work. Cross-panel moves are staged with a hold, flight, and landing highlight. Navigation supports panel clicks, dots, arrow keys, and horizontal swipe. Theme follows the dark/light/auto toolbar preference (`localStorage.themePreference`).
   - `KanbanColumn.vue` — single column stack (TODO/PROJECTS/SELECTED/WIP/DONE); tri-state collapse caret; passes multi-drag through.
   - `KanbanSection.vue` — an H2/H3 section inside a column; hosts `vuedraggable`; handles multi-drag stacking (clones `.task-card.selected` into the drag wrapper, hides originals with `.multi-drag-hidden`).
   - `TaskCard.vue` — individual task card; inline edit, status, due date, notes, completion date.
@@ -52,6 +53,7 @@ A Vue 3 Kanban board whose "database" is one or more plain markdown files. Every
   - `HistoryPanel.vue` — per-tab version history drawer: lists daily backups with date + time, shows an LCS-based unified diff vs. current file, supports full-version restore and per-line hover restore.
 - Utils (`src/utils/`):
   - `TodoMdParser.js` — `parseTodoMdFile` / `renderTodoMdFile`, and `COLUMNSTACK_CATEGORIES` (H1 → column-stack keyword mapping).
+  - `focusModeHelpers.js` — pure derivation for Focus mode (`deriveFocusModel`, `findActiveWipSection`, `findQuickAddTarget`).
   - `dateHelpers.js`, `completionDateHelpers.js` — date parsing/formatting.
   - `sectionHelpers.js`, `sortHelpers.js`, `taskTextHelpers.js` — section/task manipulation helpers.
 
@@ -123,7 +125,7 @@ The HistoryPanel uses `GET /api/history` and `GET /api/history/version` to surfa
 - Drag/drop updates are optimistic (UI first, save follows).
 - All parse/render logic lives in `TodoMdParser.js`.
 - Date logic lives in `dateHelpers.js` / `completionDateHelpers.js`.
-- Selected-file persistence is in `localStorage` (`selectedTodoFilePath`); view mode is in `localStorage.viewMode`.
+- Selected-file persistence is in `localStorage` (`selectedTodoFilePath`); view mode is in `localStorage.viewMode` (`normal` / `triage` / `plan` / `focus`).
 - WebSocket client uses a checksum comparison against its own `renderTodoMdFile` output to avoid reload storms on self-initiated saves.
 
 ## Testing Approach

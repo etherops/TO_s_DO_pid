@@ -188,7 +188,7 @@ const props = defineProps({
   viewMode: {
     type: String,
     default: 'normal',
-    validator: (value) => ['normal', 'triage', 'focus'].includes(value)
+    validator: (value) => ['normal', 'triage', 'plan'].includes(value)
   }
 });
 
@@ -295,32 +295,36 @@ watch(isWipDrawerExpanded, (newValue) => {
   localStorage.setItem('wipDrawerExpanded', String(newValue));
 });
 
-// Watch view mode changes and update drawer states accordingly
-watch(() => props.viewMode, (newViewMode) => {
-  if (newViewMode === 'focus') {
-    // Focus mode: collapse TODO, PROJECTS, DONE; expand SELECTED, WIP
-    isTodoDrawerExpanded.value = false;
-    isProjectsDrawerExpanded.value = false;
-    isDoneDrawerExpanded.value = false;
-    isWipDrawerExpanded.value = true;
-  } else if (newViewMode === 'triage') {
-    // Triage mode: expand TODO, PROJECTS, SELECTED; collapse WIP, DONE
-    isTodoDrawerExpanded.value = true;
-    isProjectsDrawerExpanded.value = true;
-    isDoneDrawerExpanded.value = false;
-    isWipDrawerExpanded.value = false;
-  } else if (newViewMode === 'normal') {
-    // Normal mode: expand all drawers UNLESS exiting via manual column toggle
+// Drawer arrangements per view mode
+const DRAWER_PRESETS = {
+  plan:   { todo: false, projects: false, wip: true,  done: false },
+  triage: { todo: true,  projects: true,  wip: false, done: false },
+  normal: { todo: true,  projects: true,  wip: true,  done: true }
+};
+
+const applyDrawerPreset = (mode) => {
+  const preset = DRAWER_PRESETS[mode];
+  if (!preset) return;
+  isTodoDrawerExpanded.value = preset.todo;
+  isProjectsDrawerExpanded.value = preset.projects;
+  isWipDrawerExpanded.value = preset.wip;
+  isDoneDrawerExpanded.value = preset.done;
+};
+
+// Apply drawer presets on view mode changes, and on mount (the board remounts
+// when returning from the full-screen Focus mode)
+watch(() => props.viewMode, (newViewMode, oldViewMode) => {
+  if (newViewMode === 'normal') {
+    // On mount in normal mode, keep the drawer states persisted in localStorage
+    if (oldViewMode === undefined) return;
+    // Keep current drawer states when exiting a mode via manual column toggle
     if (preserveDrawersOnExit.value) {
       preserveDrawersOnExit.value = false;
-      return; // Keep current drawer states
+      return;
     }
-    isTodoDrawerExpanded.value = true;
-    isProjectsDrawerExpanded.value = true;
-    isDoneDrawerExpanded.value = true;
-    isWipDrawerExpanded.value = true;
   }
-});
+  applyDrawerPreset(newViewMode);
+}, { immediate: true });
 
 // Check if each column stack type has any columns
 const hasTodoColumns = computed(() => {

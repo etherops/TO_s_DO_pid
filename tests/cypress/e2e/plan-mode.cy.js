@@ -1,6 +1,6 @@
 import { refreshAndWait, findSection, findTask } from '../support/helpers.js';
 
-describe('View Modes (Triage & Focus)', () => {
+describe('View Modes (Triage & Plan)', () => {
   const fixtureContent = `# TODO
 ## BACKLOG
 * [ ] Todo task 1
@@ -39,20 +39,20 @@ describe('View Modes (Triage & Focus)', () => {
     });
   });
 
-  describe('Focus Mode', () => {
-    it('should toggle focus mode and interact with WIP tasks', () => {
+  describe('Plan Mode', () => {
+    it('should toggle plan mode and interact with WIP tasks', () => {
       // Use existing WIP tasks from fixture
       const existingWipTask = 'BILLS - Phone bill really really really really really really really really really really really really really really really really really long';
 
       // Verify task is visible in normal mode
       cy.get('.wip-column').should('contain', existingWipTask);
 
-      // Enable focus mode by clicking the Focus button
-      cy.get('.view-mode-btn').contains('Focus').click();
+      // Enable plan mode by clicking the Plan button
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
 
-      // Verify Focus button is active
-      cy.get('.view-mode-btn').contains('Focus').should('have.class', 'active');
+      // Verify Plan button is active
+      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
 
       // Verify WIP tasks are still visible and we can interact with them
       cy.get('.wip-column').should('contain', existingWipTask);
@@ -75,15 +75,15 @@ describe('View Modes (Triage & Focus)', () => {
       });
     });
 
-    it('should collapse TODO, PROJECTS, and DONE but expand SELECTED and WIP in focus mode', () => {
+    it('should collapse TODO, PROJECTS, and DONE but expand SELECTED and WIP in plan mode', () => {
       // Start in normal mode - all columns should be expanded
       cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
       cy.get('.projects-stack').should('not.have.class', 'drawer-collapsed');
       cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
       cy.get('.done-stack').should('not.have.class', 'drawer-collapsed');
 
-      // Enable focus mode
-      cy.get('.view-mode-btn').contains('Focus').click();
+      // Enable plan mode
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
 
       // Verify correct columns are collapsed/expanded
@@ -96,9 +96,9 @@ describe('View Modes (Triage & Focus)', () => {
       cy.get('.selected-stack').should('be.visible');
     });
 
-    it('should hide section action buttons when column is collapsed in focus mode', () => {
-      // Enable focus mode
-      cy.get('.view-mode-btn').contains('Focus').click();
+    it('should hide section action buttons when column is collapsed in plan mode', () => {
+      // Enable plan mode
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
 
       // TODO and PROJECTS should be collapsed
@@ -118,51 +118,51 @@ describe('View Modes (Triage & Focus)', () => {
       cy.get('.wip-column .section-header-actions').should('exist');
     });
 
-    it('should persist focus mode across page reload', () => {
-      // Enable focus mode
-      cy.get('.view-mode-btn').contains('Focus').click();
+    it('should persist plan mode across page reload', () => {
+      // Enable plan mode
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
 
       // Verify it's enabled - button is active and drawers are collapsed
-      cy.get('.view-mode-btn').contains('Focus').should('have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
       cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
       cy.get('.done-stack').should('have.class', 'drawer-collapsed');
 
       // Reload and verify persistence
       refreshAndWait();
 
-      // Verify focus mode is still enabled
-      cy.get('.view-mode-btn').contains('Focus').should('have.class', 'active');
+      // Verify plan mode is still enabled
+      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
       cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
 
       // Verify we can still interact with tasks
       findTask('TECH - Schedule service appointment').should('be.visible');
 
-      // Disable focus mode by clicking Focus again
-      cy.get('.view-mode-btn').contains('Focus').click();
+      // Disable plan mode by clicking Plan again
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
 
       // Reload and verify mode stays disabled
       refreshAndWait();
 
-      cy.get('.view-mode-btn').contains('Focus').should('not.have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
       // After disabling view mode, drawer states return to default (expanded)
       cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
     });
 
-    it('should return to normal mode and expand all columns when clicking active Focus button', () => {
-      // Enable focus mode
-      cy.get('.view-mode-btn').contains('Focus').click();
+    it('should return to normal mode and expand all columns when clicking active Plan button', () => {
+      // Enable plan mode
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
-      cy.get('.view-mode-btn').contains('Focus').should('have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
       cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
 
-      // Click Focus again to disable (return to normal)
-      cy.get('.view-mode-btn').contains('Focus').click();
+      // Click Plan again to disable (return to normal)
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
 
       // Verify we're back to normal mode (no active button)
-      cy.get('.view-mode-btn').contains('Focus').should('not.have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
       cy.get('.view-mode-btn').contains('Triage').should('not.have.class', 'active');
 
       // All columns should be expanded
@@ -267,7 +267,7 @@ describe('View Modes (Triage & Focus)', () => {
 
       // Verify we're back to normal mode (no active button)
       cy.get('.view-mode-btn').contains('Triage').should('not.have.class', 'active');
-      cy.get('.view-mode-btn').contains('Focus').should('not.have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
 
       // Drawer states return to default (all expanded)
       cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
@@ -276,7 +276,7 @@ describe('View Modes (Triage & Focus)', () => {
   });
 
   describe('Mode Switching', () => {
-    it('should switch directly from Triage to Focus mode', () => {
+    it('should switch directly from Triage to Plan mode', () => {
       // Enable triage mode
       cy.get('.view-mode-btn').contains('Triage').click();
       cy.wait(100);
@@ -284,24 +284,24 @@ describe('View Modes (Triage & Focus)', () => {
       cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
       cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
 
-      // Switch directly to focus mode
-      cy.get('.view-mode-btn').contains('Focus').click();
+      // Switch directly to plan mode
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
 
-      // Verify Focus is now active and Triage is not
-      cy.get('.view-mode-btn').contains('Focus').should('have.class', 'active');
+      // Verify Plan is now active and Triage is not
+      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
       cy.get('.view-mode-btn').contains('Triage').should('not.have.class', 'active');
 
-      // Verify focus mode drawer states
+      // Verify plan mode drawer states
       cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
       cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
     });
 
-    it('should switch directly from Focus to Triage mode', () => {
-      // Enable focus mode
-      cy.get('.view-mode-btn').contains('Focus').click();
+    it('should switch directly from Plan to Triage mode', () => {
+      // Enable plan mode
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
-      cy.get('.view-mode-btn').contains('Focus').should('have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
       cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
       cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
 
@@ -309,9 +309,9 @@ describe('View Modes (Triage & Focus)', () => {
       cy.get('.view-mode-btn').contains('Triage').click();
       cy.wait(100);
 
-      // Verify Triage is now active and Focus is not
+      // Verify Triage is now active and Plan is not
       cy.get('.view-mode-btn').contains('Triage').should('have.class', 'active');
-      cy.get('.view-mode-btn').contains('Focus').should('not.have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
 
       // Verify triage mode drawer states
       cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
@@ -377,10 +377,10 @@ describe('View Modes (Triage & Focus)', () => {
     });
 
     it('should exit view mode when manually toggling WIP drawer but preserve other column states', () => {
-      // Enable focus mode (WIP is expanded, TODO/PROJECTS/DONE collapsed)
-      cy.get('.view-mode-btn').contains('Focus').click();
+      // Enable plan mode (WIP is expanded, TODO/PROJECTS/DONE collapsed)
+      cy.get('.view-mode-btn').contains('Plan').click();
       cy.wait(100);
-      cy.get('.view-mode-btn').contains('Focus').should('have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
       cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
       cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
       cy.get('.projects-stack').should('have.class', 'drawer-collapsed');
@@ -390,13 +390,13 @@ describe('View Modes (Triage & Focus)', () => {
       cy.wait(100);
 
       // View mode should be deactivated (back to normal)
-      cy.get('.view-mode-btn').contains('Focus').should('not.have.class', 'active');
+      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
       cy.get('.view-mode-btn').contains('Triage').should('not.have.class', 'active');
 
       // WIP is now collapsed (we just toggled it)
       cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
 
-      // Other columns should remain in their focus mode state (collapsed)
+      // Other columns should remain in their plan mode state (collapsed)
       cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
       cy.get('.projects-stack').should('have.class', 'drawer-collapsed');
     });
