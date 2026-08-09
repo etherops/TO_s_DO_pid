@@ -17,7 +17,19 @@
                :style="{ width: progressPercent }"></div>
         </div>
       </div>
+      <button v-if="quickAddTarget" class="focus-quick-add-btn" :class="{ active: showQuickAdd }"
+              title="Add something for this week" @click="toggleQuickAdd">+ Add</button>
       <button class="focus-exit-btn" title="Back to board" @click="$emit('set-view-mode', 'normal')">✕</button>
+      <div v-if="showQuickAdd && quickAddTarget" class="focus-quick-add-popover" @click.stop>
+        <input
+            ref="quickAddInput"
+            v-model="quickAddText"
+            class="focus-quick-add-input"
+            :placeholder="`Add to ${quickAddTarget.columnName}`"
+            @keydown.enter="quickAdd"
+            @keydown.esc="showQuickAdd = false"
+        />
+      </div>
     </header>
 
     <div class="focus-stage">
@@ -213,19 +225,11 @@
       </div>
     </nav>
 
-    <div v-if="quickAddTarget" class="focus-quick-add">
-      <input
-          v-model="quickAddText"
-          class="focus-quick-add-input"
-          :placeholder="`+ Add something for this week (goes to ${quickAddTarget.columnName})`"
-          @keydown.enter="quickAdd"
-      />
-    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import {
   deriveFocusModel,
   findQuickAddTarget,
@@ -252,6 +256,8 @@ const props = defineProps({
 const emit = defineEmits(['update', 'set-view-mode']);
 
 const quickAddText = ref('');
+const quickAddInput = ref(null);
+const showQuickAdd = ref(false);
 
 const model = computed(() => deriveFocusModel(props.todoData));
 const quickAddTarget = computed(() => findQuickAddTarget(props.todoData));
@@ -450,9 +456,10 @@ const panelStyle = (panelIndex) => {
   const w = windowStart.value;
 
   if (isFocused(panelIndex)) {
-    const x = panelIndex === w ? -16.8 : 16.8;
+    const x = panelIndex === w ? -17.5 : 17.5;
+    const inwardTilt = panelIndex === w ? 6 : -6;
     return {
-      transform: `translate(-50%, -50%) translateX(${x}vw) rotateY(0deg) scale(1)`,
+      transform: `translate(-50%, -50%) translateX(${x}vw) rotateY(${inwardTilt}deg) scale(1.07)`,
       zIndex: 50,
       opacity: 1,
       pointerEvents: 'auto'
@@ -461,11 +468,14 @@ const panelStyle = (panelIndex) => {
 
   const leftSide = panelIndex < w;
   const distance = leftSide ? w - panelIndex : panelIndex - (w + 1);
-  const x = (leftSide ? -1 : 1) * (52 + (distance - 1) * 28);
-  const opacity = distance === 1 ? 0.7 : 0;
+  const edgeAlignedX = leftSide
+      ? 'calc(-50vw + min(15vw, 233px))'
+      : 'calc(50vw - min(15vw, 233px))';
+  const x = distance === 1 ? edgeAlignedX : `${(leftSide ? -1 : 1) * 73}vw`;
+  const opacity = distance === 1 ? 0.82 : 0;
 
   return {
-    transform: `translate(-50%, -50%) translateX(${x}vw) rotateY(${leftSide ? -24 : 24}deg) scale(0.8)`,
+    transform: `translate(-50%, -50%) translateX(${x}) rotateY(${leftSide ? 22 : -22}deg) scale(0.8)`,
     zIndex: 40 - distance * 10,
     opacity,
     pointerEvents: opacity === 0 ? 'none' : 'auto'
@@ -637,7 +647,15 @@ const quickAdd = () => {
     displayText: getStrippedDisplayText(text)
   });
   quickAddText.value = '';
+  showQuickAdd.value = false;
   emit('update');
+};
+
+const toggleQuickAdd = async () => {
+  showQuickAdd.value = !showQuickAdd.value;
+  if (!showQuickAdd.value) return;
+  await nextTick();
+  quickAddInput.value?.focus();
 };
 </script>
 
@@ -655,12 +673,14 @@ const quickAdd = () => {
 /* Header                    */
 /* ========================= */
 .focus-header {
+  position: relative;
+  z-index: 200;
   display: flex;
   align-items: flex-end;
-  gap: 24px;
+  gap: 18px;
   max-width: 980px;
   margin: 0 auto;
-  padding: 18px 24px 0;
+  padding: 10px 24px 0;
 }
 
 .focus-heading {
@@ -673,11 +693,11 @@ const quickAdd = () => {
   letter-spacing: 3px;
   text-transform: uppercase;
   color: #ffb347;
-  margin-bottom: 4px;
+  margin-bottom: 1px;
 }
 
 .focus-date {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 800;
   margin: 0;
   color: #f4f6f8;
@@ -688,8 +708,8 @@ const quickAdd = () => {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
-  padding-bottom: 4px;
+  gap: 4px;
+  padding-bottom: 2px;
 }
 
 .focus-progress-text {
@@ -701,7 +721,7 @@ const quickAdd = () => {
 
 .focus-progress-track {
   width: 160px;
-  height: 6px;
+  height: 5px;
   border-radius: 3px;
   background: #262c36;
   overflow: hidden;
@@ -742,9 +762,9 @@ const quickAdd = () => {
 /* ========================= */
 .focus-stage {
   position: relative;
-  height: calc(100vh - 248px);
+  height: calc(100vh - 165px);
   min-height: 480px;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .focus-carousel {
@@ -768,11 +788,14 @@ const quickAdd = () => {
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
   cursor: pointer;
   overflow: hidden;
-  transition: transform 0.45s cubic-bezier(0.22, 0.9, 0.34, 1), opacity 0.35s ease,
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(0.22, 0.9, 0.34, 1), height 0.45s cubic-bezier(0.22, 0.9, 0.34, 1),
+              opacity 0.35s ease,
               border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .focus-panel.is-focused {
+  height: 93%;
   cursor: default;
   background: #1c212a;
   border-color: #2c3340;
@@ -795,7 +818,7 @@ const quickAdd = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px 10px;
+  padding: 8px 14px 7px;
   border-bottom: 1px solid #232a35;
 }
 
@@ -834,10 +857,10 @@ const quickAdd = () => {
 .panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 12px 12px;
+  padding: 6px 8px 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   scrollbar-color: #2c3340 transparent;
 }
 
@@ -884,11 +907,11 @@ const quickAdd = () => {
 .focus-task-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: #20262f;
   border: 1px solid #2a3240;
   border-radius: 7px;
-  padding: 5px 10px;
+  padding: 3px 8px;
   transition: all 0.15s ease;
 }
 
@@ -898,7 +921,7 @@ const quickAdd = () => {
 }
 
 .focus-task-row.execution-row {
-  padding: 7px 10px;
+  padding: 3px 8px;
 }
 
 .focus-task-row.inflight-row {
@@ -967,11 +990,14 @@ const quickAdd = () => {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
 }
 
 .focus-row-title {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
   color: #dfe3e8;
@@ -981,7 +1007,7 @@ const quickAdd = () => {
 }
 
 .focus-row-title.execution-row-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #f4f6f8;
 }
@@ -992,14 +1018,14 @@ const quickAdd = () => {
   font-weight: 500;
 }
 
-/* Day sections: QUEUED delineates its days rather than badging each card */
+/* Day sections delineate dates without spending a badge on every card */
 .focus-day-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 4px 4px;
-  margin-bottom: 4px;
+  padding: 6px 3px 2px;
+  margin-bottom: 1px;
   border-bottom: 1px solid #2a3240;
   font-size: 10px;
   font-weight: 700;
@@ -1009,7 +1035,7 @@ const quickAdd = () => {
 }
 
 .focus-day-header:first-child {
-  padding-top: 2px;
+  padding-top: 0;
 }
 
 .focus-day-header .day-count {
@@ -1035,8 +1061,8 @@ const quickAdd = () => {
 
 /* The card's board section, worn as a badge instead of a group header */
 .focus-section-badge {
-  align-self: flex-start;
-  max-width: 100%;
+  flex: 0 1 auto;
+  max-width: 34%;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.9px;
@@ -1046,28 +1072,28 @@ const quickAdd = () => {
   border: 1px solid #2f3846;
   border-radius: 3px;
   padding: 0 4px;
-  line-height: 1.5;
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .focus-row-note {
+  flex: 0 1 36%;
   font-size: 11px;
   line-height: 1.35;
   color: #9fb3c8;
   background: #171b21;
   border-left: 2px solid #3b82c4;
   border-radius: 3px;
-  padding: 2px 6px;
-  margin-top: 2px;
+  padding: 1px 5px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .focus-note-dot {
-  font-size: 13px;
+  font-size: 12px;
   opacity: 0.7;
   cursor: default;
 }
@@ -1076,7 +1102,7 @@ const quickAdd = () => {
   font-size: 10px;
   font-weight: 700;
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 1px 5px;
   white-space: nowrap;
 }
 
@@ -1209,9 +1235,9 @@ const quickAdd = () => {
   border-radius: 6px;
   color: #6f7a88;
   font-size: 11px;
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
   cursor: pointer;
   opacity: 0.4;
   transition: all 0.15s ease;
@@ -1264,8 +1290,8 @@ const quickAdd = () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding-top: 8px;
+  gap: 8px;
+  padding-top: 4px;
 }
 
 .focus-dots {
@@ -1305,10 +1331,38 @@ const quickAdd = () => {
 /* ========================= */
 /* Quick add                 */
 /* ========================= */
-.focus-quick-add {
-  max-width: 560px;
-  margin: 14px auto 28px;
-  padding: 0 24px;
+.focus-quick-add-btn {
+  height: 30px;
+  padding: 0 10px;
+  margin-bottom: 2px;
+  border: 1px solid #333c49;
+  border-radius: 6px;
+  background: transparent;
+  color: #9aa4b2;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.focus-quick-add-btn:hover,
+.focus-quick-add-btn.active {
+  color: #ffb347;
+  border-color: #556070;
+  background: #262c36;
+}
+
+.focus-quick-add-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 54px;
+  width: min(320px, calc(100vw - 48px));
+  padding: 7px;
+  border: 1px solid #333c49;
+  border-radius: 10px;
+  background: #1a1f26;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
 }
 
 .focus-quick-add-input {
@@ -1319,7 +1373,7 @@ const quickAdd = () => {
   border-radius: 10px;
   color: #dfe3e8;
   font-size: 14px;
-  padding: 11px 14px;
+  padding: 8px 12px;
   outline: none;
   transition: all 0.15s ease;
 }
@@ -1367,6 +1421,24 @@ const quickAdd = () => {
   color: #333;
   border-color: #aaa;
   background: #e8e8e8;
+}
+
+.theme-light .focus-quick-add-btn {
+  color: #666;
+  border-color: #ccc;
+}
+
+.theme-light .focus-quick-add-btn:hover,
+.theme-light .focus-quick-add-btn.active {
+  color: #e08900;
+  border-color: #aaa;
+  background: #e8e8e8;
+}
+
+.theme-light .focus-quick-add-popover {
+  border-color: #ccc;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16);
 }
 
 .theme-light .focus-panel {

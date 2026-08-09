@@ -430,6 +430,7 @@ describe('Focus Mode (execution carousel)', () => {
   it('should quick add a task into the active WIP section, appearing in NOW', () => {
     enterFocusMode();
 
+    cy.get('.focus-quick-add-btn').click();
     cy.get('.focus-quick-add-input').type('Buy oat milk{enter}');
 
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Buy oat milk')
