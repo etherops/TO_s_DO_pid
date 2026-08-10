@@ -482,7 +482,9 @@ const moveWithTransition = (entry, sourceBucket, destinationBucket, applyChange)
   if (transitions.value.has(taskId)) return;
 
   const index = model.value[sourceBucket].findIndex(candidate => candidate.task.id === taskId);
-  const direction = BUCKET_INDEX[destinationBucket] > BUCKET_INDEX[sourceBucket] ? 'right' : 'left';
+  const direction = sourceBucket === destinationBucket
+      ? 'within'
+      : BUCKET_INDEX[destinationBucket] > BUCKET_INDEX[sourceBucket] ? 'right' : 'left';
 
   transitions.value.set(taskId, { source: sourceBucket, index: Math.max(index, 0), entry, phase: 'held', direction });
 
@@ -1594,6 +1596,10 @@ const toggleQuickAdd = async () => {
   animation: flyLeft 0.55s cubic-bezier(0.45, 0, 0.72, 0.3) forwards;
 }
 
+.flight-card.fly-within {
+  animation: flyWithin 0.55s cubic-bezier(0.45, 0, 0.72, 0.3) forwards;
+}
+
 @keyframes flyRight {
   0% { transform: translateX(0) scale(1) rotate(0deg); opacity: 1; }
   15% { transform: translateX(-22px) scale(1.03) rotate(-1deg); opacity: 1; }
@@ -1606,6 +1612,12 @@ const toggleQuickAdd = async () => {
   100% { transform: translateX(-46vw) scale(0.68) rotate(-3deg); opacity: 0; }
 }
 
+@keyframes flyWithin {
+  0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+  18% { transform: translateY(8px) scale(1.03) rotate(0.5deg); opacity: 1; }
+  100% { transform: translateY(-72px) scale(0.72) rotate(-2deg); opacity: 0; }
+}
+
 /* Landing: slide in from the side the card travelled from, with a green flash */
 .focus-task-row.arriving.arrive-right {
   animation: arriveFromLeft 0.9s ease-out;
@@ -1613,6 +1625,10 @@ const toggleQuickAdd = async () => {
 
 .focus-task-row.arriving.arrive-left {
   animation: arriveFromRight 0.9s ease-out;
+}
+
+.focus-task-row.arriving.arrive-within {
+  animation: arriveWithin 0.9s ease-out;
 }
 
 @keyframes arriveFromLeft {
@@ -1625,6 +1641,12 @@ const toggleQuickAdd = async () => {
   0% { transform: translateX(34px) scale(0.94); opacity: 0; }
   38% { transform: translateX(0) scale(1); opacity: 1; box-shadow: 0 0 0 2px rgba(255, 179, 71, 0.55); }
   100% { transform: translateX(0) scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(255, 179, 71, 0); }
+}
+
+@keyframes arriveWithin {
+  0% { transform: translateY(-22px) scale(0.94); opacity: 0; }
+  38% { transform: translateY(0) scale(1); opacity: 1; box-shadow: 0 0 0 2px rgba(255, 179, 71, 0.55); }
+  100% { transform: translateY(0) scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(255, 179, 71, 0); }
 }
 
 @media (prefers-reduced-motion: reduce) {

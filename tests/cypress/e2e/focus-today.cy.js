@@ -303,16 +303,20 @@ describe('Focus Mode (execution carousel)', () => {
     });
     cy.get('.focus-date-option').contains('Next week').click();
     cy.get('.focus-date-menu').should('not.exist');
-    cy.get('.focus-task-row.transitioning.phase-held').should('contain', 'Renamed focus task');
-    cy.wait(1300);
+    cy.get('.focus-task-row.transitioning.phase-held.whisk-within').should('contain', 'Renamed focus task');
+    cy.wait(750);
+    cy.get('.flight-card.fly-within').should('contain', 'Renamed focus task');
+    cy.wait(600);
 
     cy.get('.focus-task-row').contains('.focus-task-row', 'Renamed focus task')
       .find('.focus-due-edit').click({ force: true });
     cy.get('.focus-date-menu input[aria-label="Custom due date"]')
       .invoke('val', dateInputValue(nextWeek)).trigger('change');
     cy.get('.focus-date-menu').should('not.exist');
-    cy.get('.focus-task-row.transitioning.phase-held').should('contain', 'Renamed focus task');
-    cy.wait(1300);
+    cy.get('.focus-task-row.transitioning.phase-held.whisk-within').should('contain', 'Renamed focus task');
+    cy.wait(750);
+    cy.get('.flight-card.fly-within').should('contain', 'Renamed focus task');
+    cy.wait(600);
 
     cy.get('.focus-mode').should('contain', 'Renamed focus task').and('contain', 'Aug');
     cy.wait(500);
