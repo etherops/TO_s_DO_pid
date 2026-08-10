@@ -5,9 +5,12 @@
 // due date falling on or before the Saturday that closes this week. Four
 // buckets: IN PROGRESS / QUEUED (anything underway, plus unstarted work due
 // later this week), NOW (the remaining unstarted deck, including overdue and
-// due-today work), UP NEXT (the rest of SELECTED), and DONE.
+// due-today work), UP NEXT (the rest of SELECTED), and DONE. Completed work
+// due today stays visible in NOW until tomorrow. Work completed or cancelled
+// today also stays in NOW, regardless of its due date.
 
 import { isPast, isToday, extractDateFromText } from './dateHelpers';
+import { isCompletedToday } from './completionDateHelpers';
 
 export const UP_NEXT_GROUP_ORDER = ['inflight', 'upcoming', 'undated'];
 
@@ -89,7 +92,7 @@ const eachFocusTask = (todoData, visit) => {
  * due later this week. NOW holds the remaining unstarted deck, including all
  * overdue and due-today work. Both are ordered overdue -> today -> undated ->
  * each upcoming day. UP NEXT keeps the rest of SELECTED and DONE keeps
- * completed work still on the board.
+ * terminal work, except cards due today or completed/cancelled today remain in NOW.
  * @param {Object} todoData - { columnOrder, columnStacks }
  * @returns {{ inProgressQueued: Array, now: Array, upNext: Array, done: Array }}
  *          entries of shape { task, columnName, sectionName, section, dueGroup?, group? }
@@ -103,7 +106,12 @@ export const deriveFocusModel = (todoData) => {
   eachFocusTask(todoData, (entry) => {
     const { task, stackName } = entry;
 
-    if (task.statusChar === 'x') {
+    const isTerminal = task.statusChar === 'x' || task.statusChar === '-';
+    if (isTerminal && (isToday(task.text) || isCompletedToday(task.text))) {
+      now.push({ ...entry, ...dueGrouping(task) });
+      return;
+    }
+    if (isTerminal) {
       done.push(entry);
       return;
     }

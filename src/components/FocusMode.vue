@@ -11,9 +11,9 @@
         <h1 class="focus-date">This Week</h1>
       </div>
       <div v-if="totalCount > 0" class="focus-progress">
-        <div class="focus-progress-text">{{ done.length }} / {{ totalCount }} done</div>
+        <div class="focus-progress-text">{{ completedCount }} / {{ totalCount }} done</div>
         <div class="focus-progress-track">
-          <div class="focus-progress-fill" :class="{ complete: done.length === totalCount }"
+          <div class="focus-progress-fill" :class="{ complete: completedCount === totalCount }"
                :style="{ width: progressPercent }"></div>
         </div>
       </div>
@@ -52,7 +52,8 @@
             <div v-for="entry in upNext" :key="entry.task.id" class="focus-task-row"
                  :class="rowClasses(entry)" :data-task-id="entry.task.id">
               <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
-                      title="Mark done" @click.stop="completeEntry(entry, 'upNext')"></button>
+                      :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
+                      @click.stop="cycleEntryStatus(entry, 'upNext')"></button>
               <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                 <input v-model="editTaskName" class="focus-edit-name"
                        aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -60,7 +61,7 @@
                 <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
               </div>
               <div v-else class="focus-row-main">
-                <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
+                <button class="focus-row-title" :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                         :title="`Edit name: ${entry.task.text}`"
                         @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
@@ -75,8 +76,6 @@
                 <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
                 <span class="focus-due-clock" aria-hidden="true">◷</span>
               </button>
-              <button v-if="!isEditingEntry(entry)" class="focus-status-action start-work"
-                      @click.stop="startEntry(entry, 'upNext')">Start work</button>
             </div>
           </div>
         </section>
@@ -106,7 +105,8 @@
                      }]"
                      :data-task-id="entry.task.id">
                   <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
-                          title="Mark done" @click.stop="completeEntry(entry, 'inProgressQueued')"></button>
+                          :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
+                          @click.stop="cycleEntryStatus(entry, 'inProgressQueued')"></button>
                   <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                     <input v-model="editTaskName" class="focus-edit-name"
                            aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -115,7 +115,7 @@
                   </div>
                   <div v-else class="focus-row-main">
                     <button class="focus-row-title execution-row-title"
-                          :class="{ 'done-title': entry.task.statusChar === 'x' }"
+                          :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${entry.task.text}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                     <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
@@ -129,20 +129,12 @@
                     <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
                     <span class="focus-due-clock" aria-hidden="true">◷</span>
                   </button>
-                  <button v-if="!isEditingEntry(entry) && entry.task.statusChar === '~'"
-                          class="focus-status-action return-to-queue"
-                          @click.stop="returnEntryToQueue(entry)">Back to queue</button>
-                  <button v-else-if="!isEditingEntry(entry)" class="focus-status-action start-work"
-                          @click.stop="startEntry(entry, 'inProgressQueued')">Start work</button>
                 </div>
               </template>
             </template>
             <div v-else-if="now.length || upNext.length" class="panel-empty">
               <div class="panel-empty-title">Nothing in progress or queued</div>
-              <button class="focus-start-next-btn"
-                      @click.stop="startEntry(now[0] || upNext[0], now.length ? 'now' : 'upNext')">
-                ▶ Start "{{ cardTitle(now[0] || upNext[0]) }}"
-              </button>
+              <div class="focus-subtext">Use a task's status control when you're ready to begin.</div>
             </div>
             <div v-else-if="done.length" class="panel-empty">
               <div class="panel-empty-title">That's a wrap 🎉</div>
@@ -179,7 +171,8 @@
                    :class="[rowClasses(entry), { 'overdue-row': entry.dueGroup === 'overdue' }]"
                    :data-task-id="entry.task.id">
                 <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
-                        title="Mark done" @click.stop="completeEntry(entry, 'now')"></button>
+                        :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
+                        @click.stop="cycleEntryStatus(entry, 'now')"></button>
                 <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -187,7 +180,7 @@
                   <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                 </div>
                 <div v-else class="focus-row-main">
-                  <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
+                  <button class="focus-row-title" :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${entry.task.text}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                   <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
@@ -202,11 +195,6 @@
                   <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
                   <span class="focus-due-clock" aria-hidden="true">◷</span>
                 </button>
-                <button v-if="!isEditingEntry(entry) && entry.task.statusChar === '~'"
-                        class="focus-status-action return-to-queue"
-                        @click.stop="returnEntryToQueue(entry, 'now')">Back to queue</button>
-                <button v-else-if="!isEditingEntry(entry)" class="focus-status-action start-work"
-                        @click.stop="startEntry(entry, 'now')">Start work</button>
               </div>
             </template>
           </div>
@@ -228,10 +216,11 @@
               Nothing shipped yet.<br>Get after it.
             </div>
             <div v-for="entry in done" :key="entry.task.id" class="focus-task-row"
-                 :class="[rowClasses(entry), { 'done-row': entry.task.statusChar === 'x' }]"
+                 :class="[rowClasses(entry), { 'done-row': ['x', '-'].includes(entry.task.statusChar) }]"
                  :data-task-id="entry.task.id">
               <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
-                      title="Reopen" @click.stop="reopenEntry(entry)"></button>
+                      :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
+                      @click.stop="cycleEntryStatus(entry, 'done')"></button>
               <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                 <input v-model="editTaskName" class="focus-edit-name"
                        aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -239,7 +228,7 @@
                 <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
               </div>
               <div v-else class="focus-row-main">
-                <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
+                <button class="focus-row-title" :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                         :title="`Edit name: ${entry.task.text}`"
                         @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
@@ -310,7 +299,7 @@ import {
   getStrippedDisplayText,
   updateTaskNameAndDueDate
 } from '../utils/taskTextHelpers';
-import { addCompletionDate, removeCompletionDate } from '../utils/completionDateHelpers';
+import { addCompletionDate } from '../utils/completionDateHelpers';
 import { sortTaskToCorrectPosition } from '../utils/sortHelpers';
 
 const props = defineProps({
@@ -339,10 +328,10 @@ const model = computed(() => deriveFocusModel(props.todoData));
 const quickAddTarget = computed(() => findQuickAddTarget(props.todoData));
 
 // ========================= Panel transitions =========================
-// A status change re-buckets a task instantly, which reads as the card simply
-// vanishing. Instead each move is staged: the card stays put in its original
-// panel wearing its new status (held), then visibly flies toward the
-// destination panel (whisking), and finally lands there with a highlight.
+// A change that relocates a task is staged: the card stays put in its original
+// slot wearing its new state (held), then visibly flies toward its destination
+// (whisking), and finally lands there with a highlight. Changes that leave the
+// card in the same rendered slot update immediately without an animation.
 const HOLD_MS = 700;
 const WHISK_MS = 550;
 const ARRIVE_MS = 900;
@@ -354,6 +343,11 @@ const BUCKET_INDEX = { upNext: 0, inProgressQueued: 1, now: 2, done: 3 };
 const transitions = ref(new Map());
 // taskId -> travel direction, for the landing animation
 const arrivals = ref(new Map());
+// Status icons change immediately, but re-bucketing waits so the four-state
+// control can be clicked repeatedly without the card moving out from under it.
+const STATUS_DEBOUNCE_MS = 1500;
+const pendingStatuses = ref(new Map());
+const statusTimers = new Map();
 
 const focusRoot = ref(null);
 const flightLayer = ref(null);
@@ -371,7 +365,14 @@ const schedule = (fn, delay) => {
 // A bucket as rendered: in-transit cards stay in the panel they left from and
 // are withheld from the panel they are headed to until they land.
 const visibleBucket = (bucketName) => computed(() => {
-  const entries = model.value[bucketName].filter(entry => !transitions.value.has(entry.task.id));
+  const entries = model.value[bucketName].filter(entry =>
+    !transitions.value.has(entry.task.id) && !pendingStatuses.value.has(entry.task.id)
+  );
+
+  [...pendingStatuses.value.values()]
+      .filter(pending => pending.source === bucketName)
+      .sort((a, b) => a.index - b.index)
+      .forEach(pending => entries.splice(Math.min(pending.index, entries.length), 0, pending.entry));
 
   [...transitions.value.values()]
       .filter(transition => transition.source === bucketName)
@@ -477,12 +478,22 @@ const launchFlight = (taskId, direction) => {
   schedule(() => flier.remove(), WHISK_MS);
 };
 
+const cardPlacement = (focusModel, bucketName, taskId) => {
+  const entries = clusterBySection(focusModel[bucketName] || []);
+  const index = entries.findIndex(candidate => candidate.task.id === taskId);
+  if (index === -1) return null;
+
+  const dueGroup = entries[index].dueGroup === 'overdue' ? 'today' : entries[index].dueGroup;
+  return { index, dueGroup: dueGroup || null };
+};
+
 const moveWithTransition = (entry, sourceBucket, destinationBucket, applyChange) => {
   const taskId = entry.task.id;
   if (transitions.value.has(taskId)) return;
 
   const index = model.value[sourceBucket].findIndex(candidate => candidate.task.id === taskId);
-  const direction = sourceBucket === destinationBucket
+  const sourcePlacement = cardPlacement(model.value, sourceBucket, taskId);
+  let direction = sourceBucket === destinationBucket
       ? 'within'
       : BUCKET_INDEX[destinationBucket] > BUCKET_INDEX[sourceBucket] ? 'right' : 'left';
 
@@ -491,6 +502,26 @@ const moveWithTransition = (entry, sourceBucket, destinationBucket, applyChange)
   // The data (and the file) change immediately - only the card's travel is staged
   applyChange();
   emit('update');
+
+  const updatedModel = deriveFocusModel(props.todoData);
+  const resolvedDestination = Object.keys(BUCKET_INDEX).find(bucketName =>
+    updatedModel[bucketName].some(candidate => candidate.task.id === taskId)
+  ) || destinationBucket;
+  const destinationPlacement = cardPlacement(updatedModel, resolvedDestination, taskId);
+  const staysPut = sourceBucket === resolvedDestination
+      && sourcePlacement?.index === destinationPlacement?.index
+      && sourcePlacement?.dueGroup === destinationPlacement?.dueGroup;
+
+  if (staysPut) {
+    transitions.value.delete(taskId);
+    return;
+  }
+
+  direction = sourceBucket === resolvedDestination
+      ? 'within'
+      : BUCKET_INDEX[resolvedDestination] > BUCKET_INDEX[sourceBucket] ? 'right' : 'left';
+  const staged = transitions.value.get(taskId);
+  transitions.value.set(taskId, { ...staged, direction });
 
   schedule(() => {
     const transition = transitions.value.get(taskId);
@@ -515,15 +546,32 @@ const rowClasses = (entry) => {
 };
 
 const checkClasses = (entry) => ({
+  unchecked: entry.task.statusChar === ' ',
   inflight: entry.task.statusChar === '~',
-  checked: entry.task.statusChar === 'x'
+  'in-progress': entry.task.statusChar === '~',
+  checked: entry.task.statusChar === 'x',
+  cancelled: entry.task.statusChar === '-',
+  pending: pendingStatuses.value.has(entry.task.id)
 });
+
+const STATUS_LABELS = { ' ': 'Queued', '~': 'In progress', x: 'Completed', '-': 'Cancelled' };
+const NEXT_STATUS = { ' ': '~', '~': 'x', x: '-', '-': ' ' };
+
+const statusTitle = (entry) => {
+  const current = STATUS_LABELS[entry.task.statusChar] || STATUS_LABELS[' '];
+  const next = STATUS_LABELS[NEXT_STATUS[entry.task.statusChar] || '~'];
+  return `${current} — click for ${next}`;
+};
 
 const totalCount = computed(() =>
   inProgressQueued.value.length + now.value.length + upNext.value.length + done.value.length
 );
+const completedCount = computed(() =>
+  [...inProgressQueued.value, ...now.value, ...upNext.value, ...done.value]
+      .filter(entry => entry.task.statusChar === 'x').length
+);
 const progressPercent = computed(() =>
-  totalCount.value === 0 ? '0%' : `${Math.round((done.value.length / totalCount.value) * 100)}%`
+  totalCount.value === 0 ? '0%' : `${Math.round((completedCount.value / totalCount.value) * 100)}%`
 );
 
 // ========================= Carousel =========================
@@ -638,6 +686,8 @@ onUnmounted(() => {
   clearTimeout(wheelIdleTimer);
   timers.forEach(clearTimeout);
   timers.clear();
+  statusTimers.forEach(clearTimeout);
+  statusTimers.clear();
 });
 
 // ========================= Row content =========================
@@ -814,60 +864,90 @@ const moveToActiveWip = (entry) => {
   return target.section;
 };
 
-const completeEntry = (entry, sourceBucket) => {
-  moveWithTransition(entry, sourceBucket, 'done', () => {
-    entry.task.statusChar = 'x';
+const finishPendingStatus = (taskId) => {
+  const pending = pendingStatuses.value.get(taskId);
+  if (!pending) return;
+  statusTimers.delete(taskId);
+
+  const { entry, source, index, sourcePlacement, initialStatus } = pending;
+  const finalStatus = entry.task.statusChar;
+  const section = initialStatus === ' ' && finalStatus === '~'
+      ? moveToActiveWip(entry)
+      : entry.section;
+
+  if (finalStatus === 'x' || finalStatus === '-') {
     entry.task.text = addCompletionDate(entry.task.text);
-    entry.task.displayText = getStrippedDisplayText(entry.task.text);
-    resortInSection(entry);
-  });
-};
-
-const startEntry = (entry, sourceBucket) => {
-  const start = () => {
-    const section = moveToActiveWip(entry);
-    entry.task.statusChar = '~';
-    sortTaskToCorrectPosition(section.items, entry.task, () => {});
-  };
-
-  const destinationBucket = isToday(entry.task.text) ? 'now' : 'inProgressQueued';
-  if (sourceBucket === destinationBucket) {
-    start();
-    emit('update');
-  } else {
-    moveWithTransition(entry, sourceBucket, destinationBucket, start);
   }
-  windowStart.value = DEFAULT_WINDOW;
-};
+  entry.task.displayText = getStrippedDisplayText(entry.task.text);
+  sortTaskToCorrectPosition(section.items, entry.task, () => {});
 
-const returnEntryToQueue = (entry, sourceBucket = 'inProgressQueued') => {
-  const dueDate = extractDateFromText(entry.task.text);
-  const staysQueued = dueDate && dueDate > new Date() && dueDate <= endOfCurrentWeek();
-  const destinationBucket = staysQueued ? 'inProgressQueued' : 'now';
-  const returnToQueue = () => {
-    entry.task.statusChar = ' ';
-    resortInSection(entry);
-  };
+  const updatedModel = deriveFocusModel(props.todoData);
+  const destination = Object.keys(BUCKET_INDEX).find(bucketName =>
+    updatedModel[bucketName].some(candidate => candidate.task.id === taskId)
+  );
+  const destinationPlacement = destination
+      ? cardPlacement(updatedModel, destination, taskId)
+      : null;
+  const staysPut = source === destination
+      && sourcePlacement?.index === destinationPlacement?.index
+      && sourcePlacement?.dueGroup === destinationPlacement?.dueGroup;
 
-  if (sourceBucket === destinationBucket) {
-    returnToQueue();
+  if (!destination || staysPut) {
+    pendingStatuses.value.delete(taskId);
     emit('update');
     return;
   }
 
-  moveWithTransition(entry, sourceBucket, destinationBucket, returnToQueue);
+  const direction = source === destination
+      ? 'within'
+      : BUCKET_INDEX[destination] > BUCKET_INDEX[source] ? 'right' : 'left';
+  transitions.value.set(taskId, { source, index, entry, phase: 'held', direction });
+  pendingStatuses.value.delete(taskId);
+  emit('update');
+
+  nextTick(() => {
+    launchFlight(taskId, direction);
+    const transition = transitions.value.get(taskId);
+    if (transition) transitions.value.set(taskId, { ...transition, phase: 'whisking' });
+  });
+
+  schedule(() => {
+    transitions.value.delete(taskId);
+    arrivals.value.set(taskId, direction);
+    schedule(() => arrivals.value.delete(taskId), ARRIVE_MS);
+  }, WHISK_MS);
+
+  windowStart.value = destination === 'done'
+      ? MAX_WINDOW
+      : destination === 'upNext' ? 0 : DEFAULT_WINDOW;
 };
 
-const reopenEntry = (entry) => {
-  const destinationBucket = isToday(entry.task.text) ? 'now' : 'inProgressQueued';
-  moveWithTransition(entry, 'done', destinationBucket, () => {
-    entry.task.statusChar = '~';
-    entry.task.text = removeCompletionDate(entry.task.text);
-    entry.task.displayText = getStrippedDisplayText(entry.task.text);
-    const section = moveToActiveWip(entry);
-    sortTaskToCorrectPosition(section.items, entry.task, () => {});
-  });
-  windowStart.value = DEFAULT_WINDOW;
+const cycleEntryStatus = (entry, sourceBucket) => {
+  const taskId = entry.task.id;
+  if (transitions.value.has(taskId)) return;
+
+  let pending = pendingStatuses.value.get(taskId);
+  if (!pending) {
+    const index = model.value[sourceBucket].findIndex(candidate => candidate.task.id === taskId);
+    pending = {
+      source: sourceBucket,
+      index: Math.max(index, 0),
+      entry,
+      initialStatus: entry.task.statusChar,
+      sourcePlacement: cardPlacement(model.value, sourceBucket, taskId)
+    };
+    pendingStatuses.value.set(taskId, pending);
+  }
+
+  const existingTimer = statusTimers.get(taskId);
+  if (existingTimer) clearTimeout(existingTimer);
+
+  entry.task.statusChar = NEXT_STATUS[entry.task.statusChar] || '~';
+  entry.task.displayText = getStrippedDisplayText(entry.task.text);
+  emit('update');
+
+  const timer = setTimeout(() => finishPendingStatus(taskId), STATUS_DEBOUNCE_MS);
+  statusTimers.set(taskId, timer);
 };
 
 const quickAdd = () => {
@@ -1172,10 +1252,10 @@ const toggleQuickAdd = async () => {
 }
 
 .focus-row-check {
-  width: 16px;
+  width: 18px;
   height: 16px;
-  min-width: 16px;
-  border-radius: 50%;
+  min-width: 18px;
+  border-radius: 3px;
   border: 2px solid #4a5568;
   background: transparent;
   cursor: pointer;
@@ -1188,21 +1268,30 @@ const toggleQuickAdd = async () => {
   background: rgba(76, 175, 80, 0.15);
 }
 
+.focus-row-check.pending {
+  animation: focusStatusPulse 0.6s ease-in-out infinite;
+}
+
+@keyframes focusStatusPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.32); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 7px rgba(255, 152, 0, 0); }
+}
+
 .focus-row-check.inflight {
   border-color: #ff9800;
   background: rgba(255, 152, 0, 0.12);
 }
 
 .focus-row-check.inflight:after {
-  content: '~';
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -55%);
-  color: #ff9800;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: #ff9800;
+  transform: translate(-50%, -50%);
 }
 
 .focus-row-check.checked {
@@ -1220,6 +1309,22 @@ const toggleQuickAdd = async () => {
   border: solid #4caf50;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
+}
+
+.focus-row-check.cancelled {
+  border-color: #757575;
+  background: rgba(117, 117, 117, 0.16);
+}
+
+.focus-row-check.cancelled:after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  background: #9e9e9e;
+  transform: translateY(-50%);
 }
 
 .focus-row-main {
@@ -1658,40 +1763,6 @@ const toggleQuickAdd = async () => {
   }
 }
 
-.focus-status-action {
-  flex: 0 0 auto;
-  height: 22px;
-  padding: 0 7px;
-  border: 1px solid #3a4356;
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.025);
-  font-family: inherit;
-  font-size: 9px;
-  font-weight: 700;
-  white-space: nowrap;
-  cursor: pointer;
-  opacity: 0.75;
-  transition: all 0.15s ease;
-}
-
-.is-focused .focus-task-row:hover .focus-status-action {
-  opacity: 1;
-}
-
-.focus-status-action.start-work {
-  color: #ffb347;
-}
-
-.focus-status-action.return-to-queue {
-  color: #9fb3c8;
-}
-
-.focus-status-action:hover {
-  color: #f4f6f8;
-  border-color: #647087;
-  background: #262c36;
-}
-
 .focus-start-next-btn,
 .focus-plan-btn {
   background: #262c36;
@@ -2050,8 +2121,7 @@ const toggleQuickAdd = async () => {
   background: #f5f5f5;
 }
 
-.theme-light .focus-edit-save,
-.theme-light .focus-status-action.start-work {
+.theme-light .focus-edit-save {
   color: #e08900;
 }
 
@@ -2092,18 +2162,6 @@ const toggleQuickAdd = async () => {
 
 .focus-date-menu.theme-light .focus-date-clear {
   color: #d32f2f;
-}
-
-.theme-light .focus-status-action {
-  color: #777;
-  border-color: #bbb;
-  background: rgba(0, 0, 0, 0.025);
-}
-
-.theme-light .focus-status-action:hover {
-  color: #333;
-  border-color: #999;
-  background: #eee;
 }
 
 .theme-light .focus-start-next-btn,

@@ -13,6 +13,7 @@ import {
 // Wednesday 12 August 2026, so "this week" runs Sun 9th - Sat 15th
 const WEDNESDAY = new Date(2026, 7, 12, 10, 0, 0);
 const oldStamp = formatCompletionDate(new Date(2000, 0, 1));
+const todayStamp = formatCompletionDate(WEDNESDAY);
 
 const fixture = `# SELECTED
 ## Plans
@@ -32,6 +33,8 @@ const fixture = `# SELECTED
 * [ ] Wip queued undated
 * [ ] Wip due Saturday !!(Aug 15)
 * [x] Wip done ${oldStamp}
+* [x] Wip completed due today !!(Aug 12) ${oldStamp}
+* [-] Wip cancelled due today !!(Aug 12) ${oldStamp}
 
 # TODO
 ## BACKLOG
@@ -99,6 +102,8 @@ describe('focusModeHelpers', () => {
         'Selected overdue',
         'Selected due today',
         'Wip inflight due today',
+        'Wip completed due today',
+        'Wip cancelled due today',
         'Wip queued undated'
       ]);
     });
@@ -106,6 +111,8 @@ describe('focusModeHelpers', () => {
     it('orders each execution bucket late -> today -> undated -> each upcoming day', () => {
       expect(model().now.map(entry => entry.dueGroup)).toEqual([
         'overdue',
+        'today',
+        'today',
         'today',
         'today',
         'undated'
@@ -117,7 +124,7 @@ describe('focusModeHelpers', () => {
       ]);
     });
 
-    it('leaves the rest of the SELECTED queue in UP NEXT: in progress, then dated, then undated', () => {
+    it('leaves the rest of SELECTED in UP NEXT: in progress, dated, then undated', () => {
       expect(taskTexts(model().upNext)).toEqual([
         'Selected inflight undated',
         'Selected due next week',
@@ -134,11 +141,24 @@ describe('focusModeHelpers', () => {
       ]);
       expect(everything).not.toContain('Backlog due today');
       expect(everything).not.toContain('Archived done');
-      expect(everything).not.toContain('Selected cancelled');
     });
 
-    it('collects completed tasks from both SELECTED and WIP regardless of completion date', () => {
-      expect(taskTexts(model().done)).toEqual(['Selected done', 'Wip done']);
+    it('keeps completed and cancelled due-today work in NOW and other terminal work in DONE', () => {
+      expect(taskTexts(model().now)).toContain('Wip completed due today');
+      expect(taskTexts(model().now)).toContain('Wip cancelled due today');
+      expect(taskTexts(model().done)).toEqual(['Selected done', 'Selected cancelled', 'Wip done']);
+    });
+
+    it('keeps work completed or cancelled today in NOW regardless of due date', () => {
+      const stamped = deriveFocusModel(parseTodoMdFile(`# SELECTED
+## Ready
+* [x] Completed today ${todayStamp}
+* [-] Will not do today ${todayStamp}
+* [x] Completed earlier ${oldStamp}
+`));
+
+      expect(taskTexts(stamped.now)).toEqual(['Completed today', 'Will not do today']);
+      expect(taskTexts(stamped.done)).toEqual(['Completed earlier']);
     });
 
     it('carries section references so entries can be mutated in place', () => {

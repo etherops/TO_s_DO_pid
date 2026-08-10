@@ -29,6 +29,13 @@ export const hasCompletionDate = (text) => {
   return extractCompletionDate(text) !== null;
 };
 
+// Completion stamps omit the year, so compare against today's canonical stamp.
+export const isCompletedToday = (text, today = new Date()) => {
+  const completionDate = extractCompletionDate(text);
+  if (!completionDate) return false;
+  return completionDate === formatCompletionDate(today).replace(/^\|\s*/, '');
+};
+
 // Add completion date to text
 export const addCompletionDate = (text, date = new Date()) => {
   if (!text) return formatCompletionDate(date);
