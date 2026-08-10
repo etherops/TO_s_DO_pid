@@ -249,9 +249,12 @@ describe('Focus Mode (execution carousel)', () => {
 # WIP
 ### MONDAY
 * [ ] Monday queued task
+* [x] Monday completed today ${dueTag(today)} ${formatCompletionDate(new Date(2000, 0, 1))}
 
 ### FRIDAY
 * [~] Friday inflight task
+* [-] Friday cancelled today ${dueTag(today)} ${formatCompletionDate(new Date(2000, 0, 1))}
+* [~] Friday active today ${dueTag(today)}
 * [ ] Friday due today ${dueTag(today)}
 `;
 
@@ -271,20 +274,25 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Friday inflight task')
       .find('.focus-section-badge').should('contain', 'FRIDAY');
 
-    // NOW is day-ordered first: today's card leads, undated work follows
-    cy.get('.panel-now .focus-task-row').should('have.length', 2);
-    cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Friday due today');
-    cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Monday queued task');
-    cy.get('.panel-now .focus-section-badge').eq(0).should('contain', 'FRIDAY');
-    cy.get('.panel-now .focus-section-badge').eq(1).should('contain', 'MONDAY');
+    // NOW keeps its day grouping, then follows the board's x -> - -> ~ -> blank
+    // status order before clustering matching sections.
+    cy.get('.panel-now .focus-task-row').should('have.length', 5);
+    cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Monday completed today');
+    cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Friday cancelled today');
+    cy.get('.panel-now .focus-task-row').eq(2).should('contain', 'Friday active today');
+    cy.get('.panel-now .focus-task-row').eq(3).should('contain', 'Friday due today');
+    cy.get('.panel-now .focus-task-row').eq(4).should('contain', 'Monday queued task');
+    cy.get('.panel-now .focus-section-badge').eq(0).should('contain', 'MONDAY');
+    cy.get('.panel-now .focus-section-badge').eq(1).should('contain', 'FRIDAY');
+    cy.get('.panel-now .focus-section-badge').eq(4).should('contain', 'MONDAY');
 
     // UP NEXT keeps the off-deck SELECTED cards, in-progress first
     cy.get('.panel-upnext .focus-task-row').should('have.length', 3);
     cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Ready inflight task');
-    cy.get('.panel-upnext .focus-task-row').eq(1).should('contain', 'Ready plain task');
-    cy.get('.panel-upnext .focus-task-row').eq(2).should('contain', 'Waiting later task');
+    cy.get('.panel-upnext .focus-task-row').eq(1).should('contain', 'Waiting later task');
+    cy.get('.panel-upnext .focus-task-row').eq(2).should('contain', 'Ready plain task');
     cy.get('.panel-upnext .focus-section-badge').eq(0).should('contain', 'Ready');
-    cy.get('.panel-upnext .focus-section-badge').eq(2).should('contain', 'Waiting');
+    cy.get('.panel-upnext .focus-section-badge').eq(1).should('contain', 'Waiting');
   });
 
   it('should edit a task name separately and save due-date menu choices immediately', () => {

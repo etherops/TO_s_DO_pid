@@ -300,7 +300,7 @@ import {
   updateTaskNameAndDueDate
 } from '../utils/taskTextHelpers';
 import { addCompletionDate } from '../utils/completionDateHelpers';
-import { sortTaskToCorrectPosition } from '../utils/sortHelpers';
+import { getStatusPriority, sortTaskToCorrectPosition } from '../utils/sortHelpers';
 
 const props = defineProps({
   todoData: {
@@ -382,22 +382,34 @@ const visibleBucket = (bucketName) => computed(() => {
   return entries;
 });
 
-// Cards from the same board section sit together, each carrying its section as
-// a badge - no group headers, just adjacency. A section takes its place from
-// its best-ranked card, since the bucket arrives already sorted, so the section
-// holding the most urgent work leads the panel.
-// Day comes first where the panel is day-ordered, so a section only clusters
-// within the day it is due - Wednesday's cards never jump ahead of Tuesday's.
+// Preserve the panel's explicit grouping first (Today/General/due day in the
+// execution panels and the UP NEXT groups), then use the main board's status
+// priority inside that group. Section clustering remains the final tie-breaker,
+// so cards from one section stay adjacent when they share a group and status.
 const clusterBySection = (entries) => {
-  const sections = new Map();
+  const groups = new Map();
 
   entries.forEach(entry => {
-    const key = `${entry.dueGroup ?? ''}::${entry.columnName}::${entry.sectionName}`;
-    if (!sections.has(key)) sections.set(key, []);
-    sections.get(key).push(entry);
+    const dueGroup = entry.dueGroup === 'overdue' ? 'today' : entry.dueGroup;
+    const groupKey = dueGroup ?? entry.group ?? '';
+    if (!groups.has(groupKey)) groups.set(groupKey, []);
+    groups.get(groupKey).push(entry);
   });
 
-  return [...sections.values()].flat();
+  return [...groups.values()].flatMap(groupEntries => {
+    const statusOrdered = [...groupEntries].sort((a, b) =>
+      getStatusPriority(b.task.statusChar) - getStatusPriority(a.task.statusChar)
+    );
+    const sections = new Map();
+
+    statusOrdered.forEach(entry => {
+      const key = `${entry.task.statusChar}::${entry.columnName}::${entry.sectionName}`;
+      if (!sections.has(key)) sections.set(key, []);
+      sections.get(key).push(entry);
+    });
+
+    return [...sections.values()].flat();
+  });
 };
 
 const panelCards = (bucketName) => {
