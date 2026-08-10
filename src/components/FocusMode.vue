@@ -56,23 +56,25 @@
               <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                 <input v-model="editTaskName" class="focus-edit-name"
                        aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
-                <input v-model="editDueDate" class="focus-edit-date" type="date" aria-label="Due date"
-                       @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
                 <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                 <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
               </div>
               <div v-else class="focus-row-main">
                 <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
-                        :title="`Edit: ${entry.task.text}`" @click.stop="startEntryEdit(entry)">{{ cardTitle(entry) }}</button>
+                        :title="`Edit name: ${entry.task.text}`"
+                        @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                   {{ entry.sectionName }}
                 </span>
               </div>
               <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-dot"
                     :title="entryNote(entry)">📋</span>
-              <span v-if="!isEditingEntry(entry) && dueBadge(entry)" class="focus-badge" :class="dueBadge(entry).kind">
-                {{ dueBadge(entry).label }}
-              </span>
+              <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+                      :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
+                      @click.stop="startDueDateEdit(entry, $event)">
+                <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
+                <span class="focus-due-clock" aria-hidden="true">◷</span>
+              </button>
               <button v-if="!isEditingEntry(entry)" class="focus-status-action start-work"
                       @click.stop="startEntry(entry, 'upNext')">Start work</button>
             </div>
@@ -108,27 +110,28 @@
                   <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                     <input v-model="editTaskName" class="focus-edit-name"
                            aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
-                    <input v-model="editDueDate" class="focus-edit-date" type="date" aria-label="Due date"
-                           @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
                     <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                     <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                   </div>
                   <div v-else class="focus-row-main">
                     <button class="focus-row-title execution-row-title"
                           :class="{ 'done-title': entry.task.statusChar === 'x' }"
-                          :title="`Edit: ${entry.task.text}`"
-                          @click.stop="startEntryEdit(entry)">{{ cardTitle(entry) }}</button>
+                          :title="`Edit name: ${entry.task.text}`"
+                          @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                     <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                       {{ entry.sectionName }}
                     </span>
                     <span v-if="entryNote(entry)" class="focus-row-note">{{ entryNote(entry) }}</span>
                   </div>
-                  <span v-if="!isEditingEntry(entry) && entry.dueGroup === 'overdue'" class="focus-badge overdue">
-                    {{ dueBadge(entry).label }}
-                  </span>
+                  <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+                          :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
+                          @click.stop="startDueDateEdit(entry, $event)">
+                    <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
+                    <span class="focus-due-clock" aria-hidden="true">◷</span>
+                  </button>
                   <button v-if="!isEditingEntry(entry) && entry.task.statusChar === '~'"
                           class="focus-status-action return-to-queue"
-                          @click.stop="deferEntry(entry)">Back to queue</button>
+                          @click.stop="returnEntryToQueue(entry)">Back to queue</button>
                   <button v-else-if="!isEditingEntry(entry)" class="focus-status-action start-work"
                           @click.stop="startEntry(entry, 'inProgressQueued')">Start work</button>
                 </div>
@@ -180,26 +183,29 @@
                 <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
-                  <input v-model="editDueDate" class="focus-edit-date" type="date" aria-label="Due date"
-                         @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
                   <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                   <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                 </div>
                 <div v-else class="focus-row-main">
                   <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
-                          :title="`Edit: ${entry.task.text}`"
-                          @click.stop="startEntryEdit(entry)">{{ cardTitle(entry) }}</button>
+                          :title="`Edit name: ${entry.task.text}`"
+                          @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                   <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                     {{ entry.sectionName }}
                   </span>
                 </div>
                 <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-dot"
                       :title="entryNote(entry)">📋</span>
-                <!-- The day section says when it is due; only lateness still needs shouting about -->
-                <span v-if="!isEditingEntry(entry) && entry.dueGroup === 'overdue'" class="focus-badge overdue">
-                  {{ dueBadge(entry).label }}
-                </span>
-                <button v-if="!isEditingEntry(entry)" class="focus-status-action start-work"
+                <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+                        :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
+                        @click.stop="startDueDateEdit(entry, $event)">
+                  <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
+                  <span class="focus-due-clock" aria-hidden="true">◷</span>
+                </button>
+                <button v-if="!isEditingEntry(entry) && entry.task.statusChar === '~'"
+                        class="focus-status-action return-to-queue"
+                        @click.stop="returnEntryToQueue(entry, 'now')">Back to queue</button>
+                <button v-else-if="!isEditingEntry(entry)" class="focus-status-action start-work"
                         @click.stop="startEntry(entry, 'now')">Start work</button>
               </div>
             </template>
@@ -229,19 +235,23 @@
               <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                 <input v-model="editTaskName" class="focus-edit-name"
                        aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
-                <input v-model="editDueDate" class="focus-edit-date" type="date" aria-label="Due date"
-                       @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
                 <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                 <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
               </div>
               <div v-else class="focus-row-main">
                 <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
-                        :title="`Edit: ${entry.task.text}`"
-                        @click.stop="startEntryEdit(entry)">{{ cardTitle(entry) }}</button>
+                        :title="`Edit name: ${entry.task.text}`"
+                        @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                   {{ entry.sectionName }}
                 </span>
               </div>
+              <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+                      :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
+                      @click.stop="startDueDateEdit(entry, $event)">
+                <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
+                <span class="focus-due-clock" aria-hidden="true">◷</span>
+              </button>
             </div>
           </div>
         </section>
@@ -264,6 +274,24 @@
         ></button>
       </div>
     </nav>
+
+    <Teleport to="body">
+      <div v-if="dateMenuEntry" class="focus-date-menu" :class="`theme-${theme}`"
+           :style="dateMenuStyle" role="dialog" aria-label="Set due date" @click.stop>
+        <div class="focus-date-menu-title">Set due date</div>
+        <div class="focus-date-options">
+          <button v-for="option in dateShortcuts" :key="option.value" class="focus-date-option"
+                  @click="setEntryDueDate(dateMenuEntry, option.value)">{{ option.label }}</button>
+          <label class="focus-date-option focus-date-custom">
+            Custom
+            <input type="date" aria-label="Custom due date" :value="currentEntryDate(dateMenuEntry)"
+                   @change="setEntryDueDate(dateMenuEntry, $event.target.value)" />
+          </label>
+          <button class="focus-date-option focus-date-clear"
+                  @click="setEntryDueDate(dateMenuEntry, '')">Clear</button>
+        </div>
+      </div>
+    </Teleport>
 
   </div>
 </template>
@@ -304,7 +332,8 @@ const quickAddInput = ref(null);
 const showQuickAdd = ref(false);
 const editingTaskId = ref(null);
 const editTaskName = ref('');
-const editDueDate = ref('');
+const dateMenuTaskId = ref(null);
+const dateMenuPosition = ref({ top: 0, left: 0 });
 
 const model = computed(() => deriveFocusModel(props.todoData));
 const quickAddTarget = computed(() => findQuickAddTarget(props.todoData));
@@ -379,6 +408,13 @@ const upNext = panelCards('upNext');
 const inProgressQueued = panelCards('inProgressQueued');
 const now = panelCards('now');
 const done = panelCards('done');
+const dateMenuEntry = computed(() => Object.values(model.value)
+    .flat()
+    .find(entry => entry?.task?.id === dateMenuTaskId.value) || null);
+const dateMenuStyle = computed(() => ({
+  top: `${dateMenuPosition.value.top}px`,
+  left: `${dateMenuPosition.value.left}px`
+}));
 
 // The two execution panels spell dates out as day sections rather than per-card badges:
 // Today (carrying anything overdue with it), then undated work, then the days
@@ -388,6 +424,9 @@ const dayLabel = (dueGroup, entry) => {
   if (dueGroup === 'undated') return 'General';
 
   const dueDate = extractDateFromText(entry.task.text);
+  // During a whisk-away after clearing a date, the departing card briefly
+  // retains its old group metadata while its task text is already undated.
+  if (!dueDate) return 'General';
   return dueDate <= endOfCurrentWeek()
       ? dueDate.toLocaleDateString('en-US', { weekday: 'long' })
       : dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -545,6 +584,10 @@ const step = (direction) => {
 const isEditableTarget = (target) => target?.closest?.('input, textarea, select, [contenteditable="true"]');
 
 const handleKeydown = (event) => {
+  if (event.key === 'Escape' && dateMenuTaskId.value !== null) {
+    dateMenuTaskId.value = null;
+    return;
+  }
   if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
   if (isEditableTarget(event.target)) return;
   event.preventDefault();
@@ -578,10 +621,18 @@ const handleWheel = (event) => {
   wheelAccum = 0;
 };
 
-onMounted(() => window.addEventListener('keydown', handleKeydown));
+const closeDateMenu = () => {
+  dateMenuTaskId.value = null;
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown);
+  document.addEventListener('click', closeDateMenu);
+});
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
+  document.removeEventListener('click', closeDateMenu);
   clearTimeout(wheelIdleTimer);
   timers.forEach(clearTimeout);
   timers.clear();
@@ -608,19 +659,38 @@ const focusEditNameInput = (select = false) => {
   if (select) input?.select();
 };
 
-const startEntryEdit = async (entry) => {
+const startNameEdit = async (entry) => {
   if (transitions.value.has(entry.task.id)) return;
+  closeDateMenu();
   editingTaskId.value = entry.task.id;
   editTaskName.value = getStrippedDisplayText(entry.task.text);
-  editDueDate.value = formatDateInputValue(extractDateFromText(entry.task.text));
   await nextTick();
   focusEditNameInput(true);
+};
+
+const startDueDateEdit = (entry, event) => {
+  if (transitions.value.has(entry.task.id)) return;
+  cancelEntryEdit();
+  if (dateMenuTaskId.value === entry.task.id) {
+    closeDateMenu();
+    return;
+  }
+
+  const badgeRect = event.currentTarget.getBoundingClientRect();
+  const menuWidth = Math.min(280, window.innerWidth - 32);
+  const estimatedMenuHeight = 105;
+  dateMenuPosition.value = {
+    top: badgeRect.bottom + estimatedMenuHeight + 8 <= window.innerHeight
+        ? badgeRect.bottom + 8
+        : Math.max(8, badgeRect.top - estimatedMenuHeight - 8),
+    left: Math.min(Math.max(8, badgeRect.right - menuWidth), window.innerWidth - menuWidth - 8)
+  };
+  dateMenuTaskId.value = dateMenuTaskId.value === entry.task.id ? null : entry.task.id;
 };
 
 const cancelEntryEdit = () => {
   editingTaskId.value = null;
   editTaskName.value = '';
-  editDueDate.value = '';
 };
 
 const saveEntryEdits = (entry) => {
@@ -629,7 +699,8 @@ const saveEntryEdits = (entry) => {
     return;
   }
 
-  const updatedText = updateTaskNameAndDueDate(entry.task.text, editTaskName.value, editDueDate.value);
+  const currentDueDate = formatDateInputValue(extractDateFromText(entry.task.text));
+  const updatedText = updateTaskNameAndDueDate(entry.task.text, editTaskName.value, currentDueDate);
   cancelEntryEdit();
   if (updatedText === entry.task.text) return;
 
@@ -637,6 +708,71 @@ const saveEntryEdits = (entry) => {
   entry.task.displayText = getStrippedDisplayText(updatedText);
   resortInSection(entry);
   emit('update');
+};
+
+const currentEntryDate = (entry) => formatDateInputValue(extractDateFromText(entry.task.text));
+
+const dateShortcuts = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endOfWeek = endOfCurrentWeek();
+  const options = [];
+
+  const addOption = (label, date) => options.push({
+    label,
+    value: formatDateInputValue(date)
+  });
+
+  addOption('Today', today);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  addOption('Tomorrow', tomorrow);
+
+  const remainingDate = new Date(tomorrow);
+  remainingDate.setDate(remainingDate.getDate() + 1);
+  while (remainingDate <= endOfWeek) {
+    addOption(remainingDate.toLocaleDateString('en-US', { weekday: 'long' }), new Date(remainingDate));
+    remainingDate.setDate(remainingDate.getDate() + 1);
+  }
+
+  const nextMonday = new Date(endOfWeek);
+  nextMonday.setDate(endOfWeek.getDate() + 2);
+  addOption('Next week', nextMonday);
+  return options;
+});
+
+const setEntryDueDate = (entry, dateValue) => {
+  const taskName = getStrippedDisplayText(entry.task.text);
+  const updatedText = updateTaskNameAndDueDate(entry.task.text, taskName, dateValue);
+  closeDateMenu();
+  if (updatedText === entry.task.text) return;
+
+  const bucketNames = ['upNext', 'inProgressQueued', 'now', 'done'];
+  const findTaskBucket = (focusModel) => bucketNames.find(bucketName =>
+    focusModel[bucketName].some(candidate => candidate.task.id === entry.task.id)
+  );
+  const sourceBucket = findTaskBucket(model.value);
+
+  // Preview the new derivation synchronously so the existing transition system
+  // knows where the edited card will land before the reactive model re-buckets it.
+  const previousText = entry.task.text;
+  entry.task.text = updatedText;
+  const destinationBucket = findTaskBucket(deriveFocusModel(props.todoData));
+  entry.task.text = previousText;
+
+  const applyDateChange = () => {
+    entry.task.text = updatedText;
+    entry.task.displayText = getStrippedDisplayText(updatedText);
+    resortInSection(entry);
+  };
+
+  if (sourceBucket && destinationBucket) {
+    moveWithTransition(entry, sourceBucket, destinationBucket, applyDateChange);
+  } else {
+    applyDateChange();
+    emit('update');
+  }
 };
 
 const dueBadge = (entry) => {
@@ -692,34 +828,37 @@ const startEntry = (entry, sourceBucket) => {
     sortTaskToCorrectPosition(section.items, entry.task, () => {});
   };
 
-  if (sourceBucket === 'inProgressQueued') {
+  const destinationBucket = isToday(entry.task.text) ? 'now' : 'inProgressQueued';
+  if (sourceBucket === destinationBucket) {
     start();
     emit('update');
   } else {
-    moveWithTransition(entry, sourceBucket, 'inProgressQueued', start);
+    moveWithTransition(entry, sourceBucket, destinationBucket, start);
   }
   windowStart.value = DEFAULT_WINDOW;
 };
 
-const deferEntry = (entry) => {
+const returnEntryToQueue = (entry, sourceBucket = 'inProgressQueued') => {
   const dueDate = extractDateFromText(entry.task.text);
   const staysQueued = dueDate && dueDate > new Date() && dueDate <= endOfCurrentWeek();
-
-  if (staysQueued) {
+  const destinationBucket = staysQueued ? 'inProgressQueued' : 'now';
+  const returnToQueue = () => {
     entry.task.statusChar = ' ';
     resortInSection(entry);
+  };
+
+  if (sourceBucket === destinationBucket) {
+    returnToQueue();
     emit('update');
     return;
   }
 
-  moveWithTransition(entry, 'inProgressQueued', 'now', () => {
-    entry.task.statusChar = ' ';
-    resortInSection(entry);
-  });
+  moveWithTransition(entry, sourceBucket, destinationBucket, returnToQueue);
 };
 
 const reopenEntry = (entry) => {
-  moveWithTransition(entry, 'done', 'inProgressQueued', () => {
+  const destinationBucket = isToday(entry.task.text) ? 'now' : 'inProgressQueued';
+  moveWithTransition(entry, 'done', destinationBucket, () => {
     entry.task.statusChar = '~';
     entry.task.text = removeCompletionDate(entry.task.text);
     entry.task.displayText = getStrippedDisplayText(entry.task.text);
@@ -999,6 +1138,7 @@ const toggleQuickAdd = async () => {
 /* Task rows                 */
 /* ========================= */
 .focus-task-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1126,8 +1266,7 @@ const toggleQuickAdd = async () => {
   gap: 4px;
 }
 
-.focus-edit-name,
-.focus-edit-date {
+.focus-edit-name {
   min-width: 0;
   height: 24px;
   box-sizing: border-box;
@@ -1145,14 +1284,7 @@ const toggleQuickAdd = async () => {
   padding: 2px 7px;
 }
 
-.focus-edit-date {
-  flex: 0 0 122px;
-  padding: 2px 4px;
-  color-scheme: dark;
-}
-
-.focus-edit-name:focus,
-.focus-edit-date:focus {
+.focus-edit-name:focus {
   border-color: #ffb347;
   box-shadow: 0 0 0 1px rgba(255, 179, 71, 0.2);
 }
@@ -1262,11 +1394,124 @@ const toggleQuickAdd = async () => {
 }
 
 .focus-badge {
+  border: 1px solid transparent;
+  font-family: inherit;
   font-size: 10px;
   font-weight: 700;
   border-radius: 4px;
   padding: 1px 5px;
   white-space: nowrap;
+}
+
+.focus-due-edit {
+  position: relative;
+  min-height: 18px;
+  padding-right: 12px;
+  cursor: pointer;
+  overflow: visible;
+  transition: filter 0.15s ease, border-color 0.15s ease;
+}
+
+.focus-due-edit:hover {
+  filter: brightness(1.25);
+}
+
+.focus-due-clock {
+  position: absolute;
+  top: -5px;
+  right: -4px;
+  display: grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+  border-radius: 50%;
+  background: #1a1f26;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.focus-badge.no-due-date {
+  width: 22px;
+  min-width: 22px;
+  padding: 0;
+  color: #6f7a88;
+  background: rgba(255, 255, 255, 0.025);
+  border-color: #303846;
+}
+
+.focus-badge.no-due-date .focus-due-clock {
+  position: static;
+  width: auto;
+  height: auto;
+  background: transparent;
+  font-size: 14px;
+}
+
+.focus-date-menu {
+  position: fixed;
+  z-index: 3000;
+  width: min(280px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #3a4352;
+  border-radius: 10px;
+  background: #171b21;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.55);
+}
+
+.focus-date-menu-title {
+  padding: 0 2px 8px;
+  color: #8e99a8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.focus-date-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.focus-date-option {
+  position: relative;
+  width: auto;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 7px;
+  border: 1px solid #303847;
+  border-radius: 5px;
+  background: #20262f;
+  color: #dfe3e8;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.focus-date-option:hover {
+  border-color: #ffb347;
+  background: #282f3a;
+}
+
+.focus-date-custom {
+  overflow: hidden;
+}
+
+.focus-date-custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.focus-date-clear {
+  color: #ff8a80;
 }
 
 .focus-badge.overdue {
@@ -1770,12 +2015,10 @@ const toggleQuickAdd = async () => {
   border-color: #e0e0e0;
 }
 
-.theme-light .focus-edit-name,
-.theme-light .focus-edit-date {
+.theme-light .focus-edit-name {
   color: #333;
   border-color: #ccc;
   background: #fff;
-  color-scheme: light;
 }
 
 .theme-light .focus-edit-save,
@@ -1788,6 +2031,45 @@ const toggleQuickAdd = async () => {
 .theme-light .focus-edit-save,
 .theme-light .focus-status-action.start-work {
   color: #e08900;
+}
+
+.theme-light .focus-badge.no-due-date {
+  color: #888;
+  background: #f5f5f5;
+  border-color: #ddd;
+}
+
+.theme-light .focus-due-clock {
+  background: #fff;
+}
+
+.theme-light .focus-badge.no-due-date .focus-due-clock {
+  background: transparent;
+}
+
+.focus-date-menu.theme-light {
+  border-color: #ccc;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
+}
+
+.focus-date-menu.theme-light .focus-date-menu-title {
+  color: #777;
+}
+
+.focus-date-menu.theme-light .focus-date-option {
+  border-color: #ddd;
+  background: #f7f7f7;
+  color: #333;
+}
+
+.focus-date-menu.theme-light .focus-date-option:hover {
+  border-color: #e08900;
+  background: #fff8e8;
+}
+
+.focus-date-menu.theme-light .focus-date-clear {
+  color: #d32f2f;
 }
 
 .theme-light .focus-status-action {

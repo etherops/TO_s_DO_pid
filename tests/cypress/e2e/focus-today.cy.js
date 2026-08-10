@@ -94,8 +94,14 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Queued wip task')
       .and('not.have.class', 'overdue-row');
     cy.get('.panel-now .focus-status-action.start-work').should('contain', 'Start work');
-    // The day section carries the date, so cards don't repeat it
-    cy.get('.panel-now .focus-badge.due-today').should('not.exist');
+    // The card repeats its date as a directly editable badge
+    cy.get('.panel-now .focus-badge.due-today').should('contain', 'today')
+      .find('.focus-due-clock').should('contain', '◷');
+
+    // Undated cards use the clock itself as the date-edit affordance
+    cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task')
+      .find('.focus-due-edit.no-due-date').should('not.contain', 'Set date')
+      .find('.focus-due-clock').should('contain', '◷');
 
     // UP NEXT: the SELECTED work that isn't due this week, in progress first
     cy.get('.panel-upnext .focus-task-row').should('have.length', 2);
@@ -155,6 +161,23 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Selected due later')
       .find('.focus-badge.due-later').should('exist');
     cy.get('.panel-upnext .focus-task-row').eq(1).should('contain', 'Selected undated');
+  });
+
+  it('should keep due-today work in NOW when its status changes', () => {
+    enterFocusMode();
+
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
+      .find('.focus-status-action.start-work').click();
+
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
+      .should('exist')
+      .find('.focus-row-check').should('have.class', 'inflight');
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
+      .find('.focus-status-action.return-to-queue').should('contain', 'Back to queue').click();
+
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
+      .should('exist')
+      .find('.focus-row-check').should('not.have.class', 'inflight');
   });
 
   it('should split both execution panels into the existing day sections', () => {
@@ -249,17 +272,49 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext .focus-section-badge').eq(2).should('contain', 'Waiting');
   });
 
-  it('should edit a task name and due date inline, preserving the changes across reload', () => {
+  it('should edit a task name separately and save due-date menu choices immediately', () => {
     enterFocusMode();
 
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
       .find('.focus-row-title').click();
 
     cy.get('.panel-now .focus-edit-name').clear().type('Renamed focus task');
-    cy.get('.panel-now .focus-edit-date').clear().type(dateInputValue(nextWeek));
+    cy.get('.panel-now .focus-edit-date').should('not.exist');
     cy.get('.panel-now .focus-edit-save').click();
 
-    cy.get('.focus-mode').should('contain', 'Renamed focus task');
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Renamed focus task')
+      .invoke('outerHeight').as('dateRowHeight');
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Renamed focus task')
+      .find('.focus-due-edit').click();
+    cy.get('.panel-now .focus-edit-name').should('not.exist');
+    cy.get('.focus-date-menu').should('be.visible')
+      .and('have.css', 'position', 'fixed')
+      .and('contain', 'Today')
+      .and('contain', 'Tomorrow')
+      .and('contain', 'Next week')
+      .and('contain', 'Custom')
+      .and('contain', 'Clear');
+    cy.get('@dateRowHeight').then((rowHeight) => {
+      cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Renamed focus task')
+        .invoke('outerHeight').should('equal', rowHeight);
+    });
+    cy.get('.focus-date-option').each(($option) => {
+      expect($option.text().trim()).not.to.match(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b|\d/);
+    });
+    cy.get('.focus-date-option').contains('Next week').click();
+    cy.get('.focus-date-menu').should('not.exist');
+    cy.get('.focus-task-row.transitioning.phase-held').should('contain', 'Renamed focus task');
+    cy.wait(1300);
+
+    cy.get('.focus-task-row').contains('.focus-task-row', 'Renamed focus task')
+      .find('.focus-due-edit').click({ force: true });
+    cy.get('.focus-date-menu input[aria-label="Custom due date"]')
+      .invoke('val', dateInputValue(nextWeek)).trigger('change');
+    cy.get('.focus-date-menu').should('not.exist');
+    cy.get('.focus-task-row.transitioning.phase-held').should('contain', 'Renamed focus task');
+    cy.wait(1300);
+
+    cy.get('.focus-mode').should('contain', 'Renamed focus task').and('contain', 'Aug');
     cy.wait(500);
     cy.reload();
     cy.get('.focus-mode').should('be.visible').and('contain', 'Renamed focus task');
@@ -267,8 +322,17 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.focus-task-row').contains('.focus-task-row', 'Renamed focus task')
       .find('.focus-row-title').click({ force: true });
     cy.get('.focus-edit-name').should('have.value', 'Renamed focus task');
-    cy.get('.focus-edit-date').should('have.value', dateInputValue(nextWeek));
+    cy.get('.focus-date-menu').should('not.exist');
     cy.get('.focus-edit-cancel').click();
+
+    cy.get('.focus-task-row').contains('.focus-task-row', 'Renamed focus task')
+      .find('.focus-due-edit').click({ force: true });
+    cy.get('.focus-edit-name').should('not.exist');
+    cy.get('.focus-date-menu input[aria-label="Custom due date"]')
+      .should('have.value', dateInputValue(nextWeek));
+    cy.get('.focus-date-option').contains('Clear').click();
+    cy.get('.focus-task-row').contains('.focus-task-row', 'Renamed focus task')
+      .find('.focus-due-edit').should('have.class', 'no-due-date');
   });
 
   it('should mark a completed task in place, then whisk it over to done', () => {

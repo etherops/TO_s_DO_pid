@@ -111,7 +111,8 @@ export const deriveFocusModel = (todoData) => {
 
     if (stackName === 'WIP' || isOnDeckThisWeek(task.text)) {
       const onDeckEntry = { ...entry, ...dueGrouping(task) };
-      const belongsInProgressQueue = task.statusChar === '~' || isUpcomingThisWeek(task, onDeckEntry);
+      const belongsInProgressQueue = onDeckEntry.dueGroup !== 'today'
+          && (task.statusChar === '~' || isUpcomingThisWeek(task, onDeckEntry));
       (belongsInProgressQueue ? inProgressQueued : now).push(onDeckEntry);
       return;
     }

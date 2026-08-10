@@ -28,6 +28,7 @@ const fixture = `# SELECTED
 # WIP
 ### CURRENT
 * [~] Wip inflight undated
+* [~] Wip inflight due today !!(Aug 12)
 * [ ] Wip queued undated
 * [ ] Wip due Saturday !!(Aug 15)
 * [x] Wip done ${oldStamp}
@@ -97,6 +98,7 @@ describe('focusModeHelpers', () => {
       expect(taskTexts(model().now)).toEqual([
         'Selected overdue',
         'Selected due today',
+        'Wip inflight due today',
         'Wip queued undated'
       ]);
     });
@@ -104,6 +106,7 @@ describe('focusModeHelpers', () => {
     it('orders each execution bucket late -> today -> undated -> each upcoming day', () => {
       expect(model().now.map(entry => entry.dueGroup)).toEqual([
         'overdue',
+        'today',
         'today',
         'undated'
       ]);
