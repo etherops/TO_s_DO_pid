@@ -3,6 +3,12 @@ import { formatCompletionDate } from '../../../src/utils/completionDateHelpers';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const dueTag = (date) => `!!(${MONTHS[date.getMonth()]} ${date.getDate()})`;
+const dateInputValue = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 describe('Focus Mode (execution carousel)', () => {
   const today = new Date();
@@ -74,6 +80,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-in-progress-queued .focus-task-row').should('have.length', 1)
       .should('contain', 'Inflight wip task');
     cy.get('.panel-in-progress-queued .focus-task-row').find('.focus-row-check.inflight').should('exist');
+    cy.get('.panel-in-progress-queued .focus-status-action.return-to-queue').should('contain', 'Back to queue');
     cy.get('.panel-in-progress-queued').should('not.contain', 'Parked selected task');
 
     // NOW: remaining unstarted work, under a Today section holding the overdue
@@ -86,6 +93,7 @@ describe('Focus Mode (execution carousel)', () => {
       .find('.focus-badge.overdue').should('exist');
     cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Queued wip task')
       .and('not.have.class', 'overdue-row');
+    cy.get('.panel-now .focus-status-action.start-work').should('contain', 'Start work');
     // The day section carries the date, so cards don't repeat it
     cy.get('.panel-now .focus-badge.due-today').should('not.exist');
 
@@ -241,6 +249,28 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext .focus-section-badge').eq(2).should('contain', 'Waiting');
   });
 
+  it('should edit a task name and due date inline, preserving the changes across reload', () => {
+    enterFocusMode();
+
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
+      .find('.focus-row-title').click();
+
+    cy.get('.panel-now .focus-edit-name').clear().type('Renamed focus task');
+    cy.get('.panel-now .focus-edit-date').clear().type(dateInputValue(nextWeek));
+    cy.get('.panel-now .focus-edit-save').click();
+
+    cy.get('.focus-mode').should('contain', 'Renamed focus task');
+    cy.wait(500);
+    cy.reload();
+    cy.get('.focus-mode').should('be.visible').and('contain', 'Renamed focus task');
+
+    cy.get('.focus-task-row').contains('.focus-task-row', 'Renamed focus task')
+      .find('.focus-row-title').click({ force: true });
+    cy.get('.focus-edit-name').should('have.value', 'Renamed focus task');
+    cy.get('.focus-edit-date').should('have.value', dateInputValue(nextWeek));
+    cy.get('.focus-edit-cancel').click();
+  });
+
   it('should mark a completed task in place, then whisk it over to done', () => {
     enterFocusMode();
 
@@ -345,7 +375,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext').should('have.class', 'is-focused');
 
     cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task')
-      .find('.focus-row-start').click({ force: true });
+      .find('.focus-status-action.start-work').click({ force: true });
 
     // The spotlight returns to the execution pair; the task was pulled into active WIP
     cy.get('.panel-in-progress-queued').should('have.class', 'is-focused');
@@ -361,7 +391,7 @@ describe('Focus Mode (execution carousel)', () => {
 
     cy.get('.panel-upnext').click({ force: true });
     cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Parked selected task')
-      .find('.focus-row-start').click({ force: true });
+      .find('.focus-status-action.start-work').click({ force: true });
 
     cy.get('.panel-in-progress-queued').should('have.class', 'is-focused');
     cy.get('.panel-in-progress-queued .focus-task-row').should('contain', 'Parked selected task');
@@ -377,7 +407,7 @@ describe('Focus Mode (execution carousel)', () => {
     enterFocusMode();
 
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-row-defer').click({ force: true });
+      .find('.focus-status-action.return-to-queue').click({ force: true });
 
     // The task is still in WIP but, once paused, joins NOW's remaining unstarted work
     cy.get('.panel-in-progress-queued').should('contain', 'Nothing in progress or queued');
@@ -387,7 +417,7 @@ describe('Focus Mode (execution carousel)', () => {
     // Restart it from NOW
     cy.get('.panel-now').click({ force: true });
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-row-start').click({ force: true });
+      .find('.focus-status-action.start-work').click({ force: true });
 
     cy.get('.panel-in-progress-queued').should('have.class', 'is-focused');
     cy.get('.panel-in-progress-queued .focus-task-row').should('have.length', 1)

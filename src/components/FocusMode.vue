@@ -51,20 +51,30 @@
             </div>
             <div v-for="entry in upNext" :key="entry.task.id" class="focus-task-row"
                  :class="rowClasses(entry)" :data-task-id="entry.task.id">
-              <button class="focus-row-check" :class="checkClasses(entry)"
+              <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                       title="Mark done" @click.stop="completeEntry(entry, 'upNext')"></button>
-              <div class="focus-row-main">
-                <span class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
-                      :title="entry.task.text">{{ cardTitle(entry) }}</span>
+              <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
+                <input v-model="editTaskName" class="focus-edit-name"
+                       aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                <input v-model="editDueDate" class="focus-edit-date" type="date" aria-label="Due date"
+                       @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
+                <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
+              </div>
+              <div v-else class="focus-row-main">
+                <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
+                        :title="`Edit: ${entry.task.text}`" @click.stop="startEntryEdit(entry)">{{ cardTitle(entry) }}</button>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                   {{ entry.sectionName }}
                 </span>
               </div>
-              <span v-if="entryNote(entry)" class="focus-note-dot" :title="entryNote(entry)">📋</span>
-              <span v-if="dueBadge(entry)" class="focus-badge" :class="dueBadge(entry).kind">
+              <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-dot"
+                    :title="entryNote(entry)">📋</span>
+              <span v-if="!isEditingEntry(entry) && dueBadge(entry)" class="focus-badge" :class="dueBadge(entry).kind">
                 {{ dueBadge(entry).label }}
               </span>
-              <button class="focus-row-start" title="Start now" @click.stop="startEntry(entry, 'upNext')">▶</button>
+              <button v-if="!isEditingEntry(entry)" class="focus-status-action start-work"
+                      @click.stop="startEntry(entry, 'upNext')">Start work</button>
             </div>
           </div>
         </section>
@@ -93,24 +103,34 @@
                        'overdue-row': entry.dueGroup === 'overdue'
                      }]"
                      :data-task-id="entry.task.id">
-                  <button class="focus-row-check" :class="checkClasses(entry)"
+                  <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                           title="Mark done" @click.stop="completeEntry(entry, 'inProgressQueued')"></button>
-                  <div class="focus-row-main">
-                    <span class="focus-row-title execution-row-title"
+                  <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
+                    <input v-model="editTaskName" class="focus-edit-name"
+                           aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                    <input v-model="editDueDate" class="focus-edit-date" type="date" aria-label="Due date"
+                           @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                    <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
+                    <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
+                  </div>
+                  <div v-else class="focus-row-main">
+                    <button class="focus-row-title execution-row-title"
                           :class="{ 'done-title': entry.task.statusChar === 'x' }"
-                          :title="entry.task.text">{{ cardTitle(entry) }}</span>
+                          :title="`Edit: ${entry.task.text}`"
+                          @click.stop="startEntryEdit(entry)">{{ cardTitle(entry) }}</button>
                     <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                       {{ entry.sectionName }}
                     </span>
                     <span v-if="entryNote(entry)" class="focus-row-note">{{ entryNote(entry) }}</span>
                   </div>
-                  <span v-if="entry.dueGroup === 'overdue'" class="focus-badge overdue">
+                  <span v-if="!isEditingEntry(entry) && entry.dueGroup === 'overdue'" class="focus-badge overdue">
                     {{ dueBadge(entry).label }}
                   </span>
-                  <button v-if="entry.task.statusChar === '~'" class="focus-row-defer"
-                          title="Pause" @click.stop="deferEntry(entry)">↜</button>
-                  <button v-else class="focus-row-start" title="Start now"
-                          @click.stop="startEntry(entry, 'inProgressQueued')">▶</button>
+                  <button v-if="!isEditingEntry(entry) && entry.task.statusChar === '~'"
+                          class="focus-status-action return-to-queue"
+                          @click.stop="deferEntry(entry)">Back to queue</button>
+                  <button v-else-if="!isEditingEntry(entry)" class="focus-status-action start-work"
+                          @click.stop="startEntry(entry, 'inProgressQueued')">Start work</button>
                 </div>
               </template>
             </template>
@@ -155,21 +175,32 @@
               <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row"
                    :class="[rowClasses(entry), { 'overdue-row': entry.dueGroup === 'overdue' }]"
                    :data-task-id="entry.task.id">
-                <button class="focus-row-check" :class="checkClasses(entry)"
+                <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                         title="Mark done" @click.stop="completeEntry(entry, 'now')"></button>
-                <div class="focus-row-main">
-                  <span class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
-                        :title="entry.task.text">{{ cardTitle(entry) }}</span>
+                <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
+                  <input v-model="editTaskName" class="focus-edit-name"
+                         aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                  <input v-model="editDueDate" class="focus-edit-date" type="date" aria-label="Due date"
+                         @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                  <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
+                  <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
+                </div>
+                <div v-else class="focus-row-main">
+                  <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
+                          :title="`Edit: ${entry.task.text}`"
+                          @click.stop="startEntryEdit(entry)">{{ cardTitle(entry) }}</button>
                   <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                     {{ entry.sectionName }}
                   </span>
                 </div>
-                <span v-if="entryNote(entry)" class="focus-note-dot" :title="entryNote(entry)">📋</span>
+                <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-dot"
+                      :title="entryNote(entry)">📋</span>
                 <!-- The day section says when it is due; only lateness still needs shouting about -->
-                <span v-if="entry.dueGroup === 'overdue'" class="focus-badge overdue">
+                <span v-if="!isEditingEntry(entry) && entry.dueGroup === 'overdue'" class="focus-badge overdue">
                   {{ dueBadge(entry).label }}
                 </span>
-                <button class="focus-row-start" title="Start now" @click.stop="startEntry(entry, 'now')">▶</button>
+                <button v-if="!isEditingEntry(entry)" class="focus-status-action start-work"
+                        @click.stop="startEntry(entry, 'now')">Start work</button>
               </div>
             </template>
           </div>
@@ -193,11 +224,20 @@
             <div v-for="entry in done" :key="entry.task.id" class="focus-task-row"
                  :class="[rowClasses(entry), { 'done-row': entry.task.statusChar === 'x' }]"
                  :data-task-id="entry.task.id">
-              <button class="focus-row-check" :class="checkClasses(entry)"
+              <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                       title="Reopen" @click.stop="reopenEntry(entry)"></button>
-              <div class="focus-row-main">
-                <span class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
-                      :title="entry.task.text">{{ cardTitle(entry) }}</span>
+              <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
+                <input v-model="editTaskName" class="focus-edit-name"
+                       aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                <input v-model="editDueDate" class="focus-edit-date" type="date" aria-label="Due date"
+                       @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
+                <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
+              </div>
+              <div v-else class="focus-row-main">
+                <button class="focus-row-title" :class="{ 'done-title': entry.task.statusChar === 'x' }"
+                        :title="`Edit: ${entry.task.text}`"
+                        @click.stop="startEntryEdit(entry)">{{ cardTitle(entry) }}</button>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                   {{ entry.sectionName }}
                 </span>
@@ -237,7 +277,11 @@ import {
   endOfCurrentWeek
 } from '../utils/focusModeHelpers';
 import { extractDateFromText, isToday } from '../utils/dateHelpers';
-import { extractNoteFromText, getStrippedDisplayText } from '../utils/taskTextHelpers';
+import {
+  extractNoteFromText,
+  getStrippedDisplayText,
+  updateTaskNameAndDueDate
+} from '../utils/taskTextHelpers';
 import { addCompletionDate, removeCompletionDate } from '../utils/completionDateHelpers';
 import { sortTaskToCorrectPosition } from '../utils/sortHelpers';
 
@@ -258,6 +302,9 @@ const emit = defineEmits(['update', 'set-view-mode']);
 const quickAddText = ref('');
 const quickAddInput = ref(null);
 const showQuickAdd = ref(false);
+const editingTaskId = ref(null);
+const editTaskName = ref('');
+const editDueDate = ref('');
 
 const model = computed(() => deriveFocusModel(props.todoData));
 const quickAddTarget = computed(() => findQuickAddTarget(props.todoData));
@@ -544,6 +591,53 @@ onUnmounted(() => {
 const cardTitle = (entry) => entry.task.displayText || entry.task.text;
 
 const entryNote = (entry) => extractNoteFromText(entry.task.text);
+
+const isEditingEntry = (entry) => editingTaskId.value === entry.task.id;
+
+const formatDateInputValue = (date) => {
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const focusEditNameInput = (select = false) => {
+  const input = focusRoot.value?.querySelector('.focus-edit-name');
+  input?.focus();
+  if (select) input?.select();
+};
+
+const startEntryEdit = async (entry) => {
+  if (transitions.value.has(entry.task.id)) return;
+  editingTaskId.value = entry.task.id;
+  editTaskName.value = getStrippedDisplayText(entry.task.text);
+  editDueDate.value = formatDateInputValue(extractDateFromText(entry.task.text));
+  await nextTick();
+  focusEditNameInput(true);
+};
+
+const cancelEntryEdit = () => {
+  editingTaskId.value = null;
+  editTaskName.value = '';
+  editDueDate.value = '';
+};
+
+const saveEntryEdits = (entry) => {
+  if (!editTaskName.value.trim()) {
+    focusEditNameInput();
+    return;
+  }
+
+  const updatedText = updateTaskNameAndDueDate(entry.task.text, editTaskName.value, editDueDate.value);
+  cancelEntryEdit();
+  if (updatedText === entry.task.text) return;
+
+  entry.task.text = updatedText;
+  entry.task.displayText = getStrippedDisplayText(updatedText);
+  resortInSection(entry);
+  emit('update');
+};
 
 const dueBadge = (entry) => {
   const dueDate = extractDateFromText(entry.task.text);
@@ -998,12 +1092,18 @@ const toggleQuickAdd = async () => {
 .focus-row-title {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   color: #dfe3e8;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: text;
 }
 
 .focus-row-title.execution-row-title {
@@ -1016,6 +1116,69 @@ const toggleQuickAdd = async () => {
   color: #8a93a3;
   text-decoration: line-through;
   font-weight: 500;
+}
+
+.focus-inline-editor {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.focus-edit-name,
+.focus-edit-date {
+  min-width: 0;
+  height: 24px;
+  box-sizing: border-box;
+  border: 1px solid #465266;
+  border-radius: 5px;
+  background: #171b21;
+  color: #e8eaed;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.focus-edit-name {
+  flex: 1;
+  padding: 2px 7px;
+}
+
+.focus-edit-date {
+  flex: 0 0 122px;
+  padding: 2px 4px;
+  color-scheme: dark;
+}
+
+.focus-edit-name:focus,
+.focus-edit-date:focus {
+  border-color: #ffb347;
+  box-shadow: 0 0 0 1px rgba(255, 179, 71, 0.2);
+}
+
+.focus-edit-save,
+.focus-edit-cancel {
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid #3a4356;
+  border-radius: 5px;
+  background: #262c36;
+  color: #9aa4b2;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.focus-edit-save {
+  color: #ffb347;
+}
+
+.focus-edit-save:hover,
+.focus-edit-cancel:hover {
+  border-color: #647087;
+  color: #f4f6f8;
 }
 
 /* Day sections delineate dates without spending a badge on every card */
@@ -1228,35 +1391,37 @@ const toggleQuickAdd = async () => {
   }
 }
 
-.focus-row-start,
-.focus-row-defer {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  color: #6f7a88;
-  font-size: 11px;
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
+.focus-status-action {
+  flex: 0 0 auto;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid #3a4356;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
-  opacity: 0.4;
+  opacity: 0.75;
   transition: all 0.15s ease;
 }
 
-.is-focused .focus-task-row:hover .focus-row-start,
-.is-focused .focus-task-row:hover .focus-row-defer {
+.is-focused .focus-task-row:hover .focus-status-action {
   opacity: 1;
 }
 
-.focus-row-start:hover {
+.focus-status-action.start-work {
   color: #ffb347;
-  border-color: #3a4356;
-  background: #262c36;
 }
 
-.focus-row-defer:hover {
-  color: #e8eaed;
-  border-color: #3a4356;
+.focus-status-action.return-to-queue {
+  color: #9fb3c8;
+}
+
+.focus-status-action:hover {
+  color: #f4f6f8;
+  border-color: #647087;
   background: #262c36;
 }
 
@@ -1605,21 +1770,36 @@ const toggleQuickAdd = async () => {
   border-color: #e0e0e0;
 }
 
-.theme-light .focus-row-start,
-.theme-light .focus-row-defer {
-  color: #888;
-}
-
-.theme-light .focus-row-start:hover {
-  color: #e08900;
-  border-color: #ccc;
-  background: #f5f5f5;
-}
-
-.theme-light .focus-row-defer:hover {
+.theme-light .focus-edit-name,
+.theme-light .focus-edit-date {
   color: #333;
   border-color: #ccc;
+  background: #fff;
+  color-scheme: light;
+}
+
+.theme-light .focus-edit-save,
+.theme-light .focus-edit-cancel {
+  color: #666;
+  border-color: #ccc;
   background: #f5f5f5;
+}
+
+.theme-light .focus-edit-save,
+.theme-light .focus-status-action.start-work {
+  color: #e08900;
+}
+
+.theme-light .focus-status-action {
+  color: #777;
+  border-color: #bbb;
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.theme-light .focus-status-action:hover {
+  color: #333;
+  border-color: #999;
+  background: #eee;
 }
 
 .theme-light .focus-start-next-btn,

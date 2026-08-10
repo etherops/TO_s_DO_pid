@@ -110,3 +110,38 @@ export const getStrippedDisplayText = (text) => {
 
     return cleanText.trim();
 };
+
+/**
+ * Replace a task's visible name and due date while preserving its note and
+ * completion metadata.
+ * @param {string} text - Original task text
+ * @param {string} name - New visible task name
+ * @param {string} dueDateValue - Optional YYYY-MM-DD value from a date input
+ * @returns {string} Updated task text
+ */
+export const updateTaskNameAndDueDate = (text, name, dueDateValue = '') => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return text;
+
+    const currentName = getStrippedDisplayText(text);
+    const nameIndex = text.indexOf(currentName);
+    let updatedText = nameIndex === -1
+        ? trimmedName
+        : `${text.slice(0, nameIndex)}${trimmedName}${text.slice(nameIndex + currentName.length)}`;
+
+    updatedText = updatedText.replace(/\s*!!\s*\([^)]*\)/g, '').trim();
+
+    const completionMatch = updatedText.match(/\s*(\|[^|]*)$/);
+    const completionSuffix = completionMatch ? ` ${completionMatch[1].trim()}` : '';
+    if (completionMatch) updatedText = updatedText.slice(0, completionMatch.index).trim();
+
+    if (dueDateValue) {
+        const [, month, day] = dueDateValue.split('-').map(Number);
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            updatedText += ` !!(${monthNames[month - 1]} ${day})`;
+        }
+    }
+
+    return `${updatedText}${completionSuffix}`;
+};
