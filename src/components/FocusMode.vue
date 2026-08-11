@@ -207,16 +207,25 @@
           <span class="panel-count">{{ weekStripCount }}</span>
         </header>
         <div class="panel-body week-strip-body">
-          <div class="focus-week-day-columns">
-            <div v-for="day in weekDays" :key="day.key" class="focus-week-day-column"
-                 :class="{ 'is-past': day.isPast, 'is-current': day.isToday }">
-              <div class="focus-day-header">
-                <span class="day-name">{{ day.label }}</span>
-                <span class="day-count">{{ day.entries.length }}</span>
-              </div>
-              <div v-if="!day.entries.length" class="focus-week-day-empty">—</div>
-              <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row execution-row"
-                   :class="rowClasses(entry)" :data-task-id="entry.task.id">
+          <div class="focus-week-day-columns" :class="{ 'has-expanded-day': expandedWeekDayIndex !== null }"
+               @mousemove="magnifyWeekDays" @mouseleave="resetWeekDayMagnification">
+            <div v-for="(day, dayIndex) in weekDays" :key="day.key" class="focus-week-day-slot"
+                 :style="weekDayDockStyles[dayIndex]">
+              <div class="focus-week-day-column"
+                   :class="{
+                     'is-past': day.isPast,
+                     'is-current': day.isToday,
+                     'is-expanded': expandedWeekDayIndex === dayIndex,
+                     'is-expanded-neighbor': expandedWeekDayIndex !== null && Math.abs(expandedWeekDayIndex - dayIndex) === 1
+                   }">
+                <div class="focus-week-day-content">
+                  <div class="focus-day-header">
+                    <span class="day-name">{{ day.label }}</span>
+                    <span class="day-count">{{ day.entries.length }}</span>
+                  </div>
+                  <div v-if="!day.entries.length" class="focus-week-day-empty">—</div>
+                <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row execution-row"
+                     :class="rowClasses(entry)" :data-task-id="entry.task.id">
                 <span v-if="day.isToday" class="focus-row-check" :class="checkClasses(entry)"
                       aria-hidden="true"></span>
                 <button v-else-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
@@ -248,8 +257,13 @@
                   <span v-if="entryNote(entry)" class="focus-note-dot"
                         :title="entryNote(entry)">📋</span>
                 </div>
-                <button class="focus-week-clock" title="Edit due date"
-                        aria-label="Edit due date" @click.stop="startDueDateEdit(entry, $event)">◷</button>
+                  <button class="focus-week-clock" title="Edit due date" aria-label="Edit due date"
+                          @pointerdown.stop.prevent="startDueDateEdit(entry, $event)"
+                          @click.stop.prevent
+                          @keydown.enter.stop.prevent="startDueDateEdit(entry, $event)"
+                          @keydown.space.stop.prevent="startDueDateEdit(entry, $event)">◷</button>
+                </div>
+                </div>
               </div>
             </div>
           </div>
@@ -341,6 +355,71 @@ const editTaskName = ref('');
 const dateMenuTaskId = ref(null);
 const dateMenuPosition = ref({ top: 0, left: 0 });
 const sectionTooltip = ref(null);
+const expandedWeekDayIndex = ref(null);
+const weekDayDockStyles = ref([]);
+
+const resetWeekDayMagnification = () => {
+  expandedWeekDayIndex.value = null;
+  weekDayDockStyles.value = [];
+};
+
+const WEEK_DOCK_MAX_BOOST = 0.55;
+const WEEK_DOCK_RADIUS_IN_PANES = 1.45;
+
+// Dock-style magnification: scale each pane according to pointer distance and
+// redistribute the fixed slots around the row's center. An inverse-scaled inner
+// content layer cancels the type/icon enlargement while using the pane's wider
+// logical layout, so more content appears without a second layout animation.
+const magnifyWeekDays = (event) => {
+  const container = event.currentTarget;
+  const columns = [...container.children];
+  if (!columns.length) return;
+
+  const containerRect = container.getBoundingClientRect();
+  const pointerX = event.clientX - containerRect.left;
+  const containerOffsetLeft = container.offsetLeft;
+  const centers = columns.map(column =>
+    column.offsetLeft - containerOffsetLeft + column.offsetWidth / 2
+  );
+  const widths = columns.map(column => column.offsetWidth);
+  const heights = columns.map(column => column.offsetHeight);
+  const baseWidth = widths[0] || 1;
+  const radius = baseWidth * WEEK_DOCK_RADIUS_IN_PANES;
+  const gap = Number.parseFloat(getComputedStyle(container).columnGap) || 0;
+
+  const scales = centers.map(center => {
+    const normalizedDistance = Math.min(1, Math.abs(pointerX - center) / radius);
+    const influence = (1 + Math.cos(Math.PI * normalizedDistance)) / 2;
+    return 1 + WEEK_DOCK_MAX_BOOST * influence;
+  });
+
+  let closestIndex = 0;
+  centers.forEach((center, index) => {
+    if (Math.abs(pointerX - center) < Math.abs(pointerX - centers[closestIndex])) closestIndex = index;
+  });
+  expandedWeekDayIndex.value = closestIndex;
+
+  const scaledWidths = widths.map((width, index) => width * scales[index]);
+  const originalLeft = columns[0].offsetLeft - containerOffsetLeft;
+  const originalRight = columns.at(-1).offsetLeft - containerOffsetLeft + columns.at(-1).offsetWidth;
+  const originalCenter = (originalLeft + originalRight) / 2;
+  const expandedWidth = scaledWidths.reduce((total, width) => total + width, 0)
+      + gap * (columns.length - 1);
+  let cursor = originalCenter - expandedWidth / 2;
+
+  weekDayDockStyles.value = scaledWidths.map((width, index) => {
+    const targetCenter = cursor + width / 2;
+    cursor += width + gap;
+    return {
+      '--dock-scale': scales[index].toFixed(4),
+      '--dock-content-scale': (1 / scales[index]).toFixed(4),
+      '--dock-content-width': `${width}px`,
+      '--dock-content-min-height': `${heights[index] * scales[index]}px`,
+      '--dock-shift-x': `${targetCenter - centers[index]}px`,
+      '--dock-z': String(Math.round(scales[index] * 100))
+    };
+  });
+};
 
 const model = computed(() => deriveFocusModel(props.todoData));
 const quickAddTarget = computed(() => findQuickAddTarget(props.todoData));
@@ -1301,7 +1380,7 @@ const toggleQuickAdd = async () => {
   display: flex;
   flex-direction: column;
   transform: translateX(-50%);
-  overflow: hidden;
+  overflow: visible;
   background: #1a1f26;
   border: 1px solid #2c3340;
   border-radius: 14px;
@@ -1312,9 +1391,9 @@ const toggleQuickAdd = async () => {
   color: #7fb2e5;
 }
 
-.week-strip-body {
+.panel-body.week-strip-body {
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .focus-week-day-columns {
@@ -1328,16 +1407,30 @@ const toggleQuickAdd = async () => {
   box-sizing: border-box;
   gap: 6px;
   padding: 6px;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.focus-week-day-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  transform: translateX(var(--dock-shift-x, 0px));
+  transition: transform 0.18s cubic-bezier(0.22, 0.9, 0.34, 1);
+  z-index: var(--dock-z, 1);
 }
 
 .focus-week-day-column {
-  flex: 1 1 0;
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   max-width: none;
   min-width: 0;
   min-height: 0;
   box-sizing: border-box;
-  padding: 5px 6px 7px;
+  padding: 0;
   overflow-x: hidden;
   overflow-y: auto;
   background: #171c23;
@@ -1345,6 +1438,25 @@ const toggleQuickAdd = async () => {
   border-radius: 8px;
   scrollbar-width: thin;
   scrollbar-color: #364152 transparent;
+  transform-origin: center bottom;
+  transform: translateX(-50%) scale(var(--dock-scale, 1));
+  transition: transform 0.18s cubic-bezier(0.22, 0.9, 0.34, 1),
+              border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.focus-week-day-content {
+  width: var(--dock-content-width, 100%);
+  min-height: var(--dock-content-min-height, 100%);
+  box-sizing: border-box;
+  padding: 5px 6px 7px;
+  transform-origin: left top;
+  transform: scale(var(--dock-content-scale, 1));
+  transition: transform 0.18s cubic-bezier(0.22, 0.9, 0.34, 1);
+}
+
+.focus-week-day-columns.has-expanded-day .focus-week-day-column.is-expanded {
+  border-color: #4f6f92;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.36);
 }
 
 .focus-week-day-column .focus-day-header {

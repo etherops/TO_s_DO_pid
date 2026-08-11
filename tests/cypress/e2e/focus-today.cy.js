@@ -292,7 +292,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-now .focus-task-row').eq(2).should('contain', 'Wip undated');
 
     // The full-width week strip always shows Sunday-Saturday. Future cards land
-    // in their day, while Today is narrow and points back to the spotlight.
+    // in their day, while Today mirrors the spotlight.
     const tomorrowName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' });
     const dayAfterName = dayAfter.toLocaleDateString('en-US', { weekday: 'long' });
     cy.get('.focus-week-strip').should('be.visible').and('contain', 'Week at a glance');
@@ -308,6 +308,47 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.focus-week-day-column').each(($column) => {
       expect(getComputedStyle($column[0]).overflowY).to.equal('auto');
       expect(getComputedStyle($column[0]).borderTopStyle).to.equal('solid');
+    });
+
+    // Dock magnification grows the entered day in both dimensions, gives its
+    // neighbors a smaller lift, and pushes the outer panes away without reflow.
+    cy.get('.focus-week-day-column').then(($days) => {
+      const restingRects = [...$days].map(day => day.getBoundingClientRect());
+      const restingLabelHeight = $days[3].querySelector('.day-name').getBoundingClientRect().height;
+      const target = restingRects[3];
+      cy.get('.focus-week-day-columns').trigger('mousemove', {
+        clientX: target.left + target.width / 2,
+        clientY: target.top + target.height / 2
+      });
+      cy.get('.focus-week-day-column').eq(3).should('have.class', 'is-expanded');
+      cy.get('.focus-week-day-columns').should('have.class', 'has-expanded-day');
+      cy.get('.focus-week-day-column.is-expanded-neighbor').should('have.length', 2);
+      cy.wait(250);
+      cy.get('.focus-week-day-column').then(($magnifiedDays) => {
+        const magnifiedRects = [...$magnifiedDays].map(day => day.getBoundingClientRect());
+        const activeTransform = new DOMMatrix(getComputedStyle($magnifiedDays[3]).transform);
+        const stripRect = $magnifiedDays[3].closest('.focus-week-strip').getBoundingClientRect();
+        const magnifiedLabelHeight = $magnifiedDays[3].querySelector('.day-name').getBoundingClientRect().height;
+        expect(activeTransform.a).to.be.greaterThan(1.45);
+        expect(activeTransform.d).to.be.greaterThan(1.45);
+        expect(magnifiedLabelHeight).to.be.closeTo(restingLabelHeight, 1);
+        expect(magnifiedRects[3].width).to.be.greaterThan(restingRects[3].width * 1.4);
+        expect(magnifiedRects[3].height).to.be.greaterThan(restingRects[3].height * 1.2);
+        expect(magnifiedRects[3].top).to.be.lessThan(stripRect.top);
+        expect(magnifiedRects[2].width).to.be.greaterThan(restingRects[2].width * 1.05);
+        expect(magnifiedRects[2].width).to.be.lessThan(magnifiedRects[3].width);
+        expect(magnifiedRects[0].width).to.be.closeTo(restingRects[0].width, 1);
+        expect(magnifiedRects[0].left).to.be.lessThan(restingRects[0].left - 10);
+      });
+      cy.get('.week-strip-body').should('have.css', 'overflow-y', 'visible');
+      cy.get('.focus-week-day-columns').trigger('mouseleave');
+      cy.get('.focus-week-day-column').eq(3).should('not.have.class', 'is-expanded');
+      cy.get('.focus-week-day-columns').should('not.have.class', 'has-expanded-day');
+      cy.wait(250);
+      cy.get('.focus-week-day-column').eq(3).then(($restoredDay) => {
+        expect($restoredDay[0].getBoundingClientRect().width).to.be.closeTo(restingRects[3].width, 1);
+        expect($restoredDay[0].getBoundingClientRect().height).to.be.closeTo(restingRects[3].height, 1);
+      });
     });
 
     // Future queued work remains in the right-hand working list while also
@@ -481,7 +522,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout']);
 
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-row-check').click();
+      .find('.focus-row-check').should('have.css', 'pointer-events', 'auto').click();
 
     // Pending: stays clickable in IN PROGRESS / QUEUED, already wearing its completed status
     cy.get('.panel-in-progress-queued .focus-task-row')
@@ -517,7 +558,7 @@ describe('Focus Mode (execution carousel)', () => {
       .should('have.class', 'is-focused');
 
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-row-check').click();
+      .find('.focus-row-check').should('have.css', 'pointer-events', 'auto').click();
 
     cy.wait(2100);
     cy.get('.panel-now .focus-task-row').should('contain', 'Inflight wip task');
