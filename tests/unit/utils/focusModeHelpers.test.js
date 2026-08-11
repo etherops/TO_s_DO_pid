@@ -91,10 +91,11 @@ describe('focusModeHelpers', () => {
   describe('deriveFocusModel', () => {
     const model = () => deriveFocusModel(parseTodoMdFile(fixture));
 
-    it('keeps active work queued while putting all unstarted on-deck work in NOW', () => {
+    it('keeps active and future-dated queued work on the right while urgent/general work stays in NOW', () => {
       expect(taskTexts(model().inProgressQueued)).toEqual([
         'Wip inflight undated',
-        'Selected inflight due Friday'
+        'Selected inflight due Friday',
+        'Wip due Saturday'
       ]);
 
       expect(taskTexts(model().now)).toEqual([
@@ -103,8 +104,7 @@ describe('focusModeHelpers', () => {
         'Wip inflight due today',
         'Wip completed due today',
         'Wip cancelled due today',
-        'Wip queued undated',
-        'Wip due Saturday'
+        'Wip queued undated'
       ]);
     });
 
@@ -115,12 +115,12 @@ describe('focusModeHelpers', () => {
         'today',
         'today',
         'today',
-        'undated',
-        `day-${new Date(2026, 7, 15).getTime()}`
+        'undated'
       ]);
       expect(model().inProgressQueued.map(entry => entry.dueGroup)).toEqual([
         'undated',
-        `day-${new Date(2026, 7, 14).getTime()}`
+        `day-${new Date(2026, 7, 14).getTime()}`,
+        `day-${new Date(2026, 7, 15).getTime()}`
       ]);
     });
 
@@ -168,7 +168,7 @@ describe('focusModeHelpers', () => {
       expect(entry.section.items).toContain(entry.task);
     });
 
-    it('keeps same-day work in file order so sections stay together', () => {
+    it('keeps same-day queued work in file order so sections stay together', () => {
       const sameDay = deriveFocusModel(parseTodoMdFile(`# WIP
 ### MONDAY
 * [ ] Monday A !!(Aug 14)
@@ -177,7 +177,7 @@ describe('focusModeHelpers', () => {
 * [ ] Friday B !!(Aug 14)
 `));
 
-      expect(taskTexts(sameDay.now)).toEqual(['Monday A', 'Friday A', 'Friday B']);
+      expect(taskTexts(sameDay.inProgressQueued)).toEqual(['Monday A', 'Friday A', 'Friday B']);
     });
   });
 

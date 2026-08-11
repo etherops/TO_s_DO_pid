@@ -3,9 +3,9 @@
 // Focus mode pulls only from SELECTED and WIP columns - the staged, committed
 // work. What lands on deck for the week is either staged into WIP or carries a
 // due date falling on or before the Saturday that closes this week. Four
-// buckets: IN PROGRESS / QUEUED (anything underway unless urgent), NOW (all
-// unstarted on-deck work, including overdue, due-today, and later-this-week
-// work), UP NEXT (the rest of SELECTED), and DONE. Completed work
+// buckets: IN PROGRESS / QUEUED (anything underway unless urgent, plus
+// non-urgent dated queued work), NOW (undated queued work plus overdue and
+// due-today work), UP NEXT (the rest of SELECTED), and DONE. Completed work
 // due today stays visible in NOW until tomorrow. Work completed or cancelled
 // today also stays in NOW, regardless of its due date.
 
@@ -83,8 +83,8 @@ const eachFocusTask = (todoData, visit) => {
 /**
  * Build the focus model from SELECTED and WIP columns.
  * On deck = staged into WIP, or due on or before the end of this week from
- * anywhere. IN PROGRESS / QUEUED holds non-urgent in-progress work. NOW holds
- * every unstarted on-deck task plus all overdue and due-today work. Both are
+ * anywhere. IN PROGRESS / QUEUED holds non-urgent in-progress work and dated
+ * queued work. NOW holds undated queued work plus all overdue and due-today work. Both are
  * ordered overdue -> today -> undated ->
  * each upcoming day. UP NEXT keeps the rest of SELECTED and DONE keeps
  * terminal work, except cards due today or completed/cancelled today remain in NOW.
@@ -114,9 +114,11 @@ export const deriveFocusModel = (todoData) => {
 
     if (stackName === 'WIP' || isOnDeckThisWeek(task.text)) {
       const onDeckEntry = { ...entry, ...dueGrouping(task) };
-      const belongsInProgressQueue = task.statusChar === '~'
-          && onDeckEntry.dueGroup !== 'today'
-          && onDeckEntry.dueGroup !== 'overdue';
+      const isUrgent = onDeckEntry.dueGroup === 'today' || onDeckEntry.dueGroup === 'overdue';
+      const isDatedQueue = task.statusChar === ' '
+          && String(onDeckEntry.dueGroup).startsWith('day-');
+      const belongsInProgressQueue = !isUrgent
+          && (task.statusChar === '~' || isDatedQueue);
       (belongsInProgressQueue ? inProgressQueued : now).push(onDeckEntry);
       return;
     }
