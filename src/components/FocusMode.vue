@@ -32,7 +32,7 @@
       </div>
     </header>
 
-    <div class="focus-stage">
+    <div class="focus-stage" :class="{ 'has-week-shelf': scheduledThisWeek.length }">
       <div class="focus-carousel">
         <!-- UP NEXT panel: the SELECTED queue -->
         <section
@@ -80,7 +80,7 @@
           </div>
         </section>
 
-        <!-- IN PROGRESS / QUEUED: underway work plus work scheduled later this week -->
+        <!-- IN PROGRESS / QUEUED: non-urgent work already underway -->
         <section
             class="focus-panel panel-in-progress-queued"
             :class="{ 'is-focused': isFocused(1) }"
@@ -147,7 +147,7 @@
           </div>
         </section>
 
-        <!-- NOW: remaining unstarted work, including everything urgent -->
+        <!-- NOW: all unstarted on-deck work, including this week's schedule -->
         <section
             class="focus-panel panel-now"
             :class="{ 'is-focused': isFocused(2) }"
@@ -156,10 +156,10 @@
         >
           <header class="panel-header">
             <span class="panel-kicker now-kicker">Now</span>
-            <span class="panel-count">{{ now.length }}</span>
+            <span class="panel-count">{{ immediateNow.length }}</span>
           </header>
           <div class="panel-body">
-            <div v-if="!now.length" class="panel-empty">
+            <div v-if="!immediateNow.length" class="panel-empty">
               Nothing needs attention now.<br>Pull work in from Up next.
             </div>
             <template v-for="day in nowDays" :key="day.key">
@@ -245,6 +245,52 @@
           </div>
         </section>
       </div>
+
+      <section v-if="scheduledThisWeek.length" class="focus-week-shelf">
+        <header class="panel-header">
+          <span class="panel-kicker week-shelf-kicker">Up next this week</span>
+          <span class="panel-count">{{ scheduledThisWeek.length }}</span>
+        </header>
+        <div class="panel-body week-shelf-body">
+          <div class="focus-week-day-columns"
+               :style="{ '--week-day-count': scheduledThisWeekDays.length }">
+            <div v-for="day in scheduledThisWeekDays" :key="day.key" class="focus-week-day-column">
+              <div class="focus-day-header" :class="dayHeaderClass(day.key)">
+                <span class="day-name">{{ day.label }}</span>
+                <span class="day-count">{{ day.entries.length }}</span>
+              </div>
+              <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row execution-row"
+                   :class="rowClasses(entry)" :data-task-id="entry.task.id">
+                <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
+                        :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
+                        @click.stop="cycleEntryStatus(entry, 'now')"></button>
+                <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
+                  <input v-model="editTaskName" class="focus-edit-name"
+                         aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                  <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
+                  <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
+                </div>
+                <div v-else class="focus-row-main">
+                  <button class="focus-row-title execution-row-title"
+                          :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
+                          :title="`Edit name: ${entry.task.text}`"
+                          @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
+                  <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
+                    {{ entry.sectionName }}
+                  </span>
+                  <span v-if="entryNote(entry)" class="focus-row-note">{{ entryNote(entry) }}</span>
+                </div>
+                <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+                        :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
+                        @click.stop="startDueDateEdit(entry, $event)">
+                  <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
+                  <span class="focus-due-clock" aria-hidden="true">◷</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- Cards in flight are cloned into this layer so they sail over the panels
@@ -386,7 +432,14 @@ const visibleBucket = (bucketName) => computed(() => {
 // execution panels and the UP NEXT groups), then use the main board's status
 // priority inside that group. Section clustering remains the final tie-breaker,
 // so cards from one section stay adjacent when they share a group and status.
-const clusterBySection = (entries) => {
+const statusForOrdering = (entry, preservePendingState) => {
+  if (!preservePendingState) return entry.task.statusChar;
+  return pendingStatuses.value.get(entry.task.id)?.initialStatus
+      ?? transitions.value.get(entry.task.id)?.sortStatus
+      ?? entry.task.statusChar;
+};
+
+const clusterBySection = (entries, { preservePendingState = true } = {}) => {
   const groups = new Map();
 
   entries.forEach(entry => {
@@ -398,12 +451,14 @@ const clusterBySection = (entries) => {
 
   return [...groups.values()].flatMap(groupEntries => {
     const statusOrdered = [...groupEntries].sort((a, b) =>
-      getStatusPriority(b.task.statusChar) - getStatusPriority(a.task.statusChar)
+      getStatusPriority(statusForOrdering(b, preservePendingState))
+      - getStatusPriority(statusForOrdering(a, preservePendingState))
     );
     const sections = new Map();
 
     statusOrdered.forEach(entry => {
-      const key = `${entry.task.statusChar}::${entry.columnName}::${entry.sectionName}`;
+      const status = statusForOrdering(entry, preservePendingState);
+      const key = `${status}::${entry.columnName}::${entry.sectionName}`;
       if (!sections.has(key)) sections.set(key, []);
       sections.get(key).push(entry);
     });
@@ -465,7 +520,15 @@ const groupByDueDay = (entries) => {
 const dayHeaderClass = (key) => `day-${key === 'today' ? 'today' : key === 'undated' ? 'general' : 'upcoming'}`;
 
 const inProgressQueuedDays = computed(() => groupByDueDay(inProgressQueued.value));
-const nowDays = computed(() => groupByDueDay(now.value));
+const isScheduledThisWeek = (entry) => {
+  if (!String(entry.dueGroup).startsWith('day-')) return false;
+  const dueDate = extractDateFromText(entry.task.text);
+  return Boolean(dueDate) && dueDate <= endOfCurrentWeek();
+};
+const scheduledThisWeek = computed(() => now.value.filter(isScheduledThisWeek));
+const immediateNow = computed(() => now.value.filter(entry => !isScheduledThisWeek(entry)));
+const nowDays = computed(() => groupByDueDay(immediateNow.value));
+const scheduledThisWeekDays = computed(() => groupByDueDay(scheduledThisWeek.value));
 
 // The panels clip their contents, so a card can't visibly leave one. Clone it
 // into the fixed overlay at the moment it takes off - the clone sails above
@@ -490,8 +553,8 @@ const launchFlight = (taskId, direction) => {
   schedule(() => flier.remove(), WHISK_MS);
 };
 
-const cardPlacement = (focusModel, bucketName, taskId) => {
-  const entries = clusterBySection(focusModel[bucketName] || []);
+const cardPlacement = (focusModel, bucketName, taskId, preservePendingState = true) => {
+  const entries = clusterBySection(focusModel[bucketName] || [], { preservePendingState });
   const index = entries.findIndex(candidate => candidate.task.id === taskId);
   if (index === -1) return null;
 
@@ -898,7 +961,7 @@ const finishPendingStatus = (taskId) => {
     updatedModel[bucketName].some(candidate => candidate.task.id === taskId)
   );
   const destinationPlacement = destination
-      ? cardPlacement(updatedModel, destination, taskId)
+      ? cardPlacement(updatedModel, destination, taskId, false)
       : null;
   const staysPut = source === destination
       && sourcePlacement?.index === destinationPlacement?.index
@@ -913,7 +976,14 @@ const finishPendingStatus = (taskId) => {
   const direction = source === destination
       ? 'within'
       : BUCKET_INDEX[destination] > BUCKET_INDEX[source] ? 'right' : 'left';
-  transitions.value.set(taskId, { source, index, entry, phase: 'held', direction });
+  transitions.value.set(taskId, {
+    source,
+    index,
+    entry,
+    phase: 'held',
+    direction,
+    sortStatus: initialStatus
+  });
   pendingStatuses.value.delete(taskId);
   emit('update');
 
@@ -1100,6 +1170,20 @@ const toggleQuickAdd = async () => {
   perspective: 1500px;
 }
 
+.focus-stage.has-week-shelf .focus-carousel {
+  position: relative;
+  inset: auto;
+  flex: 1;
+  height: auto;
+  min-height: 300px;
+}
+
+.focus-stage.has-week-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .focus-panel {
   position: absolute;
   left: 50%;
@@ -1134,6 +1218,66 @@ const toggleQuickAdd = async () => {
 
 .focus-panel.panel-in-progress-queued.is-focused {
   box-shadow: 0 0 90px rgba(255, 179, 71, 0.13), 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+.focus-week-shelf {
+  position: relative;
+  z-index: 60;
+  left: 50%;
+  top: auto;
+  width: min(66vw, 1020px);
+  height: auto;
+  max-height: min(25vh, 220px);
+  margin-top: 0;
+  flex: 0 1 auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-50%);
+  overflow: hidden;
+  background: #1a1f26;
+  border: 1px solid #2c3340;
+  border-radius: 14px;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.48);
+}
+
+.week-shelf-kicker {
+  color: #7fb2e5;
+}
+
+.week-shelf-body {
+  flex: 0 1 auto;
+  overflow: auto;
+}
+
+.focus-week-day-columns {
+  display: grid;
+  grid-template-columns: repeat(var(--week-day-count), minmax(0, 1fr));
+  flex: 1;
+  min-width: 0;
+}
+
+.focus-week-day-column {
+  min-width: 0;
+  padding: 0 7px;
+  border-left: 1px solid #232a35;
+}
+
+.focus-week-day-column:first-child {
+  padding-left: 0;
+  border-left: none;
+}
+
+.focus-week-day-column:last-child {
+  padding-right: 0;
+}
+
+.focus-week-day-column .focus-day-header {
+  padding-top: 0;
+}
+
+.focus-week-day-column .focus-task-row {
+  margin-top: 3px;
 }
 
 /* Rows in unfocused panels aren't interactive - a click focuses the panel */
@@ -1805,19 +1949,20 @@ const toggleQuickAdd = async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding-top: 4px;
+  gap: 0;
+  padding: 3px 0 2px;
+  line-height: 0;
 }
 
 .focus-dots {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 .focus-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   border: none;
   padding: 0;
@@ -1970,6 +2115,16 @@ const toggleQuickAdd = async () => {
 
 .theme-light .focus-panel.panel-in-progress-queued.is-focused {
   box-shadow: 0 0 60px rgba(255, 152, 0, 0.14), 0 10px 32px rgba(0, 0, 0, 0.16);
+}
+
+.theme-light .focus-week-shelf {
+  background: #fff;
+  border-color: #ddd;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .focus-week-day-column {
+  border-left-color: #e8e8e8;
 }
 
 .theme-light .panel-header {

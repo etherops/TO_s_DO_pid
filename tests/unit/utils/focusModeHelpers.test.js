@@ -91,11 +91,10 @@ describe('focusModeHelpers', () => {
   describe('deriveFocusModel', () => {
     const model = () => deriveFocusModel(parseTodoMdFile(fixture));
 
-    it('combines in-progress and upcoming scheduled work, leaving urgent and general unstarted work in NOW', () => {
+    it('keeps active work queued while putting all unstarted on-deck work in NOW', () => {
       expect(taskTexts(model().inProgressQueued)).toEqual([
         'Wip inflight undated',
-        'Selected inflight due Friday',
-        'Wip due Saturday'
+        'Selected inflight due Friday'
       ]);
 
       expect(taskTexts(model().now)).toEqual([
@@ -104,7 +103,8 @@ describe('focusModeHelpers', () => {
         'Wip inflight due today',
         'Wip completed due today',
         'Wip cancelled due today',
-        'Wip queued undated'
+        'Wip queued undated',
+        'Wip due Saturday'
       ]);
     });
 
@@ -115,12 +115,12 @@ describe('focusModeHelpers', () => {
         'today',
         'today',
         'today',
-        'undated'
+        'undated',
+        `day-${new Date(2026, 7, 15).getTime()}`
       ]);
       expect(model().inProgressQueued.map(entry => entry.dueGroup)).toEqual([
         'undated',
-        `day-${new Date(2026, 7, 14).getTime()}`,
-        `day-${new Date(2026, 7, 15).getTime()}`
+        `day-${new Date(2026, 7, 14).getTime()}`
       ]);
     });
 
@@ -177,7 +177,7 @@ describe('focusModeHelpers', () => {
 * [ ] Friday B !!(Aug 14)
 `));
 
-      expect(taskTexts(sameDay.inProgressQueued)).toEqual(['Monday A', 'Friday A', 'Friday B']);
+      expect(taskTexts(sameDay.now)).toEqual(['Monday A', 'Friday A', 'Friday B']);
     });
   });
 
