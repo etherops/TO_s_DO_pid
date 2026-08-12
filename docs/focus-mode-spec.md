@@ -20,7 +20,7 @@ The top area contains three panels with one spotlight at a time:
 2. NOW, spotlighted by default
 3. IN PROGRESS / QUEUED
 
-The spotlight is larger. Both side panels remain fully visible, shorter, and narrower. Navigation works through panel clicks, the three compact dots, left/right arrow keys, and horizontal swipe.
+The spotlight is larger. Both side panels remain fully visible and slightly shorter and narrower than the spotlight, and sit just below vertical center so their breathing room remains nearly balanced. The stage uses most of the available viewport height while preserving a small footer buffer around the compact navigation dots. Navigation works through panel clicks, the three compact dots, left/right arrow keys, and horizontal swipe.
 
 ## Week at a glance
 

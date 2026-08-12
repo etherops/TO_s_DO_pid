@@ -822,7 +822,7 @@ const panelStyle = (panelIndex) => {
   const x = `${leftSide ? -34 : 34}vw`;
 
   return {
-    transform: `translate(-50%, -50%) translateX(${x}) rotateY(${leftSide ? 7 : -7}deg) scale(0.94)`,
+    transform: `translate(-50%, -48%) translateX(${x}) rotateY(${leftSide ? 7 : -7}deg) scale(0.94)`,
     zIndex: 40,
     opacity: 0.88,
     pointerEvents: 'auto'
@@ -1304,7 +1304,7 @@ const toggleQuickAdd = async () => {
 /* ========================= */
 .focus-stage {
   position: relative;
-  height: calc(100vh - 165px);
+  height: calc(100vh - 125px);
   min-height: 480px;
   margin-top: 4px;
 }
@@ -1333,8 +1333,8 @@ const toggleQuickAdd = async () => {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 27vw;
-  height: 88%;
+  width: 28vw;
+  height: 98%;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

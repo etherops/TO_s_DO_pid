@@ -76,6 +76,7 @@ describe('Focus Mode (execution carousel)', () => {
 
     // Both side panels are fully on-screen and do not sit behind NOW.
     cy.get('.focus-panel').then(($panels) => {
+      const carouselRect = $panels[0].closest('.focus-carousel').getBoundingClientRect();
       const upNextRect = $panels.filter('.panel-upnext')[0].getBoundingClientRect();
       const nowRect = $panels.filter('.panel-now')[0].getBoundingClientRect();
       const queuedRect = $panels.filter('.panel-in-progress-queued')[0].getBoundingClientRect();
@@ -86,6 +87,17 @@ describe('Focus Mode (execution carousel)', () => {
       expect(nowRect.width).to.be.greaterThan(upNextRect.width);
       expect(nowRect.height).to.be.greaterThan(upNextRect.height);
       expect(nowRect.height).to.be.greaterThan(queuedRect.height);
+      const upNextTopGap = upNextRect.top - carouselRect.top;
+      const upNextBottomGap = carouselRect.bottom - upNextRect.bottom;
+      const queuedTopGap = queuedRect.top - carouselRect.top;
+      const queuedBottomGap = carouselRect.bottom - queuedRect.bottom;
+      expect(upNextTopGap).to.be.greaterThan(upNextBottomGap);
+      expect(queuedTopGap).to.be.greaterThan(queuedBottomGap);
+      expect(upNextTopGap - upNextBottomGap).to.be.lessThan(25);
+      expect(queuedTopGap - queuedBottomGap).to.be.lessThan(25);
+    });
+    cy.get('.focus-week-strip').then(($strip) => {
+      expect(window.innerHeight - $strip[0].getBoundingClientRect().bottom).to.be.lessThan(85);
     });
   });
 
@@ -451,8 +463,9 @@ describe('Focus Mode (execution carousel)', () => {
 
     cy.get('.panel-now .focus-edit-name').clear();
     cy.get('.panel-now .focus-edit-name').type('Renamed focus task');
+    cy.get('.panel-now .focus-edit-name').should('have.value', 'Renamed focus task');
     cy.get('.panel-now .focus-edit-date').should('not.exist');
-    cy.get('.panel-now .focus-edit-save').click();
+    cy.get('.panel-now .focus-edit-name').type('{enter}');
 
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Renamed focus task')
       .invoke('outerHeight').as('dateRowHeight');
