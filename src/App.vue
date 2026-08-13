@@ -281,11 +281,6 @@ onUnmounted(() => {
   color: white;
 }
 
-.todo-app.theme-dark .focus-mode-btn.active {
-  background-color: #262c36;
-  color: #ffb347;
-}
-
 /* --- Columns and sections --- */
 .todo-app.theme-dark .kanban-column {
   background-color: #1c2129;

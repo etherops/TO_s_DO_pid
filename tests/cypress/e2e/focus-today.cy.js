@@ -672,8 +672,7 @@ describe('Focus Mode (execution carousel)', () => {
       .find('.focus-task-row').contains('.focus-task-row', 'Selected ready task')
       .find('.focus-row-title').should('have.css', 'pointer-events', 'auto').click();
     cy.get('.panel-now').should('have.class', 'is-focused');
-    cy.get('.panel-upnext .focus-edit-name').clear();
-    cy.get('.panel-upnext .focus-edit-name').type('Side-edited ready task{enter}');
+    cy.get('.panel-upnext .focus-edit-name').type('{selectall}Side-edited ready task{enter}');
     cy.get('.panel-upnext').should('not.have.class', 'is-focused').and('contain', 'Side-edited ready task');
     cy.get('.panel-now').should('have.class', 'is-focused');
 
@@ -807,7 +806,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext').should('have.class', 'is-focused');
   });
 
-  it('should start a scheduled up-next task without changing its date group', () => {
+  it('should move a started Up Next task into In Progress / Blocked after debounce', () => {
     enterFocusMode();
 
     cy.get('.panel-upnext').click({ force: true });
@@ -817,12 +816,12 @@ describe('Focus Mode (execution carousel)', () => {
       .find('.focus-row-check').click({ force: true });
 
     cy.wait(2100);
-    // The task is active, but its existing day group remains in Up Next.
-    cy.get('.panel-upnext').should('have.class', 'is-focused');
-    cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task')
+    cy.get('.panel-upnext').should('not.contain', 'Selected ready task');
+    cy.get('.panel-in-progress-queued').should('contain', 'Selected ready task');
+    cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Selected ready task')
       .find('.focus-row-check').should('have.class', 'inflight');
-    cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task')
-      .find('.focus-section-badge').should('contain', 'CURRENT');
+    cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Selected ready task')
+      .find('.focus-section-badge').should('exist');
     cy.get('.panel-in-progress-queued').should('contain', 'Parked selected task');
   });
 
@@ -869,7 +868,7 @@ describe('Focus Mode (execution carousel)', () => {
       .find('.focus-row-check').click({ force: true });
 
     cy.wait(2100);
-    cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task')
+    cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Selected ready task')
       .find('.focus-row-check').click({ force: true });
 
     cy.wait(2100);

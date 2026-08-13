@@ -120,29 +120,24 @@ export const deriveFocusModel = (todoData) => {
         return;
       }
 
-      // Reproduce the former IN PROGRESS / QUEUED membership before deciding
-      // where its named groups render. General was exactly undated active WIP;
-      // dated queued/active work belonged to This Week or an individual day.
-      const belongedToOldRightPanel = task.statusChar === '~'
-          || (task.statusChar === ' ' && routedEntry.dueGroup !== 'undated');
-      if (belongedToOldRightPanel) {
-        if (routedEntry.dueGroup === 'undated') {
-          if (task.statusChar === '~') inProgressQueued.push({ ...routedEntry, group: 'inProgress' });
-          else upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
-        } else {
-          upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
-        }
+      // Status owns execution routing: once work starts it leaves Up Next,
+      // regardless of whether it still carries a future day/week/month date.
+      if (task.statusChar === '~') {
+        const group = stackName === 'WIP' ? 'inProgress' : 'waiting';
+        inProgressQueued.push({ ...routedEntry, group });
         return;
       }
 
-      upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
+      if (period) upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
+      else upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
       return;
     }
 
-    // Reproduce the former UP NEXT / WAITING membership. Its dated groups move
-    // to Up Next; its undated Waiting group moves right as Waiting / Blocked.
-    if (period) upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
-    else if (task.statusChar === '~') inProgressQueued.push({ ...routedEntry, group: 'waiting' });
+    // Starting anything in Up Next moves it into Waiting / Blocked. Its due
+    // period remains intact and continues to appear in Week at a glance when
+    // applicable; only urgent work is promoted to NOW instead.
+    if (task.statusChar === '~') inProgressQueued.push({ ...routedEntry, group: 'waiting' });
+    else if (period) upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
     else upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
   });
 

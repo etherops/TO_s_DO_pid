@@ -100,7 +100,8 @@ describe('focusModeHelpers', () => {
     it('keeps active and waiting work on the right while scheduled work goes left and urgent/general work stays in NOW', () => {
       expect(taskTexts(model().inProgressQueued)).toEqual([
         'Selected inflight undated',
-        'Wip inflight undated'
+        'Wip inflight undated',
+        'Selected inflight due Friday'
       ]);
 
       expect(taskTexts(model().now)).toEqual([
@@ -122,13 +123,13 @@ describe('focusModeHelpers', () => {
       ]);
       expect(model().inProgressQueued.map(entry => entry.dueGroup)).toEqual([
         'undated',
-        'undated'
+        'undated',
+        `day-${new Date(2026, 7, 14).getTime()}`
       ]);
     });
 
     it('puts unstarted scheduled work in UP NEXT by period precision', () => {
       expect(taskTexts(model().upNext)).toEqual([
-        'Selected inflight due Friday',
         'Wip due Saturday',
         'Selected due next week',
         'Selected undated',

@@ -332,15 +332,6 @@ const getFileTooltip = (file) => {
   background-color: #43a047;
 }
 
-.focus-mode-btn.active {
-  background-color: #1e232b;
-  color: #ffb347;
-}
-
-.focus-mode-btn.active:hover {
-  background-color: #2b3341;
-}
-
 .history-btn {
   display: inline-flex;
   align-items: center;

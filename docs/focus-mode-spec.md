@@ -55,6 +55,7 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 - Task titles and due-date controls remain directly editable in the left and right side panels; using them does not move that panel into the spotlight. Clicking the surrounding panel still brings it to center.
 - The due-date clock opens an anchored menu with Today, Tomorrow, each remaining day this week, Next week, whole-week and whole-month shortcuts, one unified custom picker, and Clear. The custom picker switches between Day, Week, and Month precision without presenting three competing controls. Choosing a value saves immediately.
 - Status uses the four board states: queued, in progress, completed, and will not do.
+- Marking an Up Next task in progress moves it to IN PROGRESS / BLOCKED after the status debounce. Its due period is preserved; due-today and overdue work remains in NOW.
 - Status appearance updates immediately, but sorting and re-bucketing wait 1.5 seconds so repeated toggles do not move the control under the pointer.
 - A change that moves a card uses the hold, flight, and landing animation. A change that leaves the card in the same rendered slot does not whisk.
 
