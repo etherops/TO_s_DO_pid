@@ -164,7 +164,8 @@ describe('WebSocket File Sync', () => {
     cy.wait(1000);
 
     // Verify we can see both files
-    cy.get('.file-tab').should('have.length.at.least', 2);
+    cy.get('.file-selector-trigger').click();
+    cy.get('.file-selector-option').should('have.length.at.least', 2);
     
     // Make sure we're on the first file
     cy.switchToFile(testFile.fileName);

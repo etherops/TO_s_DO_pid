@@ -115,7 +115,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-in-progress-queued .focus-task-row').should('have.length', 2)
       .and('contain', 'Inflight wip task').and('contain', 'Parked selected task');
     cy.get('.panel-in-progress-queued .focus-row-check.inflight').should('have.length', 2);
-    cy.get('.panel-in-progress-queued .focus-day-header').eq(0).should('contain', 'In Progress This Week');
+    cy.get('.panel-in-progress-queued .focus-day-header').eq(0).should('contain', 'In Progress / Parked');
     cy.get('.panel-in-progress-queued .focus-day-header').eq(1).should('contain', 'Waiting / Blocked');
 
     // NOW: remaining unstarted work, under a Today section holding the overdue
@@ -255,7 +255,7 @@ describe('Focus Mode (execution carousel)', () => {
   it('uses the same canonical label for a due-week group and its task badge', () => {
     const weekStart = new Date(nextWeek);
     weekStart.setDate(nextWeek.getDate() - nextWeek.getDay());
-    const label = serializeDuePeriodValue(`week:${dateInputValue(weekStart)}`).replace(/\s+\d{4}$/, '').toUpperCase();
+    const label = serializeDuePeriodValue(`week:${dateInputValue(weekStart)}`).replace(/\s+\d{4}$/, '');
     const weekContent = `# SELECTED
 ## Ready
 * [ ] Whole future week ${weekDueTag(nextWeek)}

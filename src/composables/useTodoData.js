@@ -39,6 +39,29 @@ export function useTodoData() {
         }
     };
 
+    const taskCountsFromContent = (content) => {
+        const counts = { total: 0, open: 0, active: 0, done: 0, skipped: 0 };
+        String(content).split('\n').forEach(line => {
+            const match = line.match(/^\s*[*-]\s+\[([ x~-])\]\s+/);
+            if (!match) return;
+            counts.total += 1;
+            if (match[1] === '~') counts.active += 1;
+            else if (match[1] === 'x') counts.done += 1;
+            else if (match[1] === '-') counts.skipped += 1;
+            else counts.open += 1;
+        });
+        return counts;
+    };
+
+    const updateSelectedFileCounts = (content) => {
+        const taskCounts = taskCountsFromContent(content);
+        selectedFile.value = { ...selectedFile.value, taskCounts };
+        const fileIndex = availableFiles.value.findIndex(file => file.path === selectedFile.value.path);
+        if (fileIndex !== -1) {
+            availableFiles.value[fileIndex] = { ...availableFiles.value[fileIndex], taskCounts };
+        }
+    };
+
     // Load available text files from the server
     const loadAvailableFiles = async () => {
         try {
@@ -136,6 +159,7 @@ export function useTodoData() {
                 content,
                 path: selectedFile.value.path
             });
+            updateSelectedFileCounts(content);
 
             if (!skipHistory) {
                 await notifyAfterPersist(content);

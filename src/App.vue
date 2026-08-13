@@ -234,19 +234,45 @@ onUnmounted(() => {
   color: #9aa4b2;
 }
 
-.todo-app.theme-dark .file-tab {
-  background-color: #20262f;
+.todo-app.theme-dark .selected-file-status-summary {
   color: #9aa4b2;
-  border-color: #2a3240;
 }
 
-.todo-app.theme-dark .file-tab:hover {
+.todo-app.theme-dark .file-selector-trigger {
+  background-color: #20262f;
+  border-color: #3a4452;
+  color: #9aa4b2;
+}
+
+.todo-app.theme-dark .file-selector-trigger:hover,
+.todo-app.theme-dark .file-selector-trigger[aria-expanded="true"] {
   background-color: #242b36;
+  border-top-color: #527ca6;
+  border-right-color: #527ca6;
+  border-bottom-color: #527ca6;
 }
 
-.todo-app.theme-dark .file-tab.active {
-  background-color: #1a1f26;
-  color: #dfe3e8;
+.todo-app.theme-dark .file-selector-popover {
+  background-color: #20262f;
+  border-color: #333c49;
+}
+
+.todo-app.theme-dark .file-selector-option {
+  background-color: #252c36;
+  border-color: #343d49;
+  color: #c7cdd5;
+}
+
+.todo-app.theme-dark .file-selector-option:hover,
+.todo-app.theme-dark .file-selector-option:focus-visible {
+  background-color: #293240;
+  border-color: #405168;
+}
+
+.todo-app.theme-dark .file-selector-option.active {
+  background-color: #233b53;
+  border-color: #4c83b5;
+  color: #b9dcfb;
 }
 
 .todo-app.theme-dark .history-btn {

@@ -1,21 +1,89 @@
 <!-- components/FileTabBar.vue -->
 <template>
   <div class="file-tabs-container">
-    <div class="file-tabs">
+    <div class="file-selector-area">
       <div class="logo-container">
         <img src="../assets/favicon.svg" alt="Logo" class="app-logo">
       </div>
       <div class="app-title">TO_s_DO_pid</div>
-      <div
-          v-for="file in availableFiles"
-          :key="file.path || file.name"
-          :class="['file-tab', { 'server-tab': file.isBuiltIn, 'custom-tab': !file.isBuiltIn, active: isFileActive(file) }]"
-          @click="$emit('file-selected', file)"
-          @contextmenu.prevent="openFileSource(file)"
-          :title="getFileTooltip(file)"
-      >
-        {{ formatTabName(file) }}
+      <div class="file-selector">
+        <button class="file-selector-trigger" :class="fileSourceClass(selectedFile)" type="button" aria-haspopup="listbox"
+                :aria-expanded="fileSelectorOpen" :title="getFileTooltip(selectedFile)"
+                @click.stop="toggleFileSelector"
+                @contextmenu.prevent="showFileContextMenu($event, selectedFile)">
+          <span class="selected-file-name">{{ selectedFile?.name ? formatTabName(selectedFile) : 'Select TODO List' }}</span>
+          <svg class="selector-chevron" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="m7 10 5 5 5-5z"/>
+          </svg>
+        </button>
+        <div v-if="fileSelectorOpen" class="file-selector-popover" role="listbox"
+             aria-label="Todo file" @click.stop>
+          <button v-for="file in availableFiles" :key="file.path || file.name" type="button"
+                  class="file-selector-option"
+                  :class="[fileSourceClass(file), { active: isFileActive(file) }]"
+                  role="option" :aria-selected="isFileActive(file)" :title="getFileTooltip(file)"
+                  @click="selectFile(file)"
+                  @contextmenu.prevent.stop="showFileContextMenu($event, file)">
+            <span class="file-option-name">{{ formatTabName(file) }}</span>
+            <span v-if="file.taskCounts" class="file-option-counts">
+              <span class="counts-parenthesis" aria-hidden="true">(</span>
+              <span class="file-status-count" title="Not started">
+                <span class="visually-hidden">Not started:</span>
+                {{ file.taskCounts.open }}
+                <span class="file-status-icon unchecked" aria-hidden="true"></span>
+              </span>
+              <template v-if="file.taskCounts.active">
+                <span class="count-separator" aria-hidden="true">·</span>
+                <span class="file-status-count" title="In progress">
+                  <span class="visually-hidden">In progress:</span>
+                  {{ file.taskCounts.active }}
+                  <span class="file-status-icon in-progress" aria-hidden="true"></span>
+                </span>
+              </template>
+              <template v-if="file.taskCounts.done">
+                <span class="count-separator" aria-hidden="true">·</span>
+                <span class="file-status-count" title="Done">
+                  <span class="visually-hidden">Done:</span>
+                  {{ file.taskCounts.done }}
+                  <span class="file-status-icon checked" aria-hidden="true"></span>
+                </span>
+              </template>
+              <template v-if="file.taskCounts.skipped">
+                <span class="count-separator" aria-hidden="true">·</span>
+                <span class="file-status-count" title="Will not do">
+                  <span class="visually-hidden">Will not do:</span>
+                  {{ file.taskCounts.skipped }}
+                  <span class="file-status-icon cancelled" aria-hidden="true"></span>
+                </span>
+              </template>
+              <span class="counts-parenthesis" aria-hidden="true">)</span>
+            </span>
+          </button>
+        </div>
       </div>
+    </div>
+    <div v-if="selectedFile?.taskCounts" class="selected-file-status-summary"
+         aria-label="Selected list task status counts">
+      <span class="header-status-count" title="Not started">
+        <span class="file-status-icon unchecked" aria-hidden="true"></span>
+        <span class="header-status-label">Not started</span>
+        <span class="header-status-number">{{ selectedFile.taskCounts.open }}</span>
+      </span>
+      <span class="header-status-count" title="In progress">
+        <span class="file-status-icon in-progress" aria-hidden="true"></span>
+        <span class="header-status-label">In progress</span>
+        <span class="header-status-number">{{ selectedFile.taskCounts.active }}</span>
+      </span>
+      <span class="header-status-count" title="Done">
+        <span class="file-status-icon checked" aria-hidden="true"></span>
+        <span class="header-status-label">Done</span>
+        <span class="header-status-number">{{ selectedFile.taskCounts.done }}</span>
+      </span>
+      <span class="header-status-count" title="Will not do">
+        <span class="file-status-icon cancelled" aria-hidden="true"></span>
+        <span class="header-status-label">Will not do</span>
+        <span class="header-status-number">{{ selectedFile.taskCounts.skipped }}</span>
+      </span>
     </div>
     <div class="toolbar-controls">
       <div class="history-controls">
@@ -88,11 +156,35 @@
         </button>
       </div>
     </div>
+    <Teleport to="body">
+      <div v-if="fileContextMenu.show" class="file-tab-context-menu" role="menu"
+           :style="{ left: `${fileContextMenu.x}px`, top: `${fileContextMenu.y}px`, width: `${fileContextMenu.width}px` }"
+           @click.stop @contextmenu.prevent>
+        <div class="file-path-row">
+          <code>{{ contextAbsolutePath }}</code>
+          <button type="button" role="menuitem" title="Copy absolute file path"
+                  aria-label="Copy absolute file path" @click="copyFilePath(false)">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="file-path-row">
+          <code>{{ contextBrowserPath }}</code>
+          <button type="button" role="menuitem" title="Copy file URL for browser"
+                  aria-label="Copy file URL for browser" @click="copyFilePath(true)">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 
 const props = defineProps({
   availableFiles: {
@@ -121,9 +213,21 @@ const props = defineProps({
   }
 });
 
-defineEmits(['file-selected', 'set-view-mode', 'cycle-theme', 'show-history', 'undo', 'redo']);
+const emit = defineEmits(['file-selected', 'set-view-mode', 'cycle-theme', 'show-history', 'undo', 'redo']);
 
 const themeGlyph = computed(() => ({ auto: '◐', dark: '☾', light: '☀' }[props.themePreference] || '◐'));
+const fileSelectorOpen = ref(false);
+const fileSourceClass = (file) => file?.isBuiltIn ? 'built-in-file' : 'user-file';
+
+const toggleFileSelector = () => {
+  closeFileContextMenu();
+  fileSelectorOpen.value = !fileSelectorOpen.value;
+};
+
+const selectFile = (file) => {
+  fileSelectorOpen.value = false;
+  emit('file-selected', file);
+};
 
 // Format tab name based on file type
 const formatTabName = (file) => {
@@ -138,10 +242,8 @@ const formatTabName = (file) => {
     }
   }
   
-  // For directory files and built-in files, just show the name
-  let displayName = file.name.replace(/\.todo\.md$/i, '');
-  displayName = displayName.replace(/_/g, ' ');
-  return displayName;
+  // Keep the filename's original capitalization and punctuation.
+  return file.name.replace(/\.todo\.md$/i, '');
 };
 
 // Check if a file is the active one
@@ -159,16 +261,77 @@ const getFileTooltip = (file) => {
   return file.name;
 };
 
-const openFileSource = (file) => {
-  if (!file?.path) return;
-  const absolutePath = file.path.startsWith('/') ? file.path : `/${file.path}`;
-  const fileUrl = `file://${absolutePath.split('/').map(encodeURIComponent).join('/')}`;
-  window.open(fileUrl, '_blank', 'noopener');
+const fileContextMenu = reactive({ show: false, file: null, x: 0, y: 0, width: 0 });
+const contextAbsolutePath = computed(() => {
+  const filePath = fileContextMenu.file?.path || '';
+  return filePath.startsWith('/') ? filePath : `/${filePath}`;
+});
+const contextBrowserPath = computed(() => contextAbsolutePath.value
+  ? `file://${contextAbsolutePath.value.split('/').map(encodeURIComponent).join('/')}`
+  : '');
+
+const closeFileContextMenu = () => {
+  fileContextMenu.show = false;
+  fileContextMenu.file = null;
 };
+
+const showFileContextMenu = (event, file) => {
+  const menuHeight = 104;
+  const tabRect = event.currentTarget.getBoundingClientRect();
+  const absolutePath = file?.path?.startsWith('/') ? file.path : `/${file?.path || ''}`;
+  const browserPath = absolutePath ? `file://${absolutePath.split('/').map(encodeURIComponent).join('/')}` : '';
+  const menuWidth = Math.min(
+    Math.max(260, Math.max(absolutePath.length, browserPath.length) * 7.25 + 58),
+    680,
+    window.innerWidth - 8
+  );
+  const spaceBelow = window.innerHeight - tabRect.bottom;
+  const menuTop = spaceBelow >= menuHeight + 4
+    ? tabRect.bottom + 4
+    : tabRect.top - menuHeight - 4;
+  fileContextMenu.file = file;
+  fileContextMenu.width = menuWidth;
+  fileSelectorOpen.value = false;
+  fileContextMenu.x = Math.max(4, Math.min(event.clientX, window.innerWidth - menuWidth - 4));
+  fileContextMenu.y = Math.max(4, Math.min(menuTop, window.innerHeight - menuHeight - 4));
+  fileContextMenu.show = true;
+};
+
+const copyFilePath = async (forBrowser) => {
+  const value = forBrowser ? contextBrowserPath.value : contextAbsolutePath.value;
+  if (!value) return;
+  await navigator.clipboard.writeText(value);
+  closeFileContextMenu();
+};
+
+const handleDocumentKeydown = (event) => {
+  if (event.key === 'Escape') {
+    closeFileContextMenu();
+    fileSelectorOpen.value = false;
+  }
+};
+
+const closePopovers = () => {
+  closeFileContextMenu();
+  fileSelectorOpen.value = false;
+};
+
+onMounted(() => {
+  document.addEventListener('click', closePopovers);
+  document.addEventListener('keydown', handleDocumentKeydown);
+  window.addEventListener('blur', closeFileContextMenu);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closePopovers);
+  document.removeEventListener('keydown', handleDocumentKeydown);
+  window.removeEventListener('blur', closeFileContextMenu);
+});
 </script>
 
 <style scoped>
 .file-tabs-container {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -177,7 +340,55 @@ const openFileSource = (file) => {
   margin-top: 5px;
   width: 100%;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
+  padding: 4px 0;
+}
+
+.selected-file-status-summary {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 4px 12px;
+  color: #747b81;
+  font-size: 16px;
+  font-weight: 650;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.header-status-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.selected-file-status-summary .file-status-icon {
+  width: 18px;
+  height: 17px;
+  flex-basis: 18px;
+}
+
+.selected-file-status-summary .file-status-icon.in-progress::after {
+  width: 7px;
+  height: 7px;
+}
+
+.selected-file-status-summary .file-status-icon.checked::after {
+  top: 1px;
+  left: 5px;
+  width: 4px;
+  height: 9px;
+}
+
+.header-status-label {
+  font-weight: 600;
+}
+
+.header-status-number {
+  font-weight: 750;
 }
 
 .logo-container {
@@ -197,94 +408,246 @@ const openFileSource = (file) => {
   font-size: 22px;
   font-weight: bold;
   color: #71797E;
-  margin-right: 15px;
+  margin-right: 10px;
   margin-bottom: 3px;
   white-space: nowrap;
   display: flex;
   align-items: end;
 }
 
-.file-tabs {
-  display: flex;
-  overflow-x: auto;
-  padding: 0 6px;
-  flex: 1 1 auto;
-  min-width: 0; /* Allow flex item to shrink below content width */
-}
-
-.file-tab {
-  padding: 7px 10px;
-  margin: 0 2px;
-  background-color: #e9e9e9;
-  color: #555;
-  border-radius: 8px 8px 0 0;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  white-space: nowrap;
+.file-selector-area {
   display: flex;
   align-items: center;
-  border: 1px solid #e0e0e0;
-  border-bottom: none;
-  flex-shrink: 0; /* Prevent tabs from shrinking */
+  padding: 0 6px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.file-tab:hover {
-  background-color: #f0f0f0;
-}
-
-.file-tab.active {
-  background-color: #f5f5f5;
-  border-top-width: 1.5px;
-  border-bottom: none;
-  border-right-width: 1.5px;
-  font-weight: 600;
+.file-selector {
   position: relative;
+  flex: 0 1 max-content;
+  width: max-content;
+  min-width: 0;
+  max-width: min(520px, calc(100vw - 430px));
 }
 
-/* Built-in server tab styles (grey theme) */
-.server-tab {
-  border-left: 3px solid #888;
+.file-selector-trigger {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 5px 6px 9px;
+  background: #fff;
+  color: #5f666b;
+  border: 1px solid #d2d5d8;
+  border-left-width: 4px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 650;
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.server-tab:hover {
-  color: #666;
+.file-selector-trigger.built-in-file {
+  border-left-color: #888;
 }
 
-.server-tab.active {
-  border-left-width: 6px;
-  color: #666;
+.file-selector-trigger.user-file {
+  border-left-color: #4caf50;
 }
 
-.server-tab::after {
-  content: '•';
+.file-selector-trigger:hover,
+.file-selector-trigger[aria-expanded="true"] {
+  background-color: #f7f9fb;
+  border-top-color: #91bde4;
+  border-right-color: #91bde4;
+  border-bottom-color: #91bde4;
+  color: #333;
+}
+
+.file-selector-trigger[aria-expanded="true"] {
+  box-shadow: 0 0 0 2px rgba(64, 137, 209, 0.14);
+}
+
+.selected-file-name {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selector-chevron {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  color: #8a9094;
+}
+
+.file-selector-trigger[aria-expanded="true"] .selector-chevron {
+  transform: rotate(180deg);
+}
+
+.file-selector-popover {
+  position: absolute;
+  z-index: 9000;
+  top: calc(100% + 4px);
+  left: 0;
+  width: max-content;
+  min-width: 100%;
+  max-width: calc(100vw - 12px);
+  max-height: min(420px, calc(100vh - 60px));
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid #c8c8c8;
+  border-radius: 6px;
+  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.18);
+}
+
+.file-selector-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+  padding: 8px 9px;
+  border: 1px solid #e3e5e7;
+  border-left-width: 4px;
+  border-radius: 5px;
+  background: #f7f8f9;
+  color: #444;
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.file-selector-option.built-in-file {
+  border-left-color: #888;
+}
+
+.file-selector-option.user-file {
+  border-left-color: #4caf50;
+}
+
+.file-option-name {
+  flex: 1 0 auto;
+  white-space: nowrap;
+}
+
+.file-option-counts {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  color: #92979b;
   font-size: 14px;
-  color: #888;
-  margin-left: 8px;
-  opacity: 0.7;
+  font-weight: 550;
+  white-space: nowrap;
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
-/* Custom tab styles (green theme) */
-.custom-tab {
-  border-left: 3px solid #4caf50;
+.file-status-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
-.custom-tab:hover {
-  color: #4caf50;
+.file-status-icon {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 13px;
+  flex: 0 0 14px;
+  box-sizing: border-box;
+  border: 2px solid #aaa;
+  border-radius: 3px;
 }
 
-.custom-tab.active {
-  border-left-width: 6px;
-  color: #4caf50;
+.file-status-icon.in-progress {
+  border-color: #ff9800;
+  background: rgba(255, 152, 0, 0.12);
 }
 
-.custom-tab::after {
-  content: '•';
-  font-size: 14px;
-  color: #4caf50;
-  margin-left: 8px;
-  opacity: 0.7;
+.file-status-icon.unchecked {
+  border-color: #aaa;
+  background: #fff;
+}
+
+.file-status-icon.in-progress::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: #ff9800;
+  transform: translate(-50%, -50%);
+}
+
+.file-status-icon.checked {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.2);
+}
+
+.file-status-icon.checked::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 3px;
+  height: 7px;
+  border: solid #4caf50;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.file-status-icon.cancelled {
+  border-color: #757575;
+  background: rgba(117, 117, 117, 0.16);
+}
+
+.file-status-icon.cancelled::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  background: #757575;
+  transform: translateY(-50%);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file-selector-option:hover,
+.file-selector-option:focus-visible {
+  background: #edf4fb;
+  border-color: #cbdced;
+  outline: none;
+}
+
+.file-selector-option.active {
+  background: #e7f2fc;
+  border-color: #8bbce8;
+  color: #285f91;
+  font-weight: 650;
 }
 
 
@@ -365,5 +728,65 @@ const openFileSource = (file) => {
 .history-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+:global(.file-tab-context-menu) {
+  position: fixed;
+  z-index: 10000;
+  max-width: calc(100vw - 8px);
+  box-sizing: border-box;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #c8c8c8;
+  border-radius: 6px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.2);
+}
+
+:global(.file-path-row) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 7px;
+}
+
+:global(.file-path-row + .file-path-row) {
+  border-top: 1px solid #e7e7e7;
+}
+
+:global(.file-path-row code) {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #333;
+  font-size: 12px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+:global(.file-tab-context-menu button) {
+  display: inline-flex;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #333;
+  cursor: pointer;
+}
+
+:global(.file-tab-context-menu button svg) {
+  width: 16px;
+  height: 16px;
+}
+
+:global(.file-tab-context-menu button:hover),
+:global(.file-tab-context-menu button:focus-visible) {
+  background: #e8f1fb;
+  outline: none;
 }
 </style>

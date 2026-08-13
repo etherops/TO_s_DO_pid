@@ -223,6 +223,21 @@ const cleanupUnwatchedFiles = () => {
 };
 
 // Helper function to scan a directory for todo files
+const getTaskCounts = (filePath) => {
+  const counts = { total: 0, open: 0, active: 0, done: 0, skipped: 0 };
+  const content = fs.readFileSync(filePath, 'utf8');
+  for (const line of content.split('\n')) {
+    const match = line.match(/^\s*[*-]\s+\[([ x~-])\]\s+/);
+    if (!match) continue;
+    counts.total += 1;
+    if (match[1] === '~') counts.active += 1;
+    else if (match[1] === 'x') counts.done += 1;
+    else if (match[1] === '-') counts.skipped += 1;
+    else counts.open += 1;
+  }
+  return counts;
+};
+
 const scanDirectory = (dir, isBuiltIn = false) => {
   try {
     if (!fs.existsSync(dir)) {
@@ -238,7 +253,8 @@ const scanDirectory = (dir, isBuiltIn = false) => {
         path: path.join(dir, file),
         isBuiltIn,
         source: 'directory',
-        directory: dir
+        directory: dir,
+        taskCounts: getTaskCounts(path.join(dir, file))
       }));
   } catch (error) {
     logger.error(`Error reading directory ${dir}:`, error);
@@ -264,7 +280,8 @@ const addFile = (filePath) => {
       name: path.basename(filePath),
       path: filePath,
       isBuiltIn: false,
-      source: 'file'
+      source: 'file',
+      taskCounts: getTaskCounts(filePath)
     };
   } catch (error) {
     logger.error(`Error checking file ${filePath}:`, error);

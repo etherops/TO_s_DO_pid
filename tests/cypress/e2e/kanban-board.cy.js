@@ -1,6 +1,6 @@
 describe('Kanban Board', () => {
     it('should load and display kanban board with column stacks', () => {
-        cy.get('.file-tab.active').should('exist')
+        cy.get('.file-selector-trigger').should('exist')
 
         // Verify column stacks exist (at least TODO, WIP, DONE)
         cy.get('.column-stack').should('have.length.at.least', 3)

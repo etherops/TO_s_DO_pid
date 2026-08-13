@@ -744,7 +744,7 @@ const inProgressQueuedGroups = computed(() => {
   const inProgress = normalPriority.filter(entry => entry.group !== 'waiting');
   const waiting = normalPriority.filter(entry => entry.group === 'waiting');
   return [
-    { key: 'in-progress-this-week', label: 'In Progress This Week', entries: inProgress },
+    { key: 'in-progress-parked', label: 'In Progress / Parked', entries: inProgress },
     { key: 'waiting-blocked', label: 'Waiting / Blocked', entries: waiting },
     { key: 'low-priority', label: 'Low Priority', entries: lowPriority }
   ].filter(group => group.entries.length);
@@ -1336,7 +1336,7 @@ const dueBadge = (entry) => {
 
   // A whole-week commitment is a period (purple), distinct from an exact day
   // that merely happens to fall later this week (blue).
-  if (period.kind === 'week') return { kind: 'due-week-period', label: getDuePeriodLabel(entry.task.text).toUpperCase() };
+  if (period.kind === 'week') return { kind: 'due-week-period', label: getDuePeriodLabel(entry.task.text) };
   if (period.kind === 'month') return { kind: 'due-month', label: getDuePeriodLabel(entry.task.text) };
 
   // Still to come: name the weekday while it is this week, then fall back to a date
@@ -2622,8 +2622,6 @@ button.focus-week-clock:hover::after {
   color: #c4ace5;
   background: rgba(139, 103, 177, 0.24);
   border: 1px solid rgba(169, 130, 211, 0.58);
-  letter-spacing: 0.55px;
-  text-transform: uppercase;
 }
 
 .focus-badge.due-later {
