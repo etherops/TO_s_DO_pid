@@ -383,7 +383,8 @@ import {
   getDuePeriodLabel,
   isoWeekInputFromSunday,
   isToday,
-  sundayValueFromIsoWeekInput
+  sundayValueFromIsoWeekInput,
+  weekIdentity
 } from '../utils/dateHelpers';
 import {
   extractNoteFromText,
@@ -639,7 +640,14 @@ const upNextDisplayGroups = computed(() => {
       const label = period.start.getFullYear() === today.getFullYear() && period.start.getMonth() === today.getMonth()
           ? 'This Month'
           : period.start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      if (!monthGroups.has(key)) monthGroups.set(key, { key, label, sortTime: period.start.getTime(), entries: [] });
+      if (!monthGroups.has(key)) monthGroups.set(key, {
+        key,
+        label,
+        monthTime: period.start.getTime(),
+        kindRank: 0,
+        sortTime: period.start.getTime(),
+        entries: []
+      });
       monthGroups.get(key).entries.push(entry);
       return;
     }
@@ -653,15 +661,24 @@ const upNextDisplayGroups = computed(() => {
     const key = `week-${sunday.getTime()}`;
     const label = formatWeekPeriodLabel(sunday);
     if (!weekGroups.has(key)) {
-      weekGroups.set(key, { key, label, sortTime: sunday.getTime(), entries: [] });
+      const owner = weekIdentity(sunday);
+      weekGroups.set(key, {
+        key,
+        label,
+        monthTime: new Date(owner.year, owner.monthIndex, 1).getTime(),
+        kindRank: 1,
+        sortTime: sunday.getTime(),
+        entries: []
+      });
     }
     weekGroups.get(key).entries.push(entry);
   });
 
-  const groups = [
-    ...[...monthGroups.values()].sort((a, b) => a.sortTime - b.sortTime),
-    ...[...weekGroups.values()].sort((a, b) => a.sortTime - b.sortTime)
-  ];
+  // Present one chronological month timeline: the broad month commitment,
+  // then its individual weeks, before moving on to the following month.
+  const groups = [...monthGroups.values(), ...weekGroups.values()].sort((a, b) =>
+    a.monthTime - b.monthTime || a.kindRank - b.kindRank || a.sortTime - b.sortTime
+  );
   if (unscheduled.length) groups.push({ key: 'unscheduled', label: 'Unscheduled', entries: unscheduled });
   if (lowPriority.length) groups.push({ key: 'low-priority', label: 'Low Priority', entries: lowPriority });
   return groups;

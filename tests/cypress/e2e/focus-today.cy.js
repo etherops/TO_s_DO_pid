@@ -275,6 +275,43 @@ describe('Focus Mode (execution carousel)', () => {
       .and('have.css', 'background-color', 'rgba(139, 103, 177, 0.24)');
   });
 
+  it('interleaves whole-month and week groups in chronological month order', () => {
+    const futureSunday = new Date(today);
+    futureSunday.setHours(0, 0, 0, 0);
+    futureSunday.setDate(today.getDate() + (7 - today.getDay()));
+    const ownerThursday = new Date(futureSunday);
+    ownerThursday.setDate(futureSunday.getDate() + 4);
+    const ownerMonth = new Date(ownerThursday.getFullYear(), ownerThursday.getMonth(), 1);
+    const followingMonth = new Date(ownerMonth.getFullYear(), ownerMonth.getMonth() + 1, 1);
+    const ownerMonthLabel = ownerMonth.getFullYear() === today.getFullYear() && ownerMonth.getMonth() === today.getMonth()
+      ? 'This Month'
+      : ownerMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const weekLabel = serializeDuePeriodValue(`week:${dateInputValue(futureSunday)}`)
+      .replace(/\s+\d{4}$/, '').toUpperCase();
+    const followingMonthLabel = followingMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const content = `# SELECTED
+## Ready
+* [ ] Broad owner month ! ${MONTHS[ownerMonth.getMonth()]} ${ownerMonth.getFullYear()}
+* [ ] Owner month week ${weekDueTag(futureSunday)}
+* [ ] Broad following month ! ${MONTHS[followingMonth.getMonth()]} ${followingMonth.getFullYear()}
+`;
+
+    cy.writeTestFileContent(content).then((fileInfo) => {
+      cy.wait(500);
+      cy.reload();
+      cy.contains('TO_s_DO_pid').should('be.visible');
+      cy.switchToFile(fileInfo.fileName);
+    });
+
+    enterFocusMode();
+    cy.get('.panel-upnext .upnext-group-header').then(($headers) => {
+      const labels = [...$headers].map(header => header.textContent.trim());
+      expect(labels[0]).to.contain(ownerMonthLabel);
+      expect(labels[1]).to.contain(weekLabel);
+      expect(labels[2]).to.contain(followingMonthLabel);
+    });
+  });
+
   it('should separate dash-marker in-progress tasks into a compact Low Priority group', () => {
     const priorityContent = `# SELECTED
 ### Waiting
