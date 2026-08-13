@@ -1,7 +1,7 @@
 <!-- components/FocusMode.vue -->
 <!-- Full-screen execution view with a single-panel spotlight carousel above
      an always-visible Sunday-Saturday strip. NOW is centered by default, with
-     UP NEXT to its left and IN PROGRESS / QUEUED to its right. -->
+     UP NEXT to its left and IN PROGRESS / BLOCKED to its right. -->
 <template>
   <div ref="focusRoot" class="focus-mode" :class="`theme-${theme}`" @wheel="handleWheel">
     <header class="focus-header">
@@ -41,15 +41,21 @@
             @click="focusPanel(0)"
         >
           <header class="panel-header">
-            <span class="panel-kicker upnext-kicker">‹ Up Next / Waiting</span>
-            <span class="panel-count">{{ upNext.length }}</span>
+            <span class="panel-kicker upnext-kicker">‹ Up Next</span>
+            <span class="panel-count">{{ upNextDisplayCount }}</span>
           </header>
           <div class="panel-body">
-            <div v-if="!upNext.length" class="panel-empty">
-              Nothing queued.<br>Pull work in from Plan mode.
+            <div v-if="!upNextDisplayCount" class="panel-empty">
+              Nothing upcoming.<br>This week's schedule is below.
             </div>
-            <div v-for="entry in upNext" :key="entry.task.id" class="focus-task-row"
-                 :class="rowClasses(entry)" :data-task-id="entry.task.id">
+            <template v-for="group in upNextDisplayGroups" :key="group.key">
+              <div class="focus-day-header upnext-group-header"
+                   :class="group.key === 'low-priority' ? 'day-low-priority' : 'day-upcoming'">
+                <span class="day-name">{{ group.label }}</span>
+                <span class="day-count">{{ group.entries.length }}</span>
+              </div>
+              <div v-for="entry in group.entries" :key="entry.task.id" class="focus-task-row"
+                   :class="rowClasses(entry)" :data-task-id="entry.task.id">
               <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                       :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                       @click.stop="cycleEntryStatus(entry, 'upNext')"></button>
@@ -69,17 +75,21 @@
               </div>
               <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-dot"
                     :title="entryNote(entry)">📋</span>
+              <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
+                              :low="isLowPriorityEntry(entry)"
+                              @toggle="toggleEntryPriority(entry)" />
               <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                       :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
                       @click.stop="startDueDateEdit(entry, $event)">
                 <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
                 <span class="focus-due-clock" aria-hidden="true">◷</span>
               </button>
-            </div>
+              </div>
+            </template>
           </div>
         </section>
 
-        <!-- IN PROGRESS / QUEUED: non-urgent work already underway -->
+        <!-- IN PROGRESS / BLOCKED: active and waiting/blocked work -->
         <section
             class="focus-panel panel-in-progress-queued"
             :class="{ 'is-focused': isFocused(2) }"
@@ -87,17 +97,17 @@
             @click="focusPanel(2)"
         >
           <header class="panel-header">
-            <span class="panel-kicker in-progress-queued-kicker">In Progress / Queued</span>
+            <span class="panel-kicker in-progress-queued-kicker">In Progress / Blocked</span>
             <span class="panel-count">{{ inProgressQueued.length }}</span>
           </header>
           <div class="panel-body">
             <template v-if="inProgressQueued.length">
-              <template v-for="day in inProgressQueuedDays" :key="day.key">
-                <div class="focus-day-header" :class="dayHeaderClass(day.key)">
-                  <span class="day-name">{{ day.label }}</span>
-                  <span class="day-count">{{ day.entries.length }}</span>
+              <template v-for="group in inProgressQueuedGroups" :key="group.key">
+                <div class="focus-day-header" :class="`day-${group.key}`">
+                  <span class="day-name">{{ group.label }}</span>
+                  <span class="day-count">{{ group.entries.length }}</span>
                 </div>
-                <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row execution-row"
+                <div v-for="entry in group.entries" :key="entry.task.id" class="focus-task-row execution-row"
                      :class="[rowClasses(entry), {
                        'inflight-row': entry.task.statusChar === '~',
                        'overdue-row': entry.dueGroup === 'overdue'
@@ -122,6 +132,9 @@
                     </span>
                     <span v-if="entryNote(entry)" class="focus-row-note">{{ entryNote(entry) }}</span>
                   </div>
+                  <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
+                                  :low="isLowPriorityEntry(entry)"
+                                  @toggle="toggleEntryPriority(entry)" />
                   <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                           :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
                           @click.stop="startDueDateEdit(entry, $event)">
@@ -132,7 +145,7 @@
               </template>
             </template>
             <div v-else-if="now.length || upNext.length" class="panel-empty">
-              <div class="panel-empty-title">Nothing in progress or queued</div>
+              <div class="panel-empty-title">Nothing in progress or blocked</div>
               <div class="focus-subtext">Use a task's status control when you're ready to begin.</div>
             </div>
             <div v-else-if="done.length" class="panel-empty">
@@ -188,6 +201,9 @@
                 </div>
                 <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-dot"
                       :title="entryNote(entry)">📋</span>
+                <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
+                                :low="isLowPriorityEntry(entry)"
+                                @toggle="toggleEntryPriority(entry)" />
                 <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                         :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
                         @click.stop="startDueDateEdit(entry, $event)">
@@ -213,6 +229,7 @@
                  :style="weekDayDockStyles[dayIndex]">
               <div class="focus-week-day-column"
                    :class="{
+                     'is-this-week': day.isThisWeek,
                      'is-past': day.isPast,
                      'is-current': day.isToday,
                      'is-expanded': expandedWeekDayIndex === dayIndex,
@@ -256,6 +273,13 @@
                   </span>
                   <span v-if="entryNote(entry)" class="focus-note-dot"
                         :title="entryNote(entry)">📋</span>
+                  <button class="focus-week-priority-badge"
+                          :class="{ active: isLowPriorityEntry(entry) }"
+                          :title="isLowPriorityEntry(entry) ? 'Make normal priority' : 'Make low priority'"
+                          :aria-label="isLowPriorityEntry(entry) ? 'Make normal priority' : 'Make low priority'"
+                          @click.stop="toggleEntryPriority(entry, entry.sourceBucket)">
+                    {{ isLowPriorityEntry(entry) ? 'LOW' : '↓' }}
+                  </button>
                 </div>
                   <button class="focus-week-clock" title="Edit due date" aria-label="Edit due date"
                           @pointerdown.stop.prevent="startDueDateEdit(entry, $event)"
@@ -295,13 +319,23 @@
         <div class="focus-date-options">
           <button v-for="option in dateShortcuts" :key="option.value" class="focus-date-option"
                   @click="setEntryDueDate(dateMenuEntry, option.value)">{{ option.label }}</button>
-          <label class="focus-date-option focus-date-custom">
-            Custom
-            <input type="date" aria-label="Custom due date" :value="currentEntryDate(dateMenuEntry)"
-                   @change="setEntryDueDate(dateMenuEntry, $event.target.value)" />
-          </label>
+          <button class="focus-date-option focus-date-custom-trigger"
+                  :class="{ active: customDatePickerOpen }"
+                  @click="openCustomDatePicker">Custom…</button>
           <button class="focus-date-option focus-date-clear"
                   @click="setEntryDueDate(dateMenuEntry, '')">Clear</button>
+        </div>
+        <div v-if="customDatePickerOpen" class="focus-unified-date-picker">
+          <div class="focus-period-kind-tabs" role="tablist" aria-label="Due date precision">
+            <button v-for="kind in ['day', 'week', 'month']" :key="kind" type="button"
+                    class="focus-period-kind-btn" :class="{ active: customDateKind === kind }"
+                    role="tab" :aria-selected="customDateKind === kind"
+                    @click="setCustomDateKind(kind)">{{ kind }}</button>
+          </div>
+          <input ref="customDateInput" :key="customDateKind" class="focus-custom-date-input"
+                 :type="customDateInputType" :aria-label="`Custom due ${customDateKind}`"
+                 :value="customDateInputValue"
+                 @change="setCustomDuePeriod($event.target.value)" />
         </div>
       </div>
     </Teleport>
@@ -324,12 +358,19 @@ import {
   findActiveWipSection,
   endOfCurrentWeek
 } from '../utils/focusModeHelpers';
-import { extractDateFromText, isToday } from '../utils/dateHelpers';
+import {
+  extractDateFromText,
+  extractDuePeriod,
+  formatDuePeriodValue,
+  getDuePeriodLabel,
+  isToday
+} from '../utils/dateHelpers';
 import {
   extractNoteFromText,
   getStrippedDisplayText,
   updateTaskNameAndDueDate
 } from '../utils/taskTextHelpers';
+import PriorityToggle from './PriorityToggle.vue';
 import { addCompletionDate, extractCompletionDate } from '../utils/completionDateHelpers';
 import { getStatusPriority, sortTaskToCorrectPosition } from '../utils/sortHelpers';
 
@@ -354,6 +395,9 @@ const editingTaskId = ref(null);
 const editTaskName = ref('');
 const dateMenuTaskId = ref(null);
 const dateMenuPosition = ref({ top: 0, left: 0 });
+const customDatePickerOpen = ref(false);
+const customDateKind = ref('day');
+const customDateInput = ref(null);
 const sectionTooltip = ref(null);
 const expandedWeekDayIndex = ref(null);
 const weekDayDockStyles = ref([]);
@@ -363,7 +407,7 @@ const resetWeekDayMagnification = () => {
   weekDayDockStyles.value = [];
 };
 
-const WEEK_DOCK_MAX_BOOST = 0.55;
+const WEEK_DOCK_MAX_BOOST = 0.75;
 const WEEK_DOCK_RADIUS_IN_PANES = 1.45;
 
 // Dock-style magnification: scale each pane according to pointer distance and
@@ -377,9 +421,8 @@ const magnifyWeekDays = (event) => {
 
   const containerRect = container.getBoundingClientRect();
   const pointerX = event.clientX - containerRect.left;
-  const containerOffsetLeft = container.offsetLeft;
   const centers = columns.map(column =>
-    column.offsetLeft - containerOffsetLeft + column.offsetWidth / 2
+    column.offsetLeft + column.offsetWidth / 2
   );
   const widths = columns.map(column => column.offsetWidth);
   const heights = columns.map(column => column.offsetHeight);
@@ -400,22 +443,38 @@ const magnifyWeekDays = (event) => {
   expandedWeekDayIndex.value = closestIndex;
 
   const scaledWidths = widths.map((width, index) => width * scales[index]);
-  const originalLeft = columns[0].offsetLeft - containerOffsetLeft;
-  const originalRight = columns.at(-1).offsetLeft - containerOffsetLeft + columns.at(-1).offsetWidth;
+  const originalLeft = columns[0].offsetLeft;
+  const originalRight = columns.at(-1).offsetLeft + columns.at(-1).offsetWidth;
   const originalCenter = (originalLeft + originalRight) / 2;
   const expandedWidth = scaledWidths.reduce((total, width) => total + width, 0)
       + gap * (columns.length - 1);
   let cursor = originalCenter - expandedWidth / 2;
 
-  weekDayDockStyles.value = scaledWidths.map((width, index) => {
+  const targetCenters = scaledWidths.map(width => {
     const targetCenter = cursor + width / 2;
     cursor += width + gap;
+    return targetCenter;
+  });
+  // The slot coordinates include the strip's 8px outer/padding offset; clamp
+  // against 16px here to leave an actual 8px visual viewport margin.
+  const viewportMargin = 16;
+  const expandedLeft = containerRect.left + targetCenters[closestIndex] - scaledWidths[closestIndex] / 2;
+  const expandedRight = containerRect.left + targetCenters[closestIndex] + scaledWidths[closestIndex] / 2;
+  let viewportClamp = 0;
+  if (expandedLeft < viewportMargin) viewportClamp = viewportMargin - expandedLeft;
+  else if (expandedRight > window.innerWidth - viewportMargin) {
+    viewportClamp = window.innerWidth - viewportMargin - expandedRight;
+  }
+
+  weekDayDockStyles.value = scaledWidths.map((width, index) => {
     return {
       '--dock-scale': scales[index].toFixed(4),
       '--dock-content-scale': (1 / scales[index]).toFixed(4),
       '--dock-content-width': `${width}px`,
-      '--dock-content-min-height': `${heights[index] * scales[index]}px`,
-      '--dock-shift-x': `${targetCenter - centers[index]}px`,
+      // Leave a small inverse-scale rounding buffer. Without it, a pane whose
+      // content fits exactly can acquire a bogus vertical scrollbar at >1x.
+      '--dock-content-min-height': `${Math.max(0, (heights[index] - 4) * scales[index])}px`,
+      '--dock-shift-x': `${targetCenters[index] + viewportClamp - centers[index]}px`,
       '--dock-z': String(Math.round(scales[index] * 100))
     };
   });
@@ -529,6 +588,66 @@ const upNext = panelCards('upNext');
 const inProgressQueued = panelCards('inProgressQueued');
 const now = panelCards('now');
 const done = panelCards('done');
+const isLowPriorityEntry = (entry) => entry.task.isLowPriority || entry.task.listMarker === '-';
+const upNextDisplayGroups = computed(() => {
+  const monthGroups = new Map();
+  const weekGroups = new Map();
+  const unscheduled = [];
+  const lowPriority = [];
+  const today = new Date();
+  const weekStart = startOfThisWeek();
+  const weekEnd = endOfCurrentWeek();
+  const nextWeekStart = new Date(weekStart);
+  nextWeekStart.setDate(weekStart.getDate() + 7);
+
+  upNext.value.forEach(entry => {
+    if (isLowPriorityEntry(entry)) {
+      lowPriority.push(entry);
+      return;
+    }
+    const period = extractDuePeriod(entry.task.text);
+    if (!period) {
+      unscheduled.push(entry);
+      return;
+    }
+
+    if (period.kind === 'month') {
+      const key = `month-${period.start.getTime()}`;
+      const label = period.start.getFullYear() === today.getFullYear() && period.start.getMonth() === today.getMonth()
+          ? 'This Month'
+          : period.start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      if (!monthGroups.has(key)) monthGroups.set(key, { key, label, sortTime: period.start.getTime(), entries: [] });
+      monthGroups.get(key).entries.push(entry);
+      return;
+    }
+
+    // Current-week day and whole-week work is represented only in Week at a
+    // glance. Anything later is summarized by its Sunday-Saturday week here.
+    if (period.start <= weekEnd) return;
+    const sunday = new Date(period.start);
+    sunday.setHours(0, 0, 0, 0);
+    sunday.setDate(period.start.getDate() - period.start.getDay());
+    const key = `week-${sunday.getTime()}`;
+    const label = sunday.getTime() === nextWeekStart.getTime()
+        ? 'Next Week'
+        : `Week of ${sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    if (!weekGroups.has(key)) {
+      weekGroups.set(key, { key, label, sortTime: sunday.getTime(), entries: [] });
+    }
+    weekGroups.get(key).entries.push(entry);
+  });
+
+  const groups = [
+    ...[...monthGroups.values()].sort((a, b) => a.sortTime - b.sortTime),
+    ...[...weekGroups.values()].sort((a, b) => a.sortTime - b.sortTime)
+  ];
+  if (unscheduled.length) groups.push({ key: 'unscheduled', label: 'Unscheduled', entries: unscheduled });
+  if (lowPriority.length) groups.push({ key: 'low-priority', label: 'Low Priority', entries: lowPriority });
+  return groups;
+});
+const upNextDisplayCount = computed(() =>
+  upNextDisplayGroups.value.reduce((total, group) => total + group.entries.length, 0)
+);
 const dateMenuEntry = computed(() => Object.values(model.value)
     .flat()
     .find(entry => entry?.task?.id === dateMenuTaskId.value) || null);
@@ -544,10 +663,13 @@ const dayLabel = (dueGroup, entry) => {
   if (dueGroup === 'today') return 'Today';
   if (dueGroup === 'undated') return 'General';
 
-  const dueDate = extractDateFromText(entry.task.text);
+  const period = extractDuePeriod(entry.task.text);
+  const dueDate = period?.start;
   // During a whisk-away after clearing a date, the departing card briefly
   // retains its old group metadata while its task text is already undated.
   if (!dueDate) return 'General';
+  if (period.kind === 'week') return 'This week';
+  if (period.kind === 'month') return getDuePeriodLabel(entry.task.text);
   return dueDate <= endOfCurrentWeek()
       ? dueDate.toLocaleDateString('en-US', { weekday: 'long' })
       : dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -572,7 +694,17 @@ const groupByDueDay = (entries) => {
 
 const dayHeaderClass = (key) => `day-${key === 'today' ? 'today' : key === 'undated' ? 'general' : 'upcoming'}`;
 
-const inProgressQueuedDays = computed(() => groupByDueDay(inProgressQueued.value));
+const inProgressQueuedGroups = computed(() => {
+  const lowPriority = inProgressQueued.value.filter(isLowPriorityEntry);
+  const normalPriority = inProgressQueued.value.filter(entry => !isLowPriorityEntry(entry));
+  const inProgress = normalPriority.filter(entry => entry.group !== 'waiting');
+  const waiting = normalPriority.filter(entry => entry.group === 'waiting');
+  return [
+    { key: 'in-progress-this-week', label: 'In Progress This Week', entries: inProgress },
+    { key: 'waiting-blocked', label: 'Waiting / Blocked', entries: waiting },
+    { key: 'low-priority', label: 'Low Priority', entries: lowPriority }
+  ].filter(group => group.entries.length);
+});
 const isScheduledThisWeek = (entry) => {
   if (!String(entry.dueGroup).startsWith('day-')) return false;
   const dueDate = extractDateFromText(entry.task.text);
@@ -591,7 +723,12 @@ const isPastWeekTerminal = (entry) => {
 const immediateNow = computed(() => now.value.filter(entry =>
   !isScheduledThisWeek(entry) && !isPastWeekTerminal(entry)
 ));
-const nowDays = computed(() => groupByDueDay(immediateNow.value));
+const nowDays = computed(() => {
+  const lowPriority = immediateNow.value.filter(isLowPriorityEntry);
+  const groups = groupByDueDay(immediateNow.value.filter(entry => !isLowPriorityEntry(entry)));
+  if (lowPriority.length) groups.push({ key: 'low-priority', label: 'Low Priority', entries: lowPriority });
+  return groups;
+});
 
 const startOfThisWeek = () => {
   const start = new Date();
@@ -647,9 +784,24 @@ const weekDays = computed(() => {
     };
   });
 
+  const thisWeek = {
+    key: 'this-week',
+    date: start,
+    label: 'This Week',
+    isThisWeek: true,
+    isPast: false,
+    isToday: false,
+    entries: []
+  };
+
   weeklySourceEntries.value.forEach(entry => {
     const isTerminal = entry.task.statusChar === 'x' || entry.task.statusChar === '-';
-    const dueDate = extractDateFromText(entry.task.text);
+    const period = extractDuePeriod(entry.task.text);
+    if (period?.kind === 'week' && period.start.getTime() === start.getTime()) {
+      thisWeek.entries.push(entry);
+      return;
+    }
+    const dueDate = period?.kind === 'day' ? period.start : null;
     const dueThisWeek = dueDate && dueDate >= start && dueDate <= end;
     const slotDate = dueThisWeek ? dueDate : isTerminal ? completionDateFromText(entry.task.text) : null;
     if (!slotDate || slotDate < start || slotDate > end) return;
@@ -671,7 +823,8 @@ const weekDays = computed(() => {
   days.forEach(day => {
     day.entries = clusterBySection(day.entries);
   });
-  return days;
+  thisWeek.entries = clusterBySection(thisWeek.entries);
+  return [thisWeek, ...days];
 });
 const weekStripCount = computed(() => weekDays.value.reduce((total, day) => total + day.entries.length, 0));
 
@@ -758,11 +911,19 @@ const moveWithTransition = (entry, sourceBucket, destinationBucket, applyChange)
 };
 
 const rowClasses = (entry) => {
+  const priorityClass = isLowPriorityEntry(entry) ? 'low-priority-row' : null;
   const transition = transitions.value.get(entry.task.id);
-  if (transition) return ['transitioning', `phase-${transition.phase}`, `whisk-${transition.direction}`];
+  if (transition) return [priorityClass, 'transitioning', `phase-${transition.phase}`, `whisk-${transition.direction}`].filter(Boolean);
 
   const arrivalDirection = arrivals.value.get(entry.task.id);
-  return arrivalDirection ? ['arriving', `arrive-${arrivalDirection}`] : [];
+  return [priorityClass, ...(arrivalDirection ? ['arriving', `arrive-${arrivalDirection}`] : [])].filter(Boolean);
+};
+
+const toggleEntryPriority = (entry) => {
+  const makeLow = !isLowPriorityEntry(entry);
+  entry.task.listMarker = makeLow ? '-' : '*';
+  entry.task.isLowPriority = makeLow;
+  emit('update');
 };
 
 const checkClasses = (entry) => ({
@@ -795,10 +956,10 @@ const progressPercent = computed(() =>
 );
 
 // ========================= Carousel =========================
-// Three panels in logical order [up next, now, in progress / queued]. Exactly
+// Three panels in logical order [up next, now, in progress / blocked]. Exactly
 // one panel is spotlighted; NOW owns the center by default while the other two
 // peek from the edges. The former DONE panel's right-hand slot now belongs to
-// IN PROGRESS / QUEUED because terminal work lives in the weekly strip below.
+// IN PROGRESS / BLOCKED because terminal work lives in the weekly strip below.
 const DEFAULT_PANEL = 1;
 const MAX_PANEL = 2;
 const activePanel = ref(DEFAULT_PANEL);
@@ -815,17 +976,18 @@ const panelStyle = (panelIndex) => {
     };
   }
 
-  // Whichever card owns the spotlight, keep each of the other two fully
-  // visible in a side slot. Relative +1 is right; relative +2 wraps left.
-  const relativePosition = (panelIndex - activePanel.value + 3) % 3;
-  const leftSide = relativePosition === 2;
-  const x = `${leftSide ? -34 : 34}vw`;
+  // The carousel is linear, not circular. Adjacent panels occupy the visible
+  // side slots; a panel two positions away remains beyond that same edge.
+  const relativePosition = panelIndex - activePanel.value;
+  const leftSide = relativePosition < 0;
+  const distance = Math.abs(relativePosition);
+  const x = `${(leftSide ? -1 : 1) * 34 * distance}vw`;
 
   return {
     transform: `translate(-50%, -48%) translateX(${x}) rotateY(${leftSide ? 7 : -7}deg) scale(0.94)`,
-    zIndex: 40,
-    opacity: 0.88,
-    pointerEvents: 'auto'
+    zIndex: distance === 1 ? 40 : 30,
+    opacity: distance === 1 ? 0.88 : 0.35,
+    pointerEvents: distance === 1 ? 'auto' : 'none'
   };
 };
 
@@ -879,6 +1041,7 @@ const handleWheel = (event) => {
 
 const closeDateMenu = () => {
   dateMenuTaskId.value = null;
+  customDatePickerOpen.value = false;
 };
 
 onMounted(() => {
@@ -950,7 +1113,7 @@ const startDueDateEdit = (entry, event) => {
 
   const badgeRect = event.currentTarget.getBoundingClientRect();
   const menuWidth = Math.min(280, window.innerWidth - 32);
-  const estimatedMenuHeight = 105;
+  const estimatedMenuHeight = 230;
   dateMenuPosition.value = {
     top: badgeRect.bottom + estimatedMenuHeight + 8 <= window.innerHeight
         ? badgeRect.bottom + 8
@@ -971,7 +1134,7 @@ const saveEntryEdits = (entry) => {
     return;
   }
 
-  const currentDueDate = formatDateInputValue(extractDateFromText(entry.task.text));
+  const currentDueDate = formatDuePeriodValue(extractDuePeriod(entry.task.text));
   const updatedText = updateTaskNameAndDueDate(entry.task.text, editTaskName.value, currentDueDate);
   cancelEntryEdit();
   if (updatedText === entry.task.text) return;
@@ -981,8 +1144,6 @@ const saveEntryEdits = (entry) => {
   resortInSection(entry);
   emit('update');
 };
-
-const currentEntryDate = (entry) => formatDateInputValue(extractDateFromText(entry.task.text));
 
 const dateShortcuts = computed(() => {
   const today = new Date();
@@ -1011,8 +1172,79 @@ const dateShortcuts = computed(() => {
   const nextMonday = new Date(endOfWeek);
   nextMonday.setDate(endOfWeek.getDate() + 2);
   addOption('Next week', nextMonday);
+
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  options.push({ label: 'This week', value: `week:${formatDateInputValue(weekStart)}` });
+  const nextWeek = new Date(weekStart);
+  nextWeek.setDate(weekStart.getDate() + 7);
+  options.push({ label: 'Whole next week', value: `week:${formatDateInputValue(nextWeek)}` });
+  options.push({ label: 'This month', value: `month:${formatDateInputValue(today).slice(0, 7)}` });
+  const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  options.push({ label: 'Next month', value: `month:${formatDateInputValue(nextMonth).slice(0, 7)}` });
   return options;
 });
+
+const dueWeekFromInput = (weekValue) => {
+  const [yearText, weekText] = weekValue.split('-W');
+  const januaryFourth = new Date(Number(yearText), 0, 4);
+  const monday = new Date(januaryFourth);
+  monday.setDate(januaryFourth.getDate() - ((januaryFourth.getDay() + 6) % 7) + (Number(weekText) - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() - 1);
+  return `week:${formatDateInputValue(sunday)}`;
+};
+
+const weekInputFromSunday = (date) => {
+  const thursday = new Date(date);
+  thursday.setDate(date.getDate() + (4 - (date.getDay() || 7)));
+  const weekYear = thursday.getFullYear();
+  const yearStart = new Date(weekYear, 0, 1);
+  const week = Math.ceil((((thursday - yearStart) / 86400000) + yearStart.getDay() + 1) / 7);
+  return `${weekYear}-W${String(week).padStart(2, '0')}`;
+};
+
+const customDateInputValue = computed(() => {
+  const period = dateMenuEntry.value ? extractDuePeriod(dateMenuEntry.value.task.text) : null;
+  if (!period || period.kind !== customDateKind.value) return '';
+  if (period.kind === 'week') return weekInputFromSunday(period.start);
+  if (period.kind === 'month') return formatDateInputValue(period.start).slice(0, 7);
+  return formatDateInputValue(period.start);
+});
+
+const customDateInputType = computed(() => customDateKind.value === 'day' ? 'date' : customDateKind.value);
+
+const showCustomDatePicker = async () => {
+  await nextTick();
+  customDateInput.value?.focus();
+  try {
+    customDateInput.value?.showPicker?.();
+  } catch {
+    // The visible native input remains usable where programmatic opening is restricted.
+  }
+};
+
+const openCustomDatePicker = () => {
+  if (!customDatePickerOpen.value) {
+    const existingKind = dateMenuEntry.value && extractDuePeriod(dateMenuEntry.value.task.text)?.kind;
+    customDateKind.value = existingKind || 'day';
+    customDatePickerOpen.value = true;
+  }
+  showCustomDatePicker();
+};
+
+const setCustomDateKind = (kind) => {
+  customDateKind.value = kind;
+  showCustomDatePicker();
+};
+
+const setCustomDuePeriod = (value) => {
+  if (!value || !dateMenuEntry.value) return;
+  const dueValue = customDateKind.value === 'week'
+      ? dueWeekFromInput(value)
+      : customDateKind.value === 'month' ? `month:${value}` : value;
+  setEntryDueDate(dateMenuEntry.value, dueValue);
+};
 
 const setEntryDueDate = (entry, dateValue) => {
   const taskName = getStrippedDisplayText(entry.task.text);
@@ -1048,14 +1280,20 @@ const setEntryDueDate = (entry, dateValue) => {
 };
 
 const dueBadge = (entry) => {
-  const dueDate = extractDateFromText(entry.task.text);
-  if (!dueDate) return null;
+  const period = extractDuePeriod(entry.task.text);
+  const dueDate = period?.start;
+  if (!period) return null;
   if (isToday(entry.task.text)) return { kind: 'due-today', label: 'today' };
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const daysLate = Math.round((today - dueDate) / 86400000);
+  const endDay = new Date(period.end);
+  endDay.setHours(0, 0, 0, 0);
+  const daysLate = Math.round((today - endDay) / 86400000);
   if (daysLate > 0) return { kind: 'overdue', label: `${daysLate}d late` };
+
+  if (period.kind === 'week') return { kind: 'due-week', label: getDuePeriodLabel(entry.task.text) };
+  if (period.kind === 'month') return { kind: 'due-month', label: getDuePeriodLabel(entry.task.text) };
 
   // Still to come: name the weekday while it is this week, then fall back to a date
   const label = dueDate <= endOfCurrentWeek()
@@ -1070,7 +1308,7 @@ const resortInSection = (entry) => {
   sortTaskToCorrectPosition(entry.section.items, entry.task, () => {});
 };
 
-// Starting or reopening work puts it in IN PROGRESS / QUEUED, and active work
+// Starting or reopening work puts it in IN PROGRESS / BLOCKED, and active work
 // lives in WIP: tasks elsewhere get pulled into the active WIP section.
 const moveToActiveWip = (entry) => {
   if (entry.stackName === 'WIP') return entry.section;
@@ -1178,12 +1416,15 @@ const cycleEntryStatus = (entry, sourceBucket) => {
 };
 
 const quickAdd = () => {
-  const text = quickAddText.value.trim();
-  if (!text || !quickAddTarget.value) return;
+  const taskName = quickAddText.value.trim();
+  if (!taskName || !quickAddTarget.value) return;
+  const text = updateTaskNameAndDueDate('', taskName, formatDateInputValue(new Date()));
 
   quickAddTarget.value.section.items.push({
     id: Date.now(),
     type: 'task',
+    listMarker: '*',
+    isLowPriority: false,
     statusChar: ' ',
     text,
     displayText: getStrippedDisplayText(text)
@@ -1220,8 +1461,9 @@ const toggleQuickAdd = async () => {
   display: flex;
   align-items: flex-end;
   gap: 18px;
-  max-width: 980px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
   padding: 10px 24px 0;
 }
 
@@ -1457,6 +1699,13 @@ const toggleQuickAdd = async () => {
 .focus-week-day-columns.has-expanded-day .focus-week-day-column.is-expanded {
   border-color: #4f6f92;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.36);
+  /* Magnification's inverse-scaled content can create a synthetic scrollbar
+     even when all tasks fit. Keep scrolling functional, but hide that rail. */
+  scrollbar-width: none;
+}
+
+.focus-week-day-columns.has-expanded-day .focus-week-day-column.is-expanded::-webkit-scrollbar {
+  display: none;
 }
 
 .focus-week-day-column .focus-day-header {
@@ -1485,7 +1734,7 @@ const toggleQuickAdd = async () => {
 
 .focus-week-section-icon {
   flex: 0 0 14px;
-  display: grid;
+  display: none;
   width: 14px;
   height: 14px;
   box-sizing: border-box;
@@ -1511,7 +1760,7 @@ const toggleQuickAdd = async () => {
   width: 14px;
   height: 14px;
   min-width: 14px;
-  display: grid;
+  display: none;
   box-sizing: border-box;
   padding: 0;
   place-items: center;
@@ -1522,6 +1771,21 @@ const toggleQuickAdd = async () => {
   font-family: inherit;
   font-size: 0;
   line-height: 1;
+}
+
+.focus-week-day-column.is-expanded .focus-week-section-icon,
+.focus-week-day-column.is-expanded .focus-week-clock {
+  display: grid;
+}
+
+.focus-week-day-column.is-this-week {
+  background: #1d202a;
+  border-color: #514666;
+}
+
+.focus-week-day-column.is-this-week .focus-day-header {
+  color: #b9a6d8;
+  background: #1d202a;
 }
 
 .focus-week-clock::before,
@@ -1590,9 +1854,23 @@ button.focus-week-clock:hover::after {
   opacity: 0.88;
 }
 
-/* Rows in unfocused panels aren't interactive - a click focuses the panel */
+/* Keep side-panel rows safe from accidental status changes while still
+   allowing quick edits without first moving the panel into the spotlight. */
 .focus-panel:not(.is-focused) .panel-body button {
   pointer-events: none;
+}
+
+.focus-panel:not(.is-focused) .panel-body .focus-row-title,
+.focus-panel:not(.is-focused) .panel-body .focus-due-edit,
+.focus-panel:not(.is-focused) .panel-body .focus-priority-toggle,
+.focus-panel:not(.is-focused) .panel-body .focus-inline-editor button {
+  pointer-events: auto;
+}
+
+.focus-panel:not(.is-focused) .panel-body .focus-row-title,
+.focus-panel:not(.is-focused) .panel-body .focus-due-edit,
+.focus-panel:not(.is-focused) .panel-body .focus-priority-toggle {
+  cursor: pointer;
 }
 
 .panel-header {
@@ -1715,6 +1993,56 @@ button.focus-week-clock:hover::after {
   background: #1b2026;
   border-color: #222933;
   opacity: 0.8;
+}
+
+.focus-task-row.low-priority-row {
+  background: #1b2027;
+  border-color: #29303a;
+  opacity: 0.78;
+}
+
+.focus-panel .focus-task-row.low-priority-row {
+  gap: 4px;
+  min-height: 20px;
+  padding: 1px 6px;
+}
+
+.focus-panel .focus-task-row.low-priority-row .focus-row-title {
+  color: #9aa2ad;
+  font-size: 11px;
+}
+
+.focus-panel .focus-task-row.low-priority-row .focus-row-check {
+  width: 15px;
+  height: 14px;
+  min-width: 15px;
+}
+
+.focus-panel .focus-task-row.low-priority-row .focus-section-badge,
+.focus-panel .focus-task-row.low-priority-row .focus-row-note {
+  font-size: 8px;
+}
+
+.focus-week-priority-badge {
+  flex: 0 0 auto;
+  padding: 1px 3px;
+  color: #8c96a3;
+  border: 1px solid #566171;
+  border-radius: 3px;
+  font-size: 6px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.3px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.focus-week-priority-badge:not(.active) {
+  display: none;
+}
+
+.focus-week-day-column.is-expanded .focus-week-priority-badge {
+  display: inline-grid;
 }
 
 .focus-row-check {
@@ -1921,6 +2249,11 @@ button.focus-week-clock:hover::after {
   border-bottom-color: rgba(64, 137, 209, 0.3);
 }
 
+.focus-day-header.day-low-priority {
+  color: #8993a0;
+  border-bottom-color: rgba(137, 147, 160, 0.35);
+}
+
 /* Late work sits in Today, wearing the urgency on its sleeve */
 .focus-task-row.overdue-row {
   background: rgba(244, 67, 54, 0.12);
@@ -2096,16 +2429,61 @@ button.focus-week-clock:hover::after {
   background: #282f3a;
 }
 
-.focus-date-custom {
-  overflow: hidden;
+.focus-date-custom-trigger.active {
+  color: #ffb347;
+  border-color: #ffb347;
 }
 
-.focus-date-custom input {
-  position: absolute;
-  inset: 0;
+.focus-unified-date-picker {
   width: 100%;
-  height: 100%;
-  opacity: 0;
+  box-sizing: border-box;
+  display: grid;
+  gap: 7px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid #303847;
+}
+
+.focus-period-kind-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.focus-period-kind-btn {
+  padding: 4px 6px;
+  border: 1px solid #303847;
+  border-radius: 5px;
+  color: #9ca7b6;
+  background: #20262f;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.focus-period-kind-btn.active {
+  color: #ffb347;
+  border-color: #ffb347;
+  background: rgba(255, 179, 71, 0.1);
+}
+
+.focus-custom-date-input {
+  width: 100%;
+  min-height: 30px;
+  box-sizing: border-box;
+  padding: 4px 7px;
+  border: 1px solid #465266;
+  border-radius: 5px;
+  color: #e5e9ef;
+  background: #20262f;
+  color-scheme: dark;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
   cursor: pointer;
 }
 
@@ -2129,6 +2507,12 @@ button.focus-week-clock:hover::after {
   color: #7fb2e5;
   background: rgba(64, 137, 209, 0.12);
   border: 1px solid rgba(64, 137, 209, 0.35);
+}
+
+.focus-badge.due-month {
+  color: #b9a6d8;
+  background: rgba(139, 103, 177, 0.12);
+  border: 1px solid rgba(139, 103, 177, 0.35);
 }
 
 .focus-badge.due-later {
@@ -2482,6 +2866,16 @@ button.focus-week-clock:hover::after {
   background: #e8e8e8;
 }
 
+.theme-light .focus-week-day-column.is-this-week {
+  background: #f7f3fb;
+  border-color: #cbbdde;
+}
+
+.theme-light .focus-week-day-column.is-this-week .focus-day-header {
+  color: #73588f;
+  background: #f7f3fb;
+}
+
 .theme-light .panel-header {
   border-bottom-color: #e8e8e8;
 }
@@ -2541,6 +2935,12 @@ button.focus-week-clock:hover::after {
 .theme-light .focus-task-row.done-row {
   background: #f7f7f7;
   border-color: #ececec;
+}
+
+.theme-light .focus-task-row.low-priority-row {
+  color: #777;
+  background: #f5f5f5;
+  border-color: #e3e3e3;
 }
 
 .theme-light .focus-row-check {
@@ -2624,6 +3024,12 @@ button.focus-week-clock:hover::after {
   border-color: rgba(33, 150, 243, 0.35);
 }
 
+.theme-light .focus-badge.due-month {
+  color: #73588f;
+  background: #f4ecfb;
+  border-color: rgba(115, 88, 143, 0.35);
+}
+
 .theme-light .focus-badge.due-later {
   color: #888;
   background: #f0f0f0;
@@ -2680,6 +3086,29 @@ button.focus-week-clock:hover::after {
 .focus-date-menu.theme-light .focus-date-option:hover {
   border-color: #e08900;
   background: #fff8e8;
+}
+
+.focus-date-menu.theme-light .focus-unified-date-picker {
+  border-top-color: #ddd;
+}
+
+.focus-date-menu.theme-light .focus-period-kind-btn {
+  color: #555;
+  border-color: #ddd;
+  background: #f7f7f7;
+}
+
+.focus-date-menu.theme-light .focus-period-kind-btn.active {
+  color: #d97700;
+  border-color: #e08900;
+  background: #fff8e8;
+}
+
+.focus-date-menu.theme-light .focus-custom-date-input {
+  color: #333;
+  border-color: #ccc;
+  background: #fff;
+  color-scheme: light;
 }
 
 .focus-date-menu.theme-light .focus-date-clear {

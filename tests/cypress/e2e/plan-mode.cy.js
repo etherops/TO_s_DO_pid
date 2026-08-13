@@ -15,6 +15,7 @@ describe('View Modes (Triage & Plan)', () => {
 # SELECTED
 ## Ready
 * [ ] Selected task 1
+- [ ] Low planning task
 
 # SCHEDULED
 ### WIP
@@ -40,6 +41,26 @@ describe('View Modes (Triage & Plan)', () => {
   });
 
   describe('Plan Mode', () => {
+    it('should toggle low priority from the card and persist its markdown marker', () => {
+      cy.get('.view-mode-btn').contains('Plan').click();
+
+      cy.contains('.task-card', 'Low planning task').as('lowTask')
+        .should('have.class', 'low-priority-task-card')
+        .find('.low-priority-badge').should('contain', 'LOW').click({ force: true });
+      cy.contains('.task-card', 'Low planning task')
+        .should('not.have.class', 'low-priority-task-card')
+        .find('.priority-btn').should('have.attr', 'aria-label', 'Make low priority').click({ force: true });
+      cy.contains('.task-card', 'Low planning task')
+        .should('have.class', 'low-priority-task-card')
+        .find('.low-priority-badge').should('contain', 'LOW');
+
+      cy.wait(500);
+      cy.reload();
+      cy.contains('.task-card', 'Low planning task')
+        .should('have.class', 'low-priority-task-card')
+        .find('.low-priority-badge').should('contain', 'LOW');
+    });
+
     it('should toggle plan mode and interact with WIP tasks', () => {
       // Use existing WIP tasks from fixture
       const existingWipTask = 'BILLS - Phone bill really really really really really really really really really really really really really really really really really long';

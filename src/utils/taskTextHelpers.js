@@ -1,5 +1,7 @@
 // utils/noteHelpers.js
 
+import { serializeDuePeriodValue } from './dateHelpers';
+
 /**
  * Extract note from task text (content in parentheses, excluding due dates)
  * @param {string} text - Task text
@@ -136,11 +138,8 @@ export const updateTaskNameAndDueDate = (text, name, dueDateValue = '') => {
     if (completionMatch) updatedText = updatedText.slice(0, completionMatch.index).trim();
 
     if (dueDateValue) {
-        const [, month, day] = dueDateValue.split('-').map(Number);
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-            updatedText += ` !!(${monthNames[month - 1]} ${day})`;
-        }
+        const dueText = serializeDuePeriodValue(dueDateValue);
+        if (dueText) updatedText += ` !!(${dueText})`;
     }
 
     return `${updatedText}${completionSuffix}`;

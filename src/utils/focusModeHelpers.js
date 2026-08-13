@@ -3,16 +3,16 @@
 // Focus mode pulls only from SELECTED and WIP columns - the staged, committed
 // work. What lands on deck for the week is either staged into WIP or carries a
 // due date falling on or before the Saturday that closes this week. Four
-// buckets: IN PROGRESS / QUEUED (anything underway unless urgent, plus
-// non-urgent dated queued work), NOW (undated queued work plus overdue and
-// due-today work), UP NEXT (the rest of SELECTED), and DONE. Completed work
+// buckets: IN PROGRESS / BLOCKED (undated work already underway), NOW
+// (overdue and due-today work), UP NEXT (scheduled future work and undated
+// queued work), and DONE. Completed work
 // due today stays visible in NOW until tomorrow. Work completed or cancelled
 // today also stays in NOW, regardless of its due date.
 
-import { isPast, isToday, extractDateFromText } from './dateHelpers';
+import { isPast, isToday, extractDuePeriod } from './dateHelpers';
 import { isCompletedToday } from './completionDateHelpers';
 
-export const UP_NEXT_GROUP_ORDER = ['inflight', 'upcoming', 'undated'];
+export const UP_NEXT_GROUP_ORDER = ['month', 'week', 'day', 'unscheduled'];
 
 const FOCUS_STACKS = ['WIP', 'SELECTED'];
 
@@ -37,8 +37,9 @@ export const endOfCurrentWeek = (from = new Date()) => {
  * counts too - it was due by now, so it is very much this week's problem.
  */
 export const isOnDeckThisWeek = (text) => {
-  const dueDate = extractDateFromText(text);
-  return Boolean(dueDate) && dueDate <= endOfCurrentWeek();
+  const period = extractDuePeriod(text);
+  if (!period || period.kind === 'month') return false;
+  return period.start <= endOfCurrentWeek();
 };
 
 // Ordering for the execution panels: today's problems first - what's late,
@@ -47,23 +48,19 @@ export const isOnDeckThisWeek = (text) => {
 const DUE_RANK = { overdue: 0, today: 1, undated: 2, upcoming: 3 };
 
 const dueGrouping = (task) => {
-  const dueDate = extractDateFromText(task.text);
-  if (!dueDate) return { dueGroup: 'undated', dueRank: DUE_RANK.undated, dueTime: 0 };
-  if (isPast(task.text)) return { dueGroup: 'overdue', dueRank: DUE_RANK.overdue, dueTime: dueDate.getTime() };
-  if (isToday(task.text)) return { dueGroup: 'today', dueRank: DUE_RANK.today, dueTime: dueDate.getTime() };
-  return { dueGroup: `day-${dueDate.getTime()}`, dueRank: DUE_RANK.upcoming, dueTime: dueDate.getTime() };
+  const period = extractDuePeriod(task.text);
+  if (!period) return { dueGroup: 'undated', dueRank: DUE_RANK.undated, dueTime: 0 };
+  if (isPast(task.text)) return { dueGroup: 'overdue', dueRank: DUE_RANK.overdue, dueTime: period.start.getTime() };
+  if (isToday(task.text)) return { dueGroup: 'today', dueRank: DUE_RANK.today, dueTime: period.start.getTime() };
+  const periodGroup = period.kind === 'day' ? `day-${period.start.getTime()}` : `${period.kind}-${period.start.getTime()}`;
+  return { dueGroup: periodGroup, dueRank: DUE_RANK.upcoming, dueTime: period.start.getTime() };
 };
 
 const byDueDate = (a, b) => a.dueRank - b.dueRank || a.dueTime - b.dueTime;
 
 // What's left in SELECTED once this week's work has been pulled out: work
 // already underway leads, then dated work by date, then everything undated
-const classifyUpNextGroup = (task) => {
-  if (task.statusChar === '~') return 'inflight';
-  return extractDateFromText(task.text) ? 'upcoming' : 'undated';
-};
-
-const dueTimeOf = (entry) => extractDateFromText(entry.task.text)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+const dueTimeOf = (entry) => extractDuePeriod(entry.task.text)?.start.getTime() ?? Number.MAX_SAFE_INTEGER;
 
 const eachFocusTask = (todoData, visit) => {
   (todoData?.columnOrder || []).forEach(columnName => {
@@ -86,7 +83,7 @@ const eachFocusTask = (todoData, visit) => {
  * anywhere. IN PROGRESS / QUEUED holds non-urgent in-progress work and dated
  * queued work. NOW holds undated queued work plus all overdue and due-today work. Both are
  * ordered overdue -> today -> undated ->
- * each upcoming day. UP NEXT keeps the rest of SELECTED and DONE keeps
+ * each upcoming day. UP NEXT keeps future or unstarted work and DONE keeps
  * terminal work, except cards due today or completed/cancelled today remain in NOW.
  * @param {Object} todoData - { columnOrder, columnStacks }
  * @returns {{ inProgressQueued: Array, now: Array, upNext: Array, done: Array }}
@@ -96,7 +93,7 @@ export const deriveFocusModel = (todoData) => {
   const inProgressQueued = [];
   const now = [];
   const done = [];
-  const upNextGroups = { inflight: [], upcoming: [], undated: [] };
+  const upNextGroups = { month: [], week: [], day: [], unscheduled: [] };
 
   eachFocusTask(todoData, (entry) => {
     const { task, stackName } = entry;
@@ -112,24 +109,46 @@ export const deriveFocusModel = (todoData) => {
     }
     if (task.statusChar !== ' ' && task.statusChar !== '~') return;
 
-    if (stackName === 'WIP' || isOnDeckThisWeek(task.text)) {
-      const onDeckEntry = { ...entry, ...dueGrouping(task) };
-      const isUrgent = onDeckEntry.dueGroup === 'today' || onDeckEntry.dueGroup === 'overdue';
-      const isDatedQueue = task.statusChar === ' '
-          && String(onDeckEntry.dueGroup).startsWith('day-');
-      const belongsInProgressQueue = !isUrgent
-          && (task.statusChar === '~' || isDatedQueue);
-      (belongsInProgressQueue ? inProgressQueued : now).push(onDeckEntry);
+    const routedEntry = { ...entry, ...dueGrouping(task) };
+    const period = extractDuePeriod(task.text);
+    const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text);
+
+    if (wasOnDeck) {
+      const isUrgent = routedEntry.dueGroup === 'today' || routedEntry.dueGroup === 'overdue';
+      if (isUrgent) {
+        now.push(routedEntry);
+        return;
+      }
+
+      // Reproduce the former IN PROGRESS / QUEUED membership before deciding
+      // where its named groups render. General was exactly undated active WIP;
+      // dated queued/active work belonged to This Week or an individual day.
+      const belongedToOldRightPanel = task.statusChar === '~'
+          || (task.statusChar === ' ' && routedEntry.dueGroup !== 'undated');
+      if (belongedToOldRightPanel) {
+        if (routedEntry.dueGroup === 'undated') {
+          if (task.statusChar === '~') inProgressQueued.push({ ...routedEntry, group: 'inProgress' });
+          else upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
+        } else {
+          upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
+        }
+        return;
+      }
+
+      upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
       return;
     }
 
-    const group = classifyUpNextGroup(task);
-    upNextGroups[group].push({ ...entry, group });
+    // Reproduce the former UP NEXT / WAITING membership. Its dated groups move
+    // to Up Next; its undated Waiting group moves right as Waiting / Blocked.
+    if (period) upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
+    else if (task.statusChar === '~') inProgressQueued.push({ ...routedEntry, group: 'waiting' });
+    else upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
   });
 
   inProgressQueued.sort(byDueDate);
   now.sort(byDueDate);
-  upNextGroups.upcoming.sort((a, b) => dueTimeOf(a) - dueTimeOf(b));
+  Object.values(upNextGroups).forEach(entries => entries.sort((a, b) => dueTimeOf(a) - dueTimeOf(b)));
 
   return {
     inProgressQueued,

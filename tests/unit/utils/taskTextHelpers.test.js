@@ -15,6 +15,15 @@ describe('updateTaskNameAndDueDate', () => {
     expect(updateTaskNameAndDueDate('Task (note) !!(Sep 3)', 'Task', '')).toBe('Task (note)');
   });
 
+  it('adds week and month due periods', () => {
+    expect(updateTaskNameAndDueDate('Task', 'Task', 'week:2026-08-16')).toBe(
+      'Task !!(week Aug 16 2026)'
+    );
+    expect(updateTaskNameAndDueDate('Task', 'Task', 'month:2026-09')).toBe(
+      'Task !!(month Sep 2026)'
+    );
+  });
+
   it('rejects an empty task name', () => {
     expect(updateTaskNameAndDueDate('Keep me !!(Aug 12)', '  ', '')).toBe('Keep me !!(Aug 12)');
   });

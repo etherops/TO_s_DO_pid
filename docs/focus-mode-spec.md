@@ -8,30 +8,33 @@ Focus Mode derives its tasks from SELECTED and WIP.
 
 - A task is on deck when it is in WIP or due no later than the Saturday ending the current Sunday–Saturday week.
 - NOW contains overdue and due-today work regardless of status, work completed or cancelled today, and undated queued WIP work.
-- IN PROGRESS / QUEUED contains non-urgent active work and non-urgent dated queued work.
-- UP NEXT / WAITING contains the remaining SELECTED work.
-- A future-dated queued task appears both in IN PROGRESS / QUEUED and under its date in Week at a glance.
+- UP NEXT contains whole-month work, exact dates or whole-week work after the current week grouped into Sunday–Saturday weeks, and undated non-`~` work under UNSCHEDULED. The immediately following week is NEXT WEEK; later groups are WEEK OF [date]. Current-week dates and whole-current-week assignments are omitted here because Week at a glance already represents them.
+- IN PROGRESS / BLOCKED contains only `~` tasks. Undated `~` tasks from the former General group appear under IN PROGRESS THIS WEEK; undated `~` tasks from the former Waiting group appear under WAITING / BLOCKED. Dated groups remain in UP NEXT regardless of status.
+- A future-dated queued task appears in UP NEXT and under its date in Week at a glance. It is not duplicated into IN PROGRESS / BLOCKED.
+- Exact days use `!!(Aug 12)`, whole Sunday–Saturday weeks use `!!(week Aug 9 2026)`, and whole calendar months use `!!(month Aug 2026)`.
+- A period becomes overdue only after its final day. Current-week periods are scheduled under THIS WEEK for the whole week but are not assigned to a fake weekday. Month periods remain in UP NEXT unless their task becomes active.
 
 ## Top execution carousel
 
 The top area contains three panels with one spotlight at a time:
 
-1. UP NEXT / WAITING
+1. UP NEXT
 2. NOW, spotlighted by default
-3. IN PROGRESS / QUEUED
+3. IN PROGRESS / BLOCKED
 
-The spotlight is larger. Both side panels remain fully visible and slightly shorter and narrower than the spotlight, and sit just below vertical center so their breathing room remains nearly balanced. The stage uses most of the available viewport height while preserving a small footer buffer around the compact navigation dots. Navigation works through panel clicks, the three compact dots, left/right arrow keys, and horizontal swipe.
+The spotlight is larger. When NOW is centered, both side panels remain fully visible and slightly shorter and narrower than the spotlight, and sit just below vertical center so their breathing room remains nearly balanced. The carousel is linear—UP NEXT → NOW → IN PROGRESS / BLOCKED—and never wraps an end panel around to the opposite side. The stage uses most of the available viewport height while preserving a small footer buffer around the compact navigation dots. Navigation works through adjacent panel clicks, the three compact dots, left/right arrow keys, and horizontal swipe.
 
 ## Week at a glance
 
-The lower strip always shows Sunday through Saturday and replaces the old DONE panel.
+The lower strip always shows a THIS WEEK pane followed by Sunday through Saturday and replaces the old DONE panel.
 
+- THIS WEEK holds tasks assigned to the current whole-week period. It is the same size as each day pane but uses subtly distinct styling.
 - Every day is a contained, independently scrolling pane.
 - Future days show scheduled tasks.
 - Past days retain completed and cancelled tasks. When a terminal task has no due date, its completion stamp determines its day.
 - Today is lightly muted and mirrors every task in NOW.
 - The Today mini cards are display-only except for their due-date clock.
-- Weekly cards omit the redundant due-date badge, use a hoverable one-letter section marker, collapse notes to an icon, and retain a clickable clock for date editing.
+- Weekly cards omit the redundant due-date badge and collapse notes to an icon. Their one-letter section marker and clickable due-date clock remain hidden at rest to preserve title width, then appear when that pane is magnified.
 
 ### Dock magnification
 
@@ -40,18 +43,29 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 - The pane nearest the pointer is the strongly magnified center pane.
 - Immediate neighbors grow modestly; the effect tapers off quickly beyond them.
 - Fixed outer slots translate away from the magnified region instead of flex-reflowing.
-- Magnified panes may escape the weekly container and stack in front of the upper carousel.
+- Magnified panes may escape the weekly container and stack in front of the upper carousel, but edge panes shift inward so the active pane remains inside the viewport.
 - Pane movement is one smooth transform animation, not separate width and position stages.
 - An inverse-scaled content layer keeps typography and icons at their normal visual size while laying content out across the wider magnified area. The purpose of magnification is to reveal more title text and more tasks, not to enlarge type.
 - Leaving the strip returns all panes to equal size and position.
 
 ## Task interactions
 
+- Focus Mode's + Add creates an unstarted task due today, so it appears immediately in NOW. Its storage section is inferred dynamically: use the WIP section with the most `~` tasks, falling back to the first WIP section and then the first SELECTED section; no section title is hard-coded.
 - Task names are edited independently from due dates.
-- The due-date clock opens an anchored menu with Today, Tomorrow, each remaining day this week, Next week, Custom, and Clear. Choosing an option saves immediately.
+- Task titles and due-date controls remain directly editable in the left and right side panels; using them does not move that panel into the spotlight. Clicking the surrounding panel still brings it to center.
+- The due-date clock opens an anchored menu with Today, Tomorrow, each remaining day this week, Next week, whole-week and whole-month shortcuts, one unified custom picker, and Clear. The custom picker switches between Day, Week, and Month precision without presenting three competing controls. Choosing a value saves immediately.
 - Status uses the four board states: queued, in progress, completed, and will not do.
 - Status appearance updates immediately, but sorting and re-bucketing wait 1.5 seconds so repeated toggles do not move the control under the pointer.
 - A change that moves a card uses the hold, flight, and landing animation. A change that leaves the card in the same rendered slot does not whisk.
+
+## Priority marker
+
+- Markdown tasks beginning with `- [status]` are low priority; `* [status]` is normal priority. The checkbox status and list-marker priority are independent.
+- The parser and renderer preserve the marker through every edit and save.
+- Low-priority tasks use a compact treatment throughout the app. UP NEXT, NOW, and IN PROGRESS / BLOCKED pull them into a compact LOW PRIORITY group at the bottom of each panel.
+- Week at a glance preserves its day columns instead of adding nested groups; each low-priority row carries a small inline LOW badge.
+- Priority controls update the Markdown list marker immediately: clicking LOW restores normal priority, while the subtle down-arrow marks a normal task low priority. The board's full editor exposes the same toggle.
+- Priority never overrides NOW urgency rules or the date-based Week at a glance placement.
 
 ## Ordering
 

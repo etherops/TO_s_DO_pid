@@ -2,7 +2,13 @@
 <template>
   <div class="compact-date-picker">
     <label class="date-label">Due Date</label>
+    <div class="period-kind-tabs">
+      <button v-for="kind in ['day', 'week', 'month']" :key="kind" type="button"
+              class="period-kind-btn" :class="{ active: selectedKind === kind }"
+              @click="setKind(kind)">{{ kind }}</button>
+    </div>
     <input
+        v-if="selectedKind === 'day'"
         type="date"
         class="date-input"
         v-model="selectedDateValue"
@@ -10,14 +16,18 @@
         @keydown="handleKeydown"
         @change="handleChange"
     />
+    <input v-else-if="selectedKind === 'week'" type="week" class="date-input"
+           v-model="selectedInputValue" @change="handlePeriodChange" />
+    <input v-else type="month" class="date-input"
+           v-model="selectedInputValue" @change="handlePeriodChange" />
     <div class="date-controls">
-      <button class="nav-btn" @click="adjustDate(-1)" title="Previous day" :disabled="!selectedDateValue">
+      <button class="nav-btn" @click="adjustPeriod(-1)" title="Previous period" :disabled="!selectedDateValue">
         <span class="nav-icon">‹</span>
       </button>
-      <button class="today-btn" @click="setToday" title="Set to today">
-        Today
+      <button class="today-btn" @click="setCurrent" title="Set current period">
+        {{ selectedKind === 'day' ? 'Today' : selectedKind === 'week' ? 'This week' : 'This month' }}
       </button>
-      <button class="nav-btn" @click="adjustDate(1)" title="Next day" :disabled="!selectedDateValue">
+      <button class="nav-btn" @click="adjustPeriod(1)" title="Next period" :disabled="!selectedDateValue">
         <span class="nav-icon">›</span>
       </button>
       <button class="clear-btn" @click="clearDate" title="Clear date">
@@ -40,19 +50,68 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue']);
 
 const selectedDateValue = ref('');
+const selectedKind = ref('day');
+const selectedInputValue = ref('');
 const dateInput = ref(null);
 
 // Initialize from modelValue or current date in task
 onMounted(() => {
-  if (props.modelValue) {
-    selectedDateValue.value = props.modelValue;
-  }
+  syncFromModel(props.modelValue);
 });
 
 // Watch for external changes
 watch(() => props.modelValue, (newVal) => {
-  selectedDateValue.value = newVal || '';
+  syncFromModel(newVal);
 });
+
+const weekInputFromSunday = (value) => {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day + 3);
+  const thursday = new Date(date);
+  thursday.setDate(date.getDate() + (4 - (date.getDay() || 7)));
+  const weekYear = thursday.getFullYear();
+  const yearStart = new Date(weekYear, 0, 1);
+  const week = Math.ceil((((thursday - yearStart) / 86400000) + yearStart.getDay() + 1) / 7);
+  return `${weekYear}-W${String(week).padStart(2, '0')}`;
+};
+
+const sundayFromWeekInput = (value) => {
+  const [yearText, weekText] = value.split('-W');
+  const year = Number(yearText);
+  const week = Number(weekText);
+  const januaryFourth = new Date(year, 0, 4);
+  const monday = new Date(januaryFourth);
+  monday.setDate(januaryFourth.getDate() - ((januaryFourth.getDay() + 6) % 7) + (week - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() - 1);
+  return formatDateValue(sunday);
+};
+
+const formatDateValue = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+const syncFromModel = (value) => {
+  selectedDateValue.value = value || '';
+  selectedKind.value = value?.startsWith('week:') ? 'week' : value?.startsWith('month:') ? 'month' : 'day';
+  const raw = value?.replace(/^(week|month):/, '') || '';
+  selectedInputValue.value = selectedKind.value === 'week' && raw ? weekInputFromSunday(raw) : raw;
+};
+
+const emitValue = (value) => {
+  selectedDateValue.value = value;
+  emit('update:modelValue', value);
+};
+
+const setKind = (kind) => {
+  selectedKind.value = kind;
+  setCurrent();
+};
+
+const handlePeriodChange = () => {
+  if (!selectedInputValue.value) return clearDate();
+  emitValue(selectedKind.value === 'week'
+      ? `week:${sundayFromWeekInput(selectedInputValue.value)}`
+      : `month:${selectedInputValue.value}`);
+};
 
 const handleKeydown = (event) => {
   if (event.key === 'Enter') {
@@ -68,6 +127,21 @@ const handleChange = () => {
 const clearDate = () => {
   selectedDateValue.value = '';
   emit('update:modelValue', '');
+};
+
+const adjustPeriod = (amount) => {
+  if (selectedKind.value === 'day') return adjustDate(amount);
+  if (!selectedDateValue.value) return;
+  const raw = selectedDateValue.value.replace(/^(week|month):/, '');
+  const [year, month, day = 1] = raw.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  if (selectedKind.value === 'week') date.setDate(date.getDate() + amount * 7);
+  else date.setMonth(date.getMonth() + amount);
+  const value = selectedKind.value === 'week'
+      ? `week:${formatDateValue(date)}`
+      : `month:${formatDateValue(date).slice(0, 7)}`;
+  syncFromModel(value);
+  emitValue(value);
 };
 
 const adjustDate = (days) => {
@@ -89,14 +163,16 @@ const adjustDate = (days) => {
   emit('update:modelValue', selectedDateValue.value);
 };
 
-const setToday = () => {
+const setCurrent = () => {
   const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  selectedDateValue.value = `${year}-${month}-${day}`;
-  
-  emit('update:modelValue', selectedDateValue.value);
+  let value = formatDateValue(today);
+  if (selectedKind.value === 'week') {
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - today.getDay());
+    value = `week:${formatDateValue(sunday)}`;
+  } else if (selectedKind.value === 'month') value = `month:${value.slice(0, 7)}`;
+  syncFromModel(value);
+  emitValue(value);
 };
 
 const focus = () => {
@@ -121,6 +197,10 @@ defineExpose({ focus });
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+.period-kind-tabs { display: flex; gap: 3px; }
+.period-kind-btn { flex: 1; border: 1px solid #ddd; background: #f5f5f5; color: #666; border-radius: 3px; padding: 3px 5px; text-transform: capitalize; cursor: pointer; }
+.period-kind-btn.active { color: #f57c00; border-color: #ff9800; background: #fff8e1; }
 
 .date-input {
   width: 100%;

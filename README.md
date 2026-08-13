@@ -13,7 +13,8 @@ This is a really really stupid to do list web app that shouldn't exist.
 - Multiple files as tabs — switch between todos from different directories or individual files
 - H1 (`#`) column headers, H2 (`##`) and H3 (`###`) section headers within columns
 - Task states: open `[ ]`, in progress `[~]`, done `[x]`, cancelled `[-]`
-- Due dates: `!!(YYYY-MM-DD)`; completion dates auto-stamped when you flip a task to done
+- Task priority: normal tasks use `* [status]`; low-priority tasks use `- [status]`
+- Due dates: exact day `!!(Aug 12)`, whole week `!!(week Aug 9 2026)`, or whole month `!!(month Aug 2026)`; completion dates auto-stamped when you flip a task to done
 - Drag + drop tasks and sections across sections, columns, and stacks
 - Multi-select (cmd/ctrl + click) with multi-drag (stacked visual preview) and bulk "Move to" via right-click
 - Right-click context menu with a column → section submenu for precise moves

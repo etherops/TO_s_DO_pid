@@ -178,16 +178,19 @@ export function parseTodoMdFile(fileContent) {
     }
 
     // Parse todo items
-    if (trimmedLine.startsWith('* ')) {
-      const statusMatch = trimmedLine.match(/\* \[([ x~-])\]/);
+    if (/^[*-] \[/.test(trimmedLine)) {
+      const statusMatch = trimmedLine.match(/^([*-]) \[([ x~-])\]/);
 
       if (statusMatch && currentSection) {
-        const statusChar = statusMatch[1];
+        const listMarker = statusMatch[1];
+        const statusChar = statusMatch[2];
         const todoText = trimmedLine.substring(statusMatch[0].length).trim();
 
         const todoItem = {
           id: itemId++,
           type: 'task',
+          listMarker,
+          isLowPriority: listMarker === '-',
           statusChar,
           text: todoText,
           displayText: getStrippedDisplayText(todoText),
@@ -311,7 +314,7 @@ export function renderTodoMdFile(data) {
               outputLines.push(item.text);
             } else {
               // Render task items
-              outputLines.push(`* [${item.statusChar}] ${item.text}`);
+              outputLines.push(`${item.listMarker === '-' || item.isLowPriority ? '-' : '*'} [${item.statusChar}] ${item.text}`);
             }
           });
         }

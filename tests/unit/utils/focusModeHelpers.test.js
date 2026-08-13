@@ -86,16 +86,21 @@ describe('focusModeHelpers', () => {
       expect(isOnDeckThisWeek('Task !!(Aug 16)')).toBe(false);
       expect(isOnDeckThisWeek('Task with no date')).toBe(false);
     });
+
+    it('puts whole current-week periods on deck but leaves month periods in planning', () => {
+      expect(isOnDeckThisWeek('Task !!(week Aug 9 2026)')).toBe(true);
+      expect(isOnDeckThisWeek('Task !!(week Aug 16 2026)')).toBe(false);
+      expect(isOnDeckThisWeek('Task !!(month Aug 2026)')).toBe(false);
+    });
   });
 
   describe('deriveFocusModel', () => {
     const model = () => deriveFocusModel(parseTodoMdFile(fixture));
 
-    it('keeps active and future-dated queued work on the right while urgent/general work stays in NOW', () => {
+    it('keeps active and waiting work on the right while scheduled work goes left and urgent/general work stays in NOW', () => {
       expect(taskTexts(model().inProgressQueued)).toEqual([
-        'Wip inflight undated',
-        'Selected inflight due Friday',
-        'Wip due Saturday'
+        'Selected inflight undated',
+        'Wip inflight undated'
       ]);
 
       expect(taskTexts(model().now)).toEqual([
@@ -103,8 +108,7 @@ describe('focusModeHelpers', () => {
         'Selected due today',
         'Wip inflight due today',
         'Wip completed due today',
-        'Wip cancelled due today',
-        'Wip queued undated'
+        'Wip cancelled due today'
       ]);
     });
 
@@ -114,25 +118,36 @@ describe('focusModeHelpers', () => {
         'today',
         'today',
         'today',
-        'today',
-        'undated'
+        'today'
       ]);
       expect(model().inProgressQueued.map(entry => entry.dueGroup)).toEqual([
         'undated',
-        `day-${new Date(2026, 7, 14).getTime()}`,
-        `day-${new Date(2026, 7, 15).getTime()}`
+        'undated'
       ]);
     });
 
-    it('leaves the rest of SELECTED in UP NEXT: in progress, dated, then undated', () => {
+    it('puts unstarted scheduled work in UP NEXT by period precision', () => {
       expect(taskTexts(model().upNext)).toEqual([
-        'Selected inflight undated',
+        'Selected inflight due Friday',
+        'Wip due Saturday',
         'Selected due next week',
-        'Selected undated'
+        'Selected undated',
+        'Wip queued undated'
       ]);
 
       const groupSequence = model().upNext.map(entry => UP_NEXT_GROUP_ORDER.indexOf(entry.group));
       expect([...groupSequence].sort((a, b) => a - b)).toEqual(groupSequence);
+    });
+
+    it('keeps month and current-week queued work in UP NEXT', () => {
+      const periods = deriveFocusModel(parseTodoMdFile(`# SELECTED
+## Ready
+* [ ] Whole August !!(month Aug 2026)
+* [ ] Whole current week !!(week Aug 9 2026)
+`));
+      expect(taskTexts(periods.upNext)).toEqual(['Whole August', 'Whole current week']);
+      expect(periods.inProgressQueued).toEqual([]);
+      expect(periods.upNext[1].dueGroup).toBe(`week-${new Date(2026, 7, 9).getTime()}`);
     });
 
     it('still only pulls from SELECTED and WIP - a due date cannot drag in backlog or archive', () => {
@@ -162,13 +177,30 @@ describe('focusModeHelpers', () => {
     });
 
     it('carries section references so entries can be mutated in place', () => {
-      const entry = model().now.find(e => e.task.displayText === 'Wip queued undated');
+      const entry = model().upNext.find(e => e.task.displayText === 'Wip queued undated');
       expect(entry.columnName).toBe('WIP');
       expect(entry.sectionName).toBe('CURRENT');
       expect(entry.section.items).toContain(entry.task);
     });
 
-    it('keeps same-day queued work in file order so sections stay together', () => {
+    it('allows only in-progress status in the right panel and groups other undated work as unscheduled', () => {
+      expect(model().inProgressQueued.every(entry => entry.task.statusChar === '~')).toBe(true);
+      const unscheduled = model().upNext.filter(entry => entry.group === 'unscheduled');
+      expect(taskTexts(unscheduled)).toEqual(['Selected undated', 'Wip queued undated']);
+      expect(unscheduled.every(entry => entry.task.statusChar !== '~')).toBe(true);
+    });
+
+    it('carries low-priority list-marker metadata into Focus entries', () => {
+      const priorityModel = deriveFocusModel(parseTodoMdFile(`# SELECTED
+## Waiting
+- [~] Low blocked
+- [ ] Low unscheduled
+`));
+      expect(priorityModel.inProgressQueued[0].task.isLowPriority).toBe(true);
+      expect(priorityModel.upNext[0].task.isLowPriority).toBe(true);
+    });
+
+    it('keeps same-day queued work in UP NEXT file order so sections stay together', () => {
       const sameDay = deriveFocusModel(parseTodoMdFile(`# WIP
 ### MONDAY
 * [ ] Monday A !!(Aug 14)
@@ -177,7 +209,7 @@ describe('focusModeHelpers', () => {
 * [ ] Friday B !!(Aug 14)
 `));
 
-      expect(taskTexts(sameDay.inProgressQueued)).toEqual(['Monday A', 'Friday A', 'Friday B']);
+      expect(taskTexts(sameDay.upNext)).toEqual(['Monday A', 'Friday A', 'Friday B']);
     });
   });
 

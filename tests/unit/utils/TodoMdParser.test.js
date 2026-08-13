@@ -139,6 +139,20 @@ describe('TodoMdParser', () => {
       expect(items[3].text).toBe('Cancelled task')
     })
 
+    it('should preserve dash list markers as low-priority task metadata', () => {
+      const content = `# SELECTED
+## Tasks
+* [~] Normal task
+- [~] Low task
+- [ ] Low queued task`
+
+      const data = parseTodoMdFile(content)
+      const items = data.columnStacks.SELECTED.sections[0].items
+      expect(items.map(item => item.listMarker)).toEqual(['*', '-', '-'])
+      expect(items.map(item => item.isLowPriority)).toEqual([false, true, true])
+      expect(renderTodoMdFile(data)).toBe(content)
+    })
+
     it('should parse tasks with notes and due dates', () => {
       const content = `# TODO
 ## Tasks

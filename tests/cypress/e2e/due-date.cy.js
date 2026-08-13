@@ -1,6 +1,32 @@
 import { refreshAndWait, findTask } from '../support/helpers.js'
 
 describe('Due Date Management', () => {
+    it('should assign whole-week and whole-month due periods', () => {
+        const taskText = 'HOME - Lawn care'
+
+        findTask(taskText).within(() => cy.get('.clock-btn').click())
+        cy.get('.period-kind-btn').contains('week').click()
+        cy.get('input[type="week"]').should('be.visible')
+        cy.get('.confirm-edit-btn').click()
+        findTask(taskText).within(() => {
+            cy.get('.clock-btn').should('have.class', 'has-due-date')
+            cy.get('.mini-calendar').should('contain', 'WEEK').and('contain', 'SUN–SAT')
+        })
+
+        findTask(taskText).within(() => cy.get('.clock-btn').click())
+        cy.get('.period-kind-btn').contains('month').click()
+        cy.get('input[type="month"]').should('be.visible')
+        cy.get('.confirm-edit-btn').click()
+        findTask(taskText).within(() => {
+            cy.get('.mini-calendar').should('contain', 'MONTH').and('contain', 'ANY DAY')
+        })
+
+        refreshAndWait()
+        findTask(taskText).within(() => {
+            cy.get('.mini-calendar').should('contain', 'MONTH')
+        })
+    })
+
     it('should add due date to task and persist', () => {
         // Using actual task without due date from HELPER section
         const taskText = 'HOME - Lawn care'

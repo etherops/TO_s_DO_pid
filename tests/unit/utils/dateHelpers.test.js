@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import {
   extractDateFromText,
+  extractDuePeriod,
+  formatDuePeriodValue,
+  getDuePeriodLabel,
   isPast,
   hasDueDate,
   getDisplayTextWithoutDueDate
@@ -75,6 +78,31 @@ describe('dateHelpers', () => {
       const text = 'Task without due date'
       const result = extractDateFromText(text)
       expect(result).toBeNull()
+    })
+  })
+
+  describe('due periods', () => {
+    it('parses Sunday-Saturday weeks', () => {
+      const period = extractDuePeriod('Task !!(week Jun 2 2024)')
+      expect(period.kind).toBe('week')
+      expect(period.start).toEqual(new Date(2024, 5, 2))
+      expect(period.end.getDate()).toBe(8)
+      expect(formatDuePeriodValue(period)).toBe('week:2024-06-02')
+      expect(getDuePeriodLabel('Task !!(week Jun 2 2024)')).toBe('Jun 2–8')
+    })
+
+    it('parses calendar months and only considers them overdue after month end', () => {
+      const period = extractDuePeriod('Task !!(month Jun 2024)')
+      expect(period.kind).toBe('month')
+      expect(period.start).toEqual(new Date(2024, 5, 1))
+      expect(period.end.getDate()).toBe(30)
+      expect(formatDuePeriodValue(period)).toBe('month:2024-06')
+      expect(isPast('Task !!(month Jun 2024)')).toBe(false)
+      expect(getDuePeriodLabel('Task !!(month Jun 2024)')).toBe('Jun')
+    })
+
+    it('rejects week values that do not start on Sunday', () => {
+      expect(extractDuePeriod('Task !!(week Jun 3 2024)')).toBeNull()
     })
   })
 

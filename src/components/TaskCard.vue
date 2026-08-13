@@ -7,6 +7,7 @@
     'sorting': task.isSorting, 
     'floating-up': task.isFloatingUp,
     'floating-down': task.isFloatingDown,
+    'low-priority-task-card': task.isLowPriority || task.listMarker === '-',
     'selected': isSelected
   }"
   :style="(task.isFloatingUp || task.isFloatingDown) && task.floatDistance ? {
@@ -106,6 +107,10 @@
         
         <!-- Action buttons row -->
         <div class="edit-actions-row">
+          <button class="priority-edit-btn" :class="{ active: task.isLowPriority || task.listMarker === '-' }"
+                  @click="toggleTaskPriority">
+            {{ task.isLowPriority || task.listMarker === '-' ? 'LOW priority' : 'Mark low priority' }}
+          </button>
           <button class="confirm-edit-btn" @click="saveAllEdits">
             <span class="confirm-icon">✓</span> Save
           </button>
@@ -119,6 +124,9 @@
       <div class="task-container" @click="handleTaskCardClick">
           <!-- Content area that can flex -->
           <div class="task-content-area">
+            <button v-if="task.isLowPriority || task.listMarker === '-'" class="low-priority-badge"
+                    title="Low priority — click to make normal priority"
+                    aria-label="Make normal priority" @click.stop="toggleTaskPriority">LOW</button>
             <span
                 :class="[
                 'task-title',
@@ -153,6 +161,12 @@
 
           <!-- Fixed buttons container -->
           <div v-if="!isArchiveColumn" class="task-buttons-container">
+
+          <PriorityToggle
+              v-if="!isOnIce && !(task.isLowPriority || task.listMarker === '-')"
+              class="priority-btn"
+              @toggle="toggleTaskPriority"
+          />
 
           <!-- Clock button -->
           <button
@@ -246,6 +260,7 @@
 <script setup>
 import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue';
 import CompactDatePicker from './CompactDatePicker.vue';
+import PriorityToggle from './PriorityToggle.vue';
 import {
   hasDueDate,
   isPast,
@@ -253,6 +268,9 @@ import {
   isSoon,
   getDueDateTooltip,
   extractDateFromText,
+  extractDuePeriod,
+  formatDuePeriodValue,
+  serializeDuePeriodValue,
   getMonthYear,
   getDayNumber,
   getWeekday
@@ -394,6 +412,13 @@ const toggleTaskStatus = () => {
   emit('task-updated');
 };
 
+const toggleTaskPriority = () => {
+  const makeLow = !(props.task.isLowPriority || props.task.listMarker === '-');
+  props.task.listMarker = makeLow ? '-' : '*';
+  props.task.isLowPriority = makeLow;
+  emit('task-updated');
+};
+
 // Sort task after status change using shared sorting utility
 const sortTaskAfterStatusChange = () => {
   sortTaskToCorrectPosition(props.section.items, props.task, emit);
@@ -479,15 +504,7 @@ const startEditingAll = (focusTarget = '') => {
   editNoteText.value = extractNoteFromText(props.task.text) || '';
   
   // Extract existing due date
-  const existingDate = extractDateFromText(props.task.text);
-  if (existingDate) {
-    const year = existingDate.getFullYear();
-    const month = String(existingDate.getMonth() + 1).padStart(2, '0');
-    const day = String(existingDate.getDate()).padStart(2, '0');
-    editDateValue.value = `${year}-${month}-${day}`;
-  } else {
-    editDateValue.value = '';
-  }
+  editDateValue.value = formatDuePeriodValue(extractDuePeriod(props.task.text));
   
   // Extract existing completion date
   editCompletionDate.value = hasCompletionDate(props.task.text) ? 
@@ -560,11 +577,8 @@ const saveAllEdits = () => {
     
     // Add date if present
     if (editDateValue.value) {
-      // Parse the date value
-      const [year, month, day] = editDateValue.value.split('-');
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const formattedDate = `${monthNames[parseInt(month) - 1]} ${parseInt(day)}`;
-      newText += ` !!(${formattedDate})`;
+      const formattedDuePeriod = serializeDuePeriodValue(editDateValue.value);
+      if (formattedDuePeriod) newText += ` !!(${formattedDuePeriod})`;
     }
     
     // Preserve completion date if it exists
@@ -772,6 +786,51 @@ onUnmounted(() => {
 
 .task-card.selected:hover {
   border-color: #1976d2;
+}
+
+.task-card.low-priority-task-card {
+  padding-top: 1px;
+  padding-bottom: 1px;
+  background-color: #fafafa;
+  border-color: #dedede;
+}
+
+.task-card.low-priority-task-card .task-title {
+  color: inherit;
+  font-size: 0.9em;
+}
+
+.low-priority-badge {
+  flex: 0 0 auto;
+  padding: 1px 4px;
+  color: #666;
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 800;
+  font-family: inherit;
+  line-height: 1.2;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.priority-edit-btn {
+  padding: 5px 9px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  color: #666;
+  background: #f5f5f5;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.priority-edit-btn.active {
+  color: #444;
+  background: #e8e8e8;
+  border-color: #aaa;
 }
 
 /* ========================= */
