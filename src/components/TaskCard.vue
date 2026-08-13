@@ -83,25 +83,10 @@
           <div class="date-edit-section">
             <CompactDatePicker
                 v-model="editDateValue"
+                :label="isTerminalTask ? 'Completed' : 'Due Date'"
+                :allow-periods="!isTerminalTask"
                 ref="datePickerRef"
             />
-          </div>
-        </div>
-        
-        <!-- Completion date section -->
-        <div v-if="editCompletionDate" class="completion-date-row">
-          <div class="completion-date-section">
-            <label class="completion-date-label">Completed</label>
-            <div class="completion-date-display">
-              <span class="completion-date-badge">{{ editCompletionDate }}</span>
-              <button 
-                class="clear-completion-btn" 
-                @click="clearCompletionDate"
-                title="Clear completion date"
-              >
-                ×
-              </button>
-            </div>
           </div>
         </div>
         
@@ -172,9 +157,9 @@
           <button
               v-if="!isOnIce"
               class="task-icon-btn clock-btn"
-              :class="{ 'has-due-date': hasDueDate(task.text) }"
+              :class="{ 'has-due-date': hasDueDate(task.text) || hasCompletionDate(task.text) }"
               @click.stop="handleDateClick"
-              :title="hasDueDate(task.text) ? getDueDateTooltip(task.text) : 'Add due date'"
+              :title="isTerminalTask ? (hasCompletionDate(task.text) ? `Completed: ${getCompletionBadgeFromText(task.text)}` : 'Set completion date') : (hasDueDate(task.text) ? getDueDateTooltip(task.text) : 'Add due date')"
           >
             ⏰
           </button>
@@ -267,10 +252,8 @@ import {
   isToday,
   isSoon,
   getDueDateTooltip,
-  extractDateFromText,
   extractDuePeriod,
   formatDuePeriodValue,
-  serializeDuePeriodValue,
   getMonthYear,
   getDayNumber,
   getWeekday
@@ -279,7 +262,8 @@ import {
   hasNote,
   extractNoteFromText,
   updateNoteInText,
-  getStrippedDisplayText
+  getStrippedDisplayText,
+  updateTaskNameAndDueDate
 } from '../utils/taskTextHelpers';
 import {
   sortTaskToCorrectPosition
@@ -287,9 +271,10 @@ import {
 import {
   hasCompletionDate,
   getCompletionBadgeFromText,
-  addCompletionDate,
   removeCompletionDate,
-  extractCompletionDate
+  extractCompletionDateValue,
+  reconcileLifecycleDateForStatus,
+  setCompletionDate
 } from '../utils/completionDateHelpers';
 
 const props = defineProps({
@@ -344,7 +329,7 @@ const isPendingSort = ref(false);
 const sortTimeout = ref(null);
 const isPendingCompletion = ref(false);
 const completionTimeout = ref(null);
-const editCompletionDate = ref('');
+const isTerminalTask = computed(() => props.task.statusChar === 'x' || props.task.statusChar === '-');
 
 // Template refs
 const taskTextInput = ref(null);
@@ -383,19 +368,15 @@ const toggleTaskStatus = () => {
     props.task.statusChar = ' ';
   }
 
-  // Handle completion date for tasks marked as completed or cancelled
-  if ((props.task.statusChar === 'x' && oldStatus !== 'x') || 
-      (props.task.statusChar === '-' && oldStatus !== '-')) {
-    // Task was just marked as completed or cancelled
-    isPendingCompletion.value = true;
-    
-    // Delay adding completion date by 1.5 seconds to allow user to continue clicking
-    completionTimeout.value = setTimeout(() => {
-      isPendingCompletion.value = false;
-      addCompletionDateToTask();
-    }, 1500);
-  }
-  // Users can manually remove completion dates through the edit interface if desired.
+  // Convert the one lifecycle date only after the same debounce used for
+  // sorting, so rapid status cycling does not repeatedly rewrite it.
+  isPendingCompletion.value = true;
+  completionTimeout.value = setTimeout(() => {
+    isPendingCompletion.value = false;
+    props.task.text = reconcileLifecycleDateForStatus(props.task.text, props.task.statusChar);
+    props.task.displayText = getStrippedDisplayText(props.task.text);
+    emit('task-updated');
+  }, 1500);
 
   // Semi auto-sort: trigger when any status change occurs
   if (oldStatus !== props.task.statusChar) {
@@ -422,37 +403,6 @@ const toggleTaskPriority = () => {
 // Sort task after status change using shared sorting utility
 const sortTaskAfterStatusChange = () => {
   sortTaskToCorrectPosition(props.section.items, props.task, emit);
-};
-
-// Add completion date to task
-const addCompletionDateToTask = () => {
-  if (props.task.text) {
-    const newText = addCompletionDate(props.task.text);
-    const newDisplayText = getStrippedDisplayText(newText);
-    
-    // Update task properties
-    props.task.text = newText;
-    props.task.displayText = newDisplayText;
-    
-    // Trigger reactivity update
-    emit('task-updated');
-  }
-};
-
-// Remove completion date from task
-const removeCompletionDateFromTask = () => {
-  if (props.task.text) {
-    props.task.text = removeCompletionDate(props.task.text);
-    props.task.displayText = getStrippedDisplayText(props.task.text);
-    emit('task-updated');
-  }
-};
-
-// Clear completion date in edit mode
-const clearCompletionDate = () => {
-  editCompletionDate.value = '';
-  // Also remove from task text immediately
-  removeCompletionDateFromTask();
 };
 
 // Handle edit button click (check for shift key)
@@ -503,12 +453,10 @@ const startEditingAll = (focusTarget = '') => {
   // Extract existing note
   editNoteText.value = extractNoteFromText(props.task.text) || '';
   
-  // Extract existing due date
-  editDateValue.value = formatDuePeriodValue(extractDuePeriod(props.task.text));
-  
-  // Extract existing completion date
-  editCompletionDate.value = hasCompletionDate(props.task.text) ? 
-    getCompletionBadgeFromText(props.task.text) : '';
+  const completionDate = extractCompletionDateValue(props.task.text);
+  editDateValue.value = isTerminalTask.value && completionDate
+    ? `${completionDate.getFullYear()}-${String(completionDate.getMonth() + 1).padStart(2, '0')}-${String(completionDate.getDate()).padStart(2, '0')}`
+    : formatDuePeriodValue(extractDuePeriod(props.task.text));
 
   nextTick(() => {
     if (focusTarget === 'date' && datePickerRef.value) {
@@ -575,19 +523,9 @@ const saveAllEdits = () => {
       statusChangedDueToNote = true;
     }
     
-    // Add date if present
-    if (editDateValue.value) {
-      const formattedDuePeriod = serializeDuePeriodValue(editDateValue.value);
-      if (formattedDuePeriod) newText += ` !!(${formattedDuePeriod})`;
-    }
-    
-    // Preserve completion date if it exists
-    if (hasCompletionDate(props.task.text)) {
-      const completionDateStr = extractCompletionDate(props.task.text);
-      if (completionDateStr) {
-        newText += ` | ${completionDateStr}`;
-      }
-    }
+    newText = isTerminalTask.value
+      ? setCompletionDate(newText, editDateValue.value)
+      : updateTaskNameAndDueDate(newText, getStrippedDisplayText(newText), editDateValue.value);
   }
 
   if (newText !== props.task.text) {
@@ -612,7 +550,6 @@ const saveAllEdits = () => {
   editTaskText.value = '';
   editNoteText.value = '';
   editDateValue.value = '';
-  editCompletionDate.value = '';
   emit('task-updated');
 };
 
@@ -632,7 +569,6 @@ const cancelAllEdits = () => {
   editTaskText.value = '';
   editNoteText.value = '';
   editDateValue.value = '';
-  editCompletionDate.value = '';
 };
 
 // Handle keydown in task edit

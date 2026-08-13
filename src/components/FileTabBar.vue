@@ -11,6 +11,7 @@
           :key="file.path || file.name"
           :class="['file-tab', { 'server-tab': file.isBuiltIn, 'custom-tab': !file.isBuiltIn, active: isFileActive(file) }]"
           @click="$emit('file-selected', file)"
+          @contextmenu.prevent="openFileSource(file)"
           :title="getFileTooltip(file)"
       >
         {{ formatTabName(file) }}
@@ -156,6 +157,13 @@ const getFileTooltip = (file) => {
     return file.path;
   }
   return file.name;
+};
+
+const openFileSource = (file) => {
+  if (!file?.path) return;
+  const absolutePath = file.path.startsWith('/') ? file.path : `/${file.path}`;
+  const fileUrl = `file://${absolutePath.split('/').map(encodeURIComponent).join('/')}`;
+  window.open(fileUrl, '_blank', 'noopener');
 };
 </script>
 

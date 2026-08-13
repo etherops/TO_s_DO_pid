@@ -1,13 +1,14 @@
 import { findTask } from '../support/helpers.js';
 import { formatCompletionDate } from '../../../src/utils/completionDateHelpers';
+import { serializeDuePeriodValue } from '../../../src/utils/dateHelpers';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const dueTag = (date) => `!!(${MONTHS[date.getMonth()]} ${date.getDate()})`;
+const dueTag = (date) => `! ${MONTHS[date.getMonth()]} ${date.getDate()} ${date.getFullYear()}`;
 const weekDueTag = (date) => {
   const sunday = new Date(date);
   sunday.setHours(0, 0, 0, 0);
   sunday.setDate(date.getDate() - date.getDay());
-  return `!!(week ${MONTHS[sunday.getMonth()]} ${sunday.getDate()} ${sunday.getFullYear()})`;
+  return `! ${serializeDuePeriodValue(`week:${dateInputValue(sunday)}`)}`;
 };
 const dateInputValue = (date) => {
   const year = date.getFullYear();
@@ -142,18 +143,17 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.focus-week-day-column').should('have.length', 8);
     cy.get('.focus-week-day-column').first().should('have.class', 'is-this-week').and('contain', 'This Week');
     cy.get('.focus-week-day-column.is-current').should('have.length', 1)
-      .and('contain', 'Overdue selected task')
-      .and('contain', 'Queued wip task');
-    cy.get('.focus-week-day-column.is-current .focus-task-row').should('have.length', 2);
-    cy.get('.focus-week-day-column.is-current .focus-week-clock').should('have.length', 2);
-    cy.get('.focus-week-day-column.is-current .focus-week-priority-badge').should('have.length', 2);
+      .and('contain', 'Today!')
+      .and('contain', '2')
+      .and('contain', 'Not started')
+      .and('not.contain', 'In progress')
+      .and('not.contain', 'Done')
+      .and('not.contain', 'Won’t do');
+    cy.get('.focus-week-day-column.is-current .focus-task-row').should('not.exist');
+    cy.get('.focus-week-day-column.is-current .focus-today-status').should('have.length', 1)
+      .find('.focus-row-check.unchecked').should('exist');
     cy.get('.focus-week-strip .focus-due-edit').should('not.exist');
-    cy.get('.focus-week-day-column.is-current .focus-week-clock').should('have.length', 2)
-      .and('have.attr', 'title', 'Edit due date');
     cy.get('.focus-week-strip .focus-section-badge').should('not.exist');
-    cy.get('.focus-week-strip .focus-week-section-icon').should('have.length', 2)
-      .first().should('have.text', 'R').and('have.attr', 'aria-label').and('contain', 'Ready');
-    cy.get('.focus-week-day-column.is-current .focus-week-section-icon').first().should('not.be.visible');
     cy.get('.focus-week-day-column.is-current').then(($current) => {
       const rect = $current[0].getBoundingClientRect();
       cy.get('.focus-week-day-columns').trigger('mousemove', {
@@ -173,18 +173,6 @@ describe('Focus Mode (execution carousel)', () => {
       });
     });
     cy.get('.focus-week-day-column.is-current').should('have.class', 'is-expanded');
-    cy.get('.focus-week-day-column.is-current .focus-week-section-icon').first()
-      .should('be.visible').and('have.css', 'pointer-events', 'auto');
-    cy.get('.focus-week-day-column.is-current .focus-week-clock').first().should('be.visible');
-    cy.get('.focus-week-day-column.is-current .focus-week-section-icon').first().trigger('mouseenter');
-    cy.get('.focus-section-tooltip').should('be.visible').and('contain', 'Ready');
-    cy.get('.focus-week-day-column.is-current .focus-week-section-icon').first().trigger('mouseleave');
-    cy.get('.focus-section-tooltip').should('not.exist');
-    cy.get('.focus-week-day-column.is-current .focus-week-clock').first()
-      .trigger('pointerdown', { force: true });
-    cy.get('.focus-date-menu').should('be.visible');
-    cy.get('body').click(0, 0);
-    cy.get('.focus-date-menu').should('not.exist');
 
     // TODO and ARCHIVE columns are not pulled in at all
     cy.get('.focus-mode').should('not.contain', 'Undated backlog task');
@@ -239,7 +227,7 @@ describe('Focus Mode (execution carousel)', () => {
     const monthContent = `# SELECTED
 ## Ready
 * [ ] Plain waiting task
-* [ ] Current month task !!(month ${monthName} ${today.getFullYear()})
+* [ ] Current month task ! ${monthName} ${today.getFullYear()}
 * [ ] Future waiting task ${dueTag(nextWeek)}
 
 # WIP
@@ -259,9 +247,32 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext .upnext-group-header').eq(0).should('contain', 'This Month').and('contain', '1');
     cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Current month task');
     cy.get('.panel-upnext .focus-task-row').eq(0).find('.focus-due-edit').should('have.class', 'due-month');
-    cy.get('.panel-upnext .upnext-group-header').eq(1).should('contain', 'Next Week').and('contain', '1');
+    cy.get('.panel-upnext .upnext-group-header').eq(1).should('not.contain', 'Unscheduled').and('contain', '1');
     cy.get('.panel-upnext .upnext-group-header').eq(2).should('contain', 'Unscheduled').and('contain', '2');
     cy.get('.panel-in-progress-queued .focus-task-row').should('not.exist');
+  });
+
+  it('uses the same canonical label for a due-week group and its task badge', () => {
+    const weekStart = new Date(nextWeek);
+    weekStart.setDate(nextWeek.getDate() - nextWeek.getDay());
+    const label = serializeDuePeriodValue(`week:${dateInputValue(weekStart)}`).replace(/\s+\d{4}$/, '').toUpperCase();
+    const weekContent = `# SELECTED
+## Ready
+* [ ] Whole future week ${weekDueTag(nextWeek)}
+`;
+
+    cy.writeTestFileContent(weekContent).then((fileInfo) => {
+      cy.wait(500);
+      cy.reload();
+      cy.contains('TO_s_DO_pid').should('be.visible');
+      cy.switchToFile(fileInfo.fileName);
+    });
+
+    enterFocusMode();
+    cy.get('.panel-upnext .upnext-group-header').should('contain', label);
+    cy.get('.panel-upnext .focus-badge.due-week-period')
+      .should('contain', label)
+      .and('have.css', 'background-color', 'rgba(139, 103, 177, 0.24)');
   });
 
   it('should separate dash-marker in-progress tasks into a compact Low Priority group', () => {
@@ -299,8 +310,8 @@ describe('Focus Mode (execution carousel)', () => {
       .should('contain', 'Low Priority').and('contain', '1');
     cy.get('.panel-now .focus-task-row.low-priority-row')
       .should('have.length', 1).and('contain', 'Low today task');
-    cy.get('.focus-week-day-column.is-current .focus-task-row').contains('.focus-task-row', 'Low today task')
-      .find('.focus-week-priority-badge').should('contain', 'LOW');
+    cy.get('.focus-week-day-column.is-current .focus-today-status').should('have.length', 1)
+      .and('contain', '2').and('contain', 'Not started');
     cy.get('.panel-in-progress-queued .focus-task-row.low-priority-row').then(($low) => {
       cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Normal active task')
         .then(($normal) => expect($low[0].getBoundingClientRect().height)
@@ -506,8 +517,8 @@ describe('Focus Mode (execution carousel)', () => {
   it('should retain terminal cards in past days and keep unfinished overdue work above', () => {
     const historyContent = `# WIP
 ### CURRENT
-* [x] Finished yesterday ${dueTag(yesterday)} ${formatCompletionDate(yesterday)}
-* [-] Skipped yesterday ${dueTag(yesterday)} ${formatCompletionDate(yesterday)}
+* [x] Finished yesterday ${formatCompletionDate(yesterday)}
+* [-] Skipped yesterday ${formatCompletionDate(yesterday)}
 * [x] Finished without due date ${formatCompletionDate(yesterday)}
 * [ ] Still overdue ${dueTag(yesterday)}
 `;
@@ -530,6 +541,26 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-now').should('contain', 'Still overdue');
   });
 
+  it('should place a terminal task by completion day instead of its later due day', () => {
+    const yesterdayCompletion = formatCompletionDate(yesterday);
+    const historyContent = `# WIP
+### CURRENT
+* [x] Finished yesterday due today ${yesterdayCompletion}
+`;
+
+    cy.writeTestFileContent(historyContent).then((fileInfo) => {
+      cy.wait(500);
+      cy.reload();
+      cy.contains('TO_s_DO_pid').should('be.visible');
+      cy.switchToFile(fileInfo.fileName);
+    });
+    enterFocusMode();
+
+    cy.get('.panel-now').should('not.contain', 'Finished yesterday due today');
+    cy.get('.focus-week-day-column.is-current').should('not.contain', 'Finished yesterday due today');
+    cy.get('.focus-week-day-column.is-past').contains('Finished yesterday due today').should('exist');
+  });
+
   it('should badge each card with its section and keep sections clustered', () => {
     const multiSectionContent = `# SELECTED
 ## Ready
@@ -542,11 +573,11 @@ describe('Focus Mode (execution carousel)', () => {
 # WIP
 ### MONDAY
 * [ ] Monday queued task
-* [x] Monday completed today ${dueTag(today)} ${formatCompletionDate(new Date(2000, 0, 1))}
+* [x] Monday completed today ${formatCompletionDate(today)}
 
 ### FRIDAY
 * [~] Friday inflight task
-* [-] Friday cancelled today ${dueTag(today)} ${formatCompletionDate(new Date(2000, 0, 1))}
+* [-] Friday cancelled today ${formatCompletionDate(today)}
 * [~] Friday active today ${dueTag(today)}
 * [ ] Friday due today ${dueTag(today)}
 `;
@@ -605,7 +636,7 @@ describe('Focus Mode (execution carousel)', () => {
       .and('contain', 'Tomorrow')
       .and('contain', 'Next week')
       .and('contain', 'This week')
-      .and('contain', 'Whole next week')
+      .and('not.contain', 'Whole next week')
       .and('contain', 'This month')
       .and('contain', 'Next month')
       .and('contain', 'Custom')
@@ -629,6 +660,8 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.focus-date-option').contains('Next week').click();
     cy.get('.focus-date-menu').should('not.exist');
     cy.get('.panel-upnext').should('contain', 'Renamed focus task');
+    cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Renamed focus task')
+      .find('.focus-due-edit').should('have.class', 'due-week-period');
 
     cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Renamed focus task')
       .find('.focus-due-edit').click({ force: true });

@@ -17,10 +17,10 @@ const todayStamp = formatCompletionDate(WEDNESDAY);
 
 const fixture = `# SELECTED
 ## Plans
-* [~] Selected inflight due Friday !!(Aug 14)
-* [ ] Selected due today !!(Aug 12)
-* [ ] Selected overdue !!(Aug 5)
-* [ ] Selected due next week !!(Aug 20)
+* [~] Selected inflight due Friday ! Aug 14 2026
+* [ ] Selected due today ! Aug 12 2026
+* [ ] Selected overdue ! Aug 5 2026
+* [ ] Selected due next week ! Aug 20 2026
 * [ ] Selected undated
 * [~] Selected inflight undated
 * [x] Selected done ${oldStamp}
@@ -29,16 +29,16 @@ const fixture = `# SELECTED
 # WIP
 ### CURRENT
 * [~] Wip inflight undated
-* [~] Wip inflight due today !!(Aug 12)
+* [~] Wip inflight due today ! Aug 12 2026
 * [ ] Wip queued undated
-* [ ] Wip due Saturday !!(Aug 15)
+* [ ] Wip due Saturday ! Aug 15 2026
 * [x] Wip done ${oldStamp}
-* [x] Wip completed due today !!(Aug 12) ${oldStamp}
-* [-] Wip cancelled due today !!(Aug 12) ${oldStamp}
+* [x] Wip completed due today ${todayStamp}
+* [-] Wip cancelled due today ${todayStamp}
 
 # TODO
 ## BACKLOG
-* [ ] Backlog due today !!(Aug 12)
+* [ ] Backlog due today ! Aug 12 2026
 
 # ARCHIVE
 ## Old
@@ -77,20 +77,20 @@ describe('focusModeHelpers', () => {
 
   describe('isOnDeckThisWeek', () => {
     it('takes anything due by the end of this week, including work already late', () => {
-      expect(isOnDeckThisWeek('Task !!(Aug 12)')).toBe(true);
-      expect(isOnDeckThisWeek('Task !!(Aug 15)')).toBe(true);
-      expect(isOnDeckThisWeek('Task !!(Aug 5)')).toBe(true);
+      expect(isOnDeckThisWeek('Task ! Aug 12 2026')).toBe(true);
+      expect(isOnDeckThisWeek('Task ! Aug 15 2026')).toBe(true);
+      expect(isOnDeckThisWeek('Task ! Aug 5 2026')).toBe(true);
     });
 
     it('leaves work past Saturday and undated work off deck', () => {
-      expect(isOnDeckThisWeek('Task !!(Aug 16)')).toBe(false);
+      expect(isOnDeckThisWeek('Task ! Aug 16 2026')).toBe(false);
       expect(isOnDeckThisWeek('Task with no date')).toBe(false);
     });
 
     it('puts whole current-week periods on deck but leaves month periods in planning', () => {
-      expect(isOnDeckThisWeek('Task !!(week Aug 9 2026)')).toBe(true);
-      expect(isOnDeckThisWeek('Task !!(week Aug 16 2026)')).toBe(false);
-      expect(isOnDeckThisWeek('Task !!(month Aug 2026)')).toBe(false);
+      expect(isOnDeckThisWeek('Task ! Aug Week #2 2026')).toBe(true);
+      expect(isOnDeckThisWeek('Task ! Aug Week #3 2026')).toBe(false);
+      expect(isOnDeckThisWeek('Task ! Aug 2026')).toBe(false);
     });
   });
 
@@ -143,8 +143,8 @@ describe('focusModeHelpers', () => {
     it('keeps month and current-week queued work in UP NEXT', () => {
       const periods = deriveFocusModel(parseTodoMdFile(`# SELECTED
 ## Ready
-* [ ] Whole August !!(month Aug 2026)
-* [ ] Whole current week !!(week Aug 9 2026)
+* [ ] Whole August ! Aug 2026
+* [ ] Whole current week ! Aug Week #2 2026
 `));
       expect(taskTexts(periods.upNext)).toEqual(['Whole August', 'Whole current week']);
       expect(periods.inProgressQueued).toEqual([]);
@@ -177,6 +177,17 @@ describe('focusModeHelpers', () => {
       expect(taskTexts(stamped.done)).toEqual(['Completed earlier']);
     });
 
+    it('lets a prior completion stamp override a due date of today', () => {
+      const completedYesterday = formatCompletionDate(new Date(2026, 7, 11));
+      const stamped = deriveFocusModel(parseTodoMdFile(`# WIP
+### Current
+* [x] Finished yesterday but due today ${completedYesterday}
+`));
+
+      expect(stamped.now).toEqual([]);
+      expect(taskTexts(stamped.done)).toEqual(['Finished yesterday but due today']);
+    });
+
     it('carries section references so entries can be mutated in place', () => {
       const entry = model().upNext.find(e => e.task.displayText === 'Wip queued undated');
       expect(entry.columnName).toBe('WIP');
@@ -204,10 +215,10 @@ describe('focusModeHelpers', () => {
     it('keeps same-day queued work in UP NEXT file order so sections stay together', () => {
       const sameDay = deriveFocusModel(parseTodoMdFile(`# WIP
 ### MONDAY
-* [ ] Monday A !!(Aug 14)
+* [ ] Monday A ! Aug 14 2026
 ### FRIDAY
-* [ ] Friday A !!(Aug 14)
-* [ ] Friday B !!(Aug 14)
+* [ ] Friday A ! Aug 14 2026
+* [ ] Friday B ! Aug 14 2026
 `));
 
       expect(taskTexts(sameDay.upNext)).toEqual(['Monday A', 'Friday A', 'Friday B']);

@@ -120,7 +120,7 @@ describe('Task CRUD Operations', () => {
     it('should save changes from simple edit mode', () => {
         const sectionName = 'PROJECTS'
         const originalText = 'PROJECT - Outdoor activities'
-        const newFullText = 'Updated outdoor project (with a new note) !!(2024-12-25)'
+        const newFullText = 'Updated outdoor project (with a new note) ! Dec 25 2024'
         
         // Find the task
         findTask(originalText).should('exist')

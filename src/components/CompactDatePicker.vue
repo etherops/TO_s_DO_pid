@@ -1,8 +1,8 @@
 <!-- components/CompactDatePicker.vue -->
 <template>
   <div class="compact-date-picker">
-    <label class="date-label">Due Date</label>
-    <div class="period-kind-tabs">
+    <label class="date-label">{{ label }}</label>
+    <div v-if="allowPeriods" class="period-kind-tabs">
       <button v-for="kind in ['day', 'week', 'month']" :key="kind" type="button"
               class="period-kind-btn" :class="{ active: selectedKind === kind }"
               @click="setKind(kind)">{{ kind }}</button>
@@ -39,11 +39,20 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue';
+import { isoWeekInputFromSunday, sundayValueFromIsoWeekInput } from '../utils/dateHelpers';
 
 const props = defineProps({
   modelValue: {
     type: String,
     default: ''
+  },
+  label: {
+    type: String,
+    default: 'Due Date'
+  },
+  allowPeriods: {
+    type: Boolean,
+    default: true
   }
 });
 
@@ -64,36 +73,13 @@ watch(() => props.modelValue, (newVal) => {
   syncFromModel(newVal);
 });
 
-const weekInputFromSunday = (value) => {
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(year, month - 1, day + 3);
-  const thursday = new Date(date);
-  thursday.setDate(date.getDate() + (4 - (date.getDay() || 7)));
-  const weekYear = thursday.getFullYear();
-  const yearStart = new Date(weekYear, 0, 1);
-  const week = Math.ceil((((thursday - yearStart) / 86400000) + yearStart.getDay() + 1) / 7);
-  return `${weekYear}-W${String(week).padStart(2, '0')}`;
-};
-
-const sundayFromWeekInput = (value) => {
-  const [yearText, weekText] = value.split('-W');
-  const year = Number(yearText);
-  const week = Number(weekText);
-  const januaryFourth = new Date(year, 0, 4);
-  const monday = new Date(januaryFourth);
-  monday.setDate(januaryFourth.getDate() - ((januaryFourth.getDay() + 6) % 7) + (week - 1) * 7);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() - 1);
-  return formatDateValue(sunday);
-};
-
 const formatDateValue = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 const syncFromModel = (value) => {
   selectedDateValue.value = value || '';
   selectedKind.value = value?.startsWith('week:') ? 'week' : value?.startsWith('month:') ? 'month' : 'day';
   const raw = value?.replace(/^(week|month):/, '') || '';
-  selectedInputValue.value = selectedKind.value === 'week' && raw ? weekInputFromSunday(raw) : raw;
+  selectedInputValue.value = selectedKind.value === 'week' && raw ? isoWeekInputFromSunday(raw) : raw;
 };
 
 const emitValue = (value) => {
@@ -102,6 +88,7 @@ const emitValue = (value) => {
 };
 
 const setKind = (kind) => {
+  if (!props.allowPeriods && kind !== 'day') return;
   selectedKind.value = kind;
   setCurrent();
 };
@@ -109,7 +96,7 @@ const setKind = (kind) => {
 const handlePeriodChange = () => {
   if (!selectedInputValue.value) return clearDate();
   emitValue(selectedKind.value === 'week'
-      ? `week:${sundayFromWeekInput(selectedInputValue.value)}`
+      ? `week:${sundayValueFromIsoWeekInput(selectedInputValue.value)}`
       : `month:${selectedInputValue.value}`);
 };
 

@@ -1,183 +1,76 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   extractDateFromText,
   extractDuePeriod,
   formatDuePeriodValue,
   getDuePeriodLabel,
-  isPast,
+  formatWeekPeriodLabel,
   hasDueDate,
-  getDisplayTextWithoutDueDate
-} from '../../../src/utils/dateHelpers'
+  isoWeekInputFromSunday,
+  isPast,
+  removeDueDate,
+  serializeDuePeriodValue,
+  sundayValueFromIsoWeekInput,
+  weekIdentity
+} from '../../../src/utils/dateHelpers';
 
-describe('dateHelpers', () => {
-  // Use fake timers for consistent test results
+describe('canonical due dates', () => {
   beforeEach(() => {
-    vi.useFakeTimers()
-    // Set to a specific date for consistent testing
-    vi.setSystemTime(new Date('2024-06-02'))
-  })
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 7, 13, 10));
+  });
+  afterEach(() => vi.useRealTimers());
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+  it('parses exact days with an explicit year', () => {
+    const date = extractDateFromText('Task ! Aug 13 2026');
+    expect(date).toEqual(new Date(2026, 7, 13));
+    expect(hasDueDate('Task ! Aug 13 2026')).toBe(true);
+    expect(extractDuePeriod('Task !!(Aug 13)')).toBeNull();
+  });
 
-  // Helper to format a date for our due date syntax
-  const formatDateForTask = (date) => {
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    return `${monthNames[date.getMonth()]} ${date.getDate()}`
-  }
+  it('parses and serializes calendar months', () => {
+    const period = extractDuePeriod('Task ! Aug 2026');
+    expect(period.kind).toBe('month');
+    expect(period.start).toEqual(new Date(2026, 7, 1));
+    expect(period.end.getDate()).toBe(31);
+    expect(formatDuePeriodValue(period)).toBe('month:2026-08');
+    expect(serializeDuePeriodValue('month:2026-08')).toBe('Aug 2026');
+    expect(getDuePeriodLabel('Task ! Aug 2026')).toBe('Aug');
+  });
 
-  // Helper to create a date relative to "today" (mocked as June 2, 2024)
-  const createRelativeDate = (daysOffset) => {
-    const date = new Date('2024-06-02')
-    date.setDate(date.getDate() + daysOffset)
-    return date
-  }
+  it('names Sunday-Saturday weeks for their majority month and month-relative number', () => {
+    const period = extractDuePeriod('Task ! Aug Week #2 2026');
+    expect(period.kind).toBe('week');
+    expect(period.start).toEqual(new Date(2026, 7, 9));
+    expect(period.end.getDate()).toBe(15);
+    expect(formatDuePeriodValue(period)).toBe('week:2026-08-09');
+    expect(serializeDuePeriodValue('week:2026-08-09')).toBe('Aug Week #2 2026');
+    expect(getDuePeriodLabel('Task ! Aug Week #2 2026')).toBe('Aug Week #2');
+    expect(formatWeekPeriodLabel(new Date(2026, 7, 9))).toBe('Aug Week #2');
+  });
 
-  describe('extractDateFromText', () => {
-    it('should extract date in Month Day format', () => {
-      const text = 'Task !!(May 15)'
-      const result = extractDateFromText(text)
-      expect(result).toBeInstanceOf(Date)
-      expect(result.getMonth()).toBe(4) // May is month 4
-      expect(result.getDate()).toBe(15)
-    })
+  it('assigns a split week to the month containing at least four days', () => {
+    expect(weekIdentity(new Date(2026, 7, 30))).toMatchObject({ year: 2026, monthIndex: 8, number: 1 });
+    expect(serializeDuePeriodValue('week:2026-08-30')).toBe('Sep Week #1 2026');
+  });
 
-    it('should extract date in Day Month format', () => {
-      const text = 'Task !!(15 May)'
-      const result = extractDateFromText(text)
-      expect(result).toBeInstanceOf(Date)
-      expect(result.getMonth()).toBe(4)
-      expect(result.getDate()).toBe(15)
-    })
+  it('round-trips Sunday weeks through the native ISO week input', () => {
+    expect(isoWeekInputFromSunday(new Date(2026, 7, 9))).toBe('2026-W33');
+    expect(isoWeekInputFromSunday('2026-08-09')).toBe('2026-W33');
+    expect(sundayValueFromIsoWeekInput('2026-W33')).toBe('2026-08-09');
+    expect(isoWeekInputFromSunday('2026-08-10')).toBe('');
+  });
 
-    it('should handle dates from earlier in the current year as past dates', () => {
-      // April 15, 2024 (2 months before our mocked June 2, 2024)
-      const text = 'Task !!(Apr 15)'
-      const result = extractDateFromText(text)
-      expect(result.getFullYear()).toBe(2024) // Should be current year
-      expect(result.getMonth()).toBe(3) // April (0-indexed)
-      expect(result.getDate()).toBe(15)
-    })
+  it('uses the end of a period for overdue checks', () => {
+    expect(isPast('Task ! Aug 12 2026')).toBe(true);
+    expect(isPast('Task ! Aug 13 2026')).toBe(false);
+    expect(isPast('Task ! Aug Week #2 2026')).toBe(false);
+    expect(isPast('Task ! Jul 2026')).toBe(true);
+  });
 
-    it('should always use current year when no year is specified', () => {
-      // Mock January 2, 2024
-      vi.setSystemTime(new Date('2024-01-02'))
-      
-      const text = 'Task !!(Dec 25)'
-      const result = extractDateFromText(text)
-      expect(result.getFullYear()).toBe(2024) // Always uses current year
-      expect(result.getMonth()).toBe(11) // December
-      expect(result.getDate()).toBe(25)
-      
-      // Reset to June 2, 2024 for other tests
-      vi.setSystemTime(new Date('2024-06-02'))
-    })
-
-    it('should return null for text without due date', () => {
-      const text = 'Task without due date'
-      const result = extractDateFromText(text)
-      expect(result).toBeNull()
-    })
-  })
-
-  describe('due periods', () => {
-    it('parses Sunday-Saturday weeks', () => {
-      const period = extractDuePeriod('Task !!(week Jun 2 2024)')
-      expect(period.kind).toBe('week')
-      expect(period.start).toEqual(new Date(2024, 5, 2))
-      expect(period.end.getDate()).toBe(8)
-      expect(formatDuePeriodValue(period)).toBe('week:2024-06-02')
-      expect(getDuePeriodLabel('Task !!(week Jun 2 2024)')).toBe('Jun 2–8')
-    })
-
-    it('parses calendar months and only considers them overdue after month end', () => {
-      const period = extractDuePeriod('Task !!(month Jun 2024)')
-      expect(period.kind).toBe('month')
-      expect(period.start).toEqual(new Date(2024, 5, 1))
-      expect(period.end.getDate()).toBe(30)
-      expect(formatDuePeriodValue(period)).toBe('month:2024-06')
-      expect(isPast('Task !!(month Jun 2024)')).toBe(false)
-      expect(getDuePeriodLabel('Task !!(month Jun 2024)')).toBe('Jun')
-    })
-
-    it('rejects week values that do not start on Sunday', () => {
-      expect(extractDuePeriod('Task !!(week Jun 3 2024)')).toBeNull()
-    })
-  })
-
-  describe('isPast', () => {
-    it('should return true for dates in the past', () => {
-      // Create a date 5 days ago (May 28, 2024)
-      const pastDate = createRelativeDate(-5)
-      const dateStr = formatDateForTask(pastDate)
-      
-      const text = `Task !!(${dateStr})`
-      expect(isPast(text)).toBe(true)
-    })
-
-    it('should return true for dates many days in the past', () => {
-      // Create a date 60 days ago (April 3, 2024)
-      const pastDate = createRelativeDate(-60)
-      const dateStr = formatDateForTask(pastDate)
-      
-      const text = `Task !!(${dateStr})`
-      expect(isPast(text)).toBe(true)
-    })
-
-    it('should return false for today', () => {
-      // Use current mocked date (June 2, 2024)
-      const today = createRelativeDate(0)
-      const dateStr = formatDateForTask(today)
-      
-      const text = `Task !!(${dateStr})`
-      expect(isPast(text)).toBe(false)
-    })
-
-    it('should return false for future dates', () => {
-      // Create a date 10 days in the future (June 12, 2024)
-      const futureDate = createRelativeDate(10)
-      const dateStr = formatDateForTask(futureDate)
-      
-      const text = `Task !!(${dateStr})`
-      expect(isPast(text)).toBe(false)
-    })
-
-    it('should return false for text without due date', () => {
-      const text = 'Task without due date'
-      expect(isPast(text)).toBe(false)
-    })
-  })
-
-  // Note: isToday and isSoon tests are excluded for now.
-  // The functionality is tested through e2e tests instead.
-
-  describe('hasDueDate', () => {
-    it('should return true for text with due date', () => {
-      expect(hasDueDate('Task !!(May 15)')).toBe(true)
-      expect(hasDueDate('Task with note (note) !!(May 15)')).toBe(true)
-    })
-
-    it('should return false for text without due date', () => {
-      expect(hasDueDate('Task without due date')).toBe(false)
-      expect(hasDueDate('Task with note (note)')).toBe(false)
-    })
-  })
-
-  describe('getDisplayTextWithoutDueDate', () => {
-    it('should remove due date from text', () => {
-      const text = 'Task !!(May 15)'
-      expect(getDisplayTextWithoutDueDate(text)).toBe('Task')
-    })
-
-    it('should preserve text without due date', () => {
-      const text = 'Task without due date'
-      expect(getDisplayTextWithoutDueDate(text)).toBe('Task without due date')
-    })
-
-    it('should handle text with both note and due date', () => {
-      const text = 'Task (with note) !!(May 15)'
-      expect(getDisplayTextWithoutDueDate(text)).toBe('Task (with note)')
-    })
-  })
-})
+  it('removes only a trailing canonical due suffix', () => {
+    expect(removeDueDate('Task (note) ! Aug 13 2026')).toBe('Task (note)');
+    expect(removeDueDate('Important! Keep punctuation')).toBe('Important! Keep punctuation');
+    expect(removeDueDate('Investigate ! surprising result')).toBe('Investigate ! surprising result');
+  });
+});

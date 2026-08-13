@@ -1,6 +1,7 @@
 // utils/noteHelpers.js
 
-import { serializeDuePeriodValue } from './dateHelpers';
+import { extractDuePeriod, removeDueDate, serializeDuePeriodValue } from './dateHelpers';
+import { extractCompletionDate, removeCompletionDate } from './completionDateHelpers';
 
 /**
  * Extract note from task text (content in parentheses, excluding due dates)
@@ -10,11 +11,9 @@ import { serializeDuePeriodValue } from './dateHelpers';
 export const extractNoteFromText = (text) => {
     if (!text) return null;
 
-    // First, remove due date patterns to avoid confusion
-    const textWithoutDueDate = text.replace(/!!\s*\([^)]*\)/g, '');
+    const textWithoutDueDate = removeDueDate(removeCompletionDate(text));
 
-    // Find parentheses content that is NOT preceded by !!
-    // This regex looks for ( ) that are not part of !!( )
+    // Lifecycle dates are removed first, leaving parentheses as task notes.
     const noteMatch = textWithoutDueDate.match(/\(([^)]+)\)/);
 
     if (noteMatch && noteMatch[1]) {
@@ -42,21 +41,15 @@ export const hasNote = (text) => {
 export const getDisplayTextWithoutNote = (text) => {
     if (!text) return text;
 
-    // First, temporarily replace due date patterns to preserve them
-    const dueDatePlaceholder = '___DUE_DATE___';
-    const dueDates = [];
-    let textWithPlaceholders = text.replace(/!!\s*\([^)]*\)/g, (match) => {
-        dueDates.push(match);
-        return dueDatePlaceholder;
-    });
+    const due = extractDuePeriod(text);
+    const completion = extractCompletionDate(text);
+    let textWithPlaceholders = removeDueDate(removeCompletionDate(text));
 
     // Remove notes (parentheses not part of due dates)
     textWithPlaceholders = textWithPlaceholders.replace(/\s*\([^)]+\)/g, '');
 
-    // Restore due dates
-    dueDates.forEach((dueDate) => {
-        textWithPlaceholders = textWithPlaceholders.replace(dueDatePlaceholder, dueDate);
-    });
+    if (due) textWithPlaceholders += ` ! ${due.raw}`;
+    if (completion) textWithPlaceholders += ` | ${completion}`;
 
     return textWithPlaceholders.trim();
 };
@@ -70,12 +63,9 @@ export const getDisplayTextWithoutNote = (text) => {
 export const updateNoteInText = (text, newNote) => {
     if (!text) return text;
 
-    // First, extract due date to preserve it
-    const dueDateMatch = text.match(/!!\s*\([^)]*\)/);
-    const dueDate = dueDateMatch ? dueDateMatch[0] : '';
-
-    // Remove existing note and due date
-    let baseText = text.replace(/!!\s*\([^)]*\)/g, ''); // Remove due date
+    const due = extractDuePeriod(text);
+    const completion = extractCompletionDate(text);
+    let baseText = removeDueDate(removeCompletionDate(text));
     baseText = baseText.replace(/\s*\([^)]+\)/g, ''); // Remove note
     baseText = baseText.trim();
 
@@ -86,9 +76,8 @@ export const updateNoteInText = (text, newNote) => {
         const escapedNote = newNote.trim().replace(/\n/g, '\\n');
         newText += ` (${escapedNote})`;
     }
-    if (dueDate) {
-        newText += ` ${dueDate}`;
-    }
+    if (due) newText += ` ! ${due.raw}`;
+    if (completion) newText += ` | ${completion}`;
 
     return newText;
 };
@@ -101,14 +90,10 @@ export const updateNoteInText = (text, newNote) => {
 export const getStrippedDisplayText = (text) => {
     if (!text) return text;
 
-    // Remove due dates
-    let cleanText = text.replace(/!!\s*\([^)]*\)/g, '');
+    let cleanText = removeDueDate(removeCompletionDate(text));
 
     // Remove notes
     cleanText = cleanText.replace(/\s*\([^)]+\)/g, '');
-
-    // Remove completion dates (pipe format)
-    cleanText = cleanText.replace(/\s*\|[^|]*$/, '');
 
     return cleanText.trim();
 };
@@ -131,16 +116,14 @@ export const updateTaskNameAndDueDate = (text, name, dueDateValue = '') => {
         ? trimmedName
         : `${text.slice(0, nameIndex)}${trimmedName}${text.slice(nameIndex + currentName.length)}`;
 
-    updatedText = updatedText.replace(/\s*!!\s*\([^)]*\)/g, '').trim();
-
-    const completionMatch = updatedText.match(/\s*(\|[^|]*)$/);
-    const completionSuffix = completionMatch ? ` ${completionMatch[1].trim()}` : '';
-    if (completionMatch) updatedText = updatedText.slice(0, completionMatch.index).trim();
+    const completion = extractCompletionDate(updatedText);
+    updatedText = removeDueDate(removeCompletionDate(updatedText));
 
     if (dueDateValue) {
         const dueText = serializeDuePeriodValue(dueDateValue);
-        if (dueText) updatedText += ` !!(${dueText})`;
+        if (dueText) updatedText += ` ! ${dueText}`;
     }
 
-    return `${updatedText}${completionSuffix}`;
+    if (completion) updatedText += ` | ${completion}`;
+    return updatedText;
 };

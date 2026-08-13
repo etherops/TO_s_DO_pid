@@ -157,16 +157,16 @@ describe('TodoMdParser', () => {
       const content = `# TODO
 ## Tasks
 * [ ] Task with note (this is a note)
-* [ ] Task with due date !!(June 2)
-* [ ] Complex task (note here) !!(May 30)`
+* [ ] Task with due date ! Jun 2 2026
+* [ ] Complex task (note here) ! May 30 2026`
 
       const data = parseTodoMdFile(content)
       const sections = getAllSections(data)
       const items = sections[0].items
       
       expect(items[0].text).toBe('Task with note (this is a note)')
-      expect(items[1].text).toBe('Task with due date !!(June 2)')
-      expect(items[2].text).toBe('Complex task (note here) !!(May 30)')
+      expect(items[1].text).toBe('Task with due date ! Jun 2 2026')
+      expect(items[2].text).toBe('Complex task (note here) ! May 30 2026')
     })
 
     it('should handle multiline notes with escaped newlines', () => {

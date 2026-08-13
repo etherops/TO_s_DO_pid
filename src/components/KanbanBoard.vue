@@ -1,17 +1,6 @@
 <!-- components/KanbanBoard.vue -->
 <template>
   <div class="kanban-container">
-    <!-- Date Picker (Global for all columns) -->
-    <DatePicker
-        v-if="datePickerTaskId !== null"
-        :task-id="datePickerTaskId"
-        :position="datePickerPosition"
-        :initial-date="datePickerInitialDate"
-        @confirm="handleDateConfirm"
-        @clear="handleDateClear"
-        @close="closeDatePicker"
-    />
-
     <!-- Archive Confirmation Modal -->
     <ArchiveConfirmationModal
         v-if="archiveConfirmation"
@@ -53,7 +42,6 @@
             @add-section="createNewSection('TODO', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
-            @show-date-picker="showDatePicker"
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
@@ -80,7 +68,6 @@
             @add-section="createNewSection('PROJECTS', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
-            @show-date-picker="showDatePicker"
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
@@ -106,7 +93,6 @@
             @add-section="createNewSection('SELECTED', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
-            @show-date-picker="showDatePicker"
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
@@ -132,7 +118,6 @@
             @add-section="createNewSection('WIP', columnName)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
-            @show-date-picker="showDatePicker"
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
@@ -158,7 +143,6 @@
             :is-drawer-expanded="isDoneDrawerExpanded"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
-            @show-date-picker="showDatePicker"
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
@@ -173,7 +157,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
-import DatePicker from './DatePicker.vue';
 import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
 import ContextMenu from './ContextMenu.vue';
 import { generateLeftoversSectionName } from '../utils/sectionHelpers.js';
@@ -194,10 +177,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update', 'set-view-mode', 'clear-view-mode']);
 
-// Date picker state
-const datePickerTaskId = ref(null);
-const datePickerPosition = ref({ top: 0, left: 0 });
-const datePickerInitialDate = ref(null);
 
 // Archive confirmation state
 const archiveConfirmation = ref(null);
@@ -769,93 +748,6 @@ const confirmArchive = (selectedColumn) => {
   
   // Clear confirmation modal
   archiveConfirmation.value = null;
-};
-
-// Show date picker for a task
-const showDatePicker = ({ taskId, position, currentDate }) => {
-  datePickerTaskId.value = taskId;
-  datePickerPosition.value = position;
-  datePickerInitialDate.value = currentDate;
-};
-
-// Close date picker
-const closeDatePicker = () => {
-  datePickerTaskId.value = null;
-  datePickerInitialDate.value = null;
-};
-
-// Handle date confirmation from date picker
-const handleDateConfirm = ({ taskId, date }) => {
-  // Find the task across all sections in nested structure
-  let task = null;
-  for (const columnName of props.todoData.columnOrder) {
-    const columnData = props.todoData.columnStacks[columnName];
-    if (columnData && columnData.sections) {
-      for (const section of columnData.sections) {
-        const found = section.items.find(item => item.id === taskId);
-        if (found) {
-          task = found;
-          break;
-        }
-      }
-      if (task) break;
-    }
-  }
-
-  if (!task) {
-    closeDatePicker();
-    return;
-  }
-
-  // Format the date
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const formattedDate = `${monthNames[date.getMonth()]} ${date.getDate()}`;
-
-  // Update the task text
-  if (task.text.includes('!!(')) {
-    task.text = task.text.replace(/!!\(.+?\)/, `!!(${formattedDate})`);
-  } else {
-    task.text = task.text.trim() + ` !!(${formattedDate})`;
-  }
-
-  // Update display text
-  task.displayText = task.text.replace(/!!\s*\([^)]*\)/g, '').trim();
-
-  emit('update');
-  closeDatePicker();
-};
-
-// Handle date clear from date picker
-const handleDateClear = ({ taskId }) => {
-  // Find the task across all sections in nested structure
-  let task = null;
-  for (const columnName of props.todoData.columnOrder) {
-    const columnData = props.todoData.columnStacks[columnName];
-    if (columnData && columnData.sections) {
-      for (const section of columnData.sections) {
-        const found = section.items.find(item => item.id === taskId);
-        if (found) {
-          task = found;
-          break;
-        }
-      }
-      if (task) break;
-    }
-  }
-
-  if (!task) {
-    closeDatePicker();
-    return;
-  }
-
-  // Remove the due date
-  if (task.text.includes('!!(')) {
-    task.text = task.text.replace(/\s*!!\(.+?\)/, '');
-    task.displayText = task.text;
-  }
-
-  emit('update');
-  closeDatePicker();
 };
 
 </script>

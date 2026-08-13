@@ -216,7 +216,6 @@
                 :is-on-ice="columnData.on_ice || false"
                 :is-selected="isTaskSelected && isTaskSelected(item.id)"
                 @task-updated="$emit('task-updated')"
-                @show-date-picker="$emit('show-date-picker', $event)"
                 @task-click="$emit('task-click', $event)"
                 @task-context-menu="$emit('task-context-menu', $event)"
             />
@@ -276,7 +275,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['task-updated', 'section-updated', 'show-date-picker', 'task-click', 'task-context-menu', 'multi-drag-complete']);
+const emit = defineEmits(['task-updated', 'section-updated', 'task-click', 'task-context-menu', 'multi-drag-complete']);
 
 // Computed properties
 const isRawTextSection = computed(() => props.section.type === 'raw-text');

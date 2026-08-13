@@ -79,7 +79,7 @@
                               :low="isLowPriorityEntry(entry)"
                               @toggle="toggleEntryPriority(entry)" />
               <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
-                      :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
+                      :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
                       @click.stop="startDueDateEdit(entry, $event)">
                 <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
                 <span class="focus-due-clock" aria-hidden="true">◷</span>
@@ -136,7 +136,7 @@
                                   :low="isLowPriorityEntry(entry)"
                                   @toggle="toggleEntryPriority(entry)" />
                   <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
-                          :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
+                          :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
                           @click.stop="startDueDateEdit(entry, $event)">
                     <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
                     <span class="focus-due-clock" aria-hidden="true">◷</span>
@@ -205,7 +205,7 @@
                                 :low="isLowPriorityEntry(entry)"
                                 @toggle="toggleEntryPriority(entry)" />
                 <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
-                        :class="dueBadge(entry)?.kind || 'no-due-date'" title="Edit due date"
+                        :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
                         @click.stop="startDueDateEdit(entry, $event)">
                   <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
                   <span class="focus-due-clock" aria-hidden="true">◷</span>
@@ -240,6 +240,22 @@
                     <span class="day-name">{{ day.label }}</span>
                     <span class="day-count">{{ day.entries.length }}</span>
                   </div>
+                  <div v-if="day.isToday" class="focus-today-summary">
+                    <div class="focus-today-callout">Today!</div>
+                    <div class="focus-today-statuses">
+                      <div v-for="status in day.statusSummary" :key="status.key"
+                           class="focus-today-status" :class="`status-${status.key}`">
+                        <span class="focus-row-check focus-today-status-mark"
+                              :class="checkClasses({ task: { statusChar: status.statusChar } })"
+                              aria-hidden="true"></span>
+                        <span class="focus-today-status-copy">
+                          <strong class="focus-today-status-count">{{ status.count }}</strong>
+                          <span class="focus-today-status-label">{{ status.label }}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <template v-else>
                   <div v-if="!day.entries.length" class="focus-week-day-empty">—</div>
                 <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row execution-row"
                      :class="rowClasses(entry)" :data-task-id="entry.task.id">
@@ -281,12 +297,13 @@
                     {{ isLowPriorityEntry(entry) ? 'LOW' : '↓' }}
                   </button>
                 </div>
-                  <button class="focus-week-clock" title="Edit due date" aria-label="Edit due date"
+                  <button class="focus-week-clock" :title="dateButtonTitle(entry)" :aria-label="dateButtonTitle(entry)"
                           @pointerdown.stop.prevent="startDueDateEdit(entry, $event)"
                           @click.stop.prevent
                           @keydown.enter.stop.prevent="startDueDateEdit(entry, $event)"
                           @keydown.space.stop.prevent="startDueDateEdit(entry, $event)">◷</button>
                 </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -314,8 +331,8 @@
 
     <Teleport to="body">
       <div v-if="dateMenuEntry" class="focus-date-menu" :class="`theme-${theme}`"
-           :style="dateMenuStyle" role="dialog" aria-label="Set due date" @click.stop>
-        <div class="focus-date-menu-title">Set due date</div>
+           :style="dateMenuStyle" role="dialog" :aria-label="dateMenuTitle" @click.stop>
+        <div class="focus-date-menu-title">{{ dateMenuTitle }}</div>
         <div class="focus-date-options">
           <button v-for="option in dateShortcuts" :key="option.value" class="focus-date-option"
                   @click="setEntryDueDate(dateMenuEntry, option.value)">{{ option.label }}</button>
@@ -326,14 +343,14 @@
                   @click="setEntryDueDate(dateMenuEntry, '')">Clear</button>
         </div>
         <div v-if="customDatePickerOpen" class="focus-unified-date-picker">
-          <div class="focus-period-kind-tabs" role="tablist" aria-label="Due date precision">
+          <div v-if="!isTerminalEntry(dateMenuEntry)" class="focus-period-kind-tabs" role="tablist" aria-label="Due date precision">
             <button v-for="kind in ['day', 'week', 'month']" :key="kind" type="button"
                     class="focus-period-kind-btn" :class="{ active: customDateKind === kind }"
                     role="tab" :aria-selected="customDateKind === kind"
                     @click="setCustomDateKind(kind)">{{ kind }}</button>
           </div>
           <input ref="customDateInput" :key="customDateKind" class="focus-custom-date-input"
-                 :type="customDateInputType" :aria-label="`Custom due ${customDateKind}`"
+                 :type="customDateInputType" :aria-label="customDateInputLabel"
                  :value="customDateInputValue"
                  @change="setCustomDuePeriod($event.target.value)" />
         </div>
@@ -361,9 +378,12 @@ import {
 import {
   extractDateFromText,
   extractDuePeriod,
+  formatWeekPeriodLabel,
   formatDuePeriodValue,
   getDuePeriodLabel,
-  isToday
+  isoWeekInputFromSunday,
+  isToday,
+  sundayValueFromIsoWeekInput
 } from '../utils/dateHelpers';
 import {
   extractNoteFromText,
@@ -371,7 +391,12 @@ import {
   updateTaskNameAndDueDate
 } from '../utils/taskTextHelpers';
 import PriorityToggle from './PriorityToggle.vue';
-import { addCompletionDate, extractCompletionDate } from '../utils/completionDateHelpers';
+import {
+  extractCompletionDateValue,
+  getCompletionBadgeFromText,
+  reconcileLifecycleDateForStatus,
+  setCompletionDate
+} from '../utils/completionDateHelpers';
 import { getStatusPriority, sortTaskToCorrectPosition } from '../utils/sortHelpers';
 
 const props = defineProps({
@@ -597,8 +622,6 @@ const upNextDisplayGroups = computed(() => {
   const today = new Date();
   const weekStart = startOfThisWeek();
   const weekEnd = endOfCurrentWeek();
-  const nextWeekStart = new Date(weekStart);
-  nextWeekStart.setDate(weekStart.getDate() + 7);
 
   upNext.value.forEach(entry => {
     if (isLowPriorityEntry(entry)) {
@@ -628,9 +651,7 @@ const upNextDisplayGroups = computed(() => {
     sunday.setHours(0, 0, 0, 0);
     sunday.setDate(period.start.getDate() - period.start.getDay());
     const key = `week-${sunday.getTime()}`;
-    const label = sunday.getTime() === nextWeekStart.getTime()
-        ? 'Next Week'
-        : `Week of ${sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    const label = formatWeekPeriodLabel(sunday);
     if (!weekGroups.has(key)) {
       weekGroups.set(key, { key, label, sortTime: sunday.getTime(), entries: [] });
     }
@@ -655,6 +676,9 @@ const dateMenuStyle = computed(() => ({
   top: `${dateMenuPosition.value.top}px`,
   left: `${dateMenuPosition.value.left}px`
 }));
+const isTerminalEntry = (entry) => entry?.task?.statusChar === 'x' || entry?.task?.statusChar === '-';
+const dateMenuTitle = computed(() => isTerminalEntry(dateMenuEntry.value) ? 'Set completion date' : 'Set due date');
+const dateButtonTitle = (entry) => isTerminalEntry(entry) ? 'Edit completion date' : 'Edit due date';
 
 // The two execution panels spell dates out as day sections rather than per-card badges:
 // Today (carrying anything overdue with it), then undated work, then the days
@@ -710,18 +734,8 @@ const isScheduledThisWeek = (entry) => {
   const dueDate = extractDateFromText(entry.task.text);
   return Boolean(dueDate) && dueDate <= endOfCurrentWeek();
 };
-const isPastWeekTerminal = (entry) => {
-  if (entry.task.statusChar !== 'x' && entry.task.statusChar !== '-') return false;
-  const dueDate = extractDateFromText(entry.task.text);
-  if (!dueDate) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay());
-  return dueDate >= weekStart && dueDate < today;
-};
 const immediateNow = computed(() => now.value.filter(entry =>
-  !isScheduledThisWeek(entry) && !isPastWeekTerminal(entry)
+  !isScheduledThisWeek(entry)
 ));
 const nowDays = computed(() => {
   const lowPriority = immediateNow.value.filter(isLowPriorityEntry);
@@ -735,17 +749,6 @@ const startOfThisWeek = () => {
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - start.getDay());
   return start;
-};
-
-const completionDateFromText = (text) => {
-  const stamp = extractCompletionDate(text);
-  const match = stamp?.match(/,\s*([A-Za-z]+)\s+(\d+)$/);
-  if (!match) return null;
-
-  const parsed = new Date(`${match[1]} ${match[2]}, ${new Date().getFullYear()}`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  parsed.setHours(0, 0, 0, 0);
-  return parsed;
 };
 
 const weeklySourceEntries = computed(() => {
@@ -803,7 +806,10 @@ const weekDays = computed(() => {
     }
     const dueDate = period?.kind === 'day' ? period.start : null;
     const dueThisWeek = dueDate && dueDate >= start && dueDate <= end;
-    const slotDate = dueThisWeek ? dueDate : isTerminal ? completionDateFromText(entry.task.text) : null;
+    // Completion history owns terminal placement. A task completed Wednesday
+    // belongs under Wednesday even when its original due date was Thursday.
+    const completionDate = isTerminal ? extractCompletionDateValue(entry.task.text) : null;
+    const slotDate = isTerminal ? (completionDate || (dueThisWeek ? dueDate : null)) : dueThisWeek ? dueDate : null;
     if (!slotDate || slotDate < start || slotDate > end) return;
 
     const dayIndex = Math.round((slotDate - start) / 86400000);
@@ -818,6 +824,19 @@ const weekDays = computed(() => {
   const currentDay = days.find(day => day.isToday);
   if (currentDay) {
     currentDay.entries = immediateNow.value.map(entry => ({ ...entry, sourceBucket: 'now' }));
+    const counts = { 'not-started': 0, 'in-progress': 0, done: 0, 'will-not-do': 0 };
+    currentDay.entries.forEach(entry => {
+      const key = entry.task.statusChar === '~' ? 'in-progress'
+        : entry.task.statusChar === 'x' ? 'done'
+          : entry.task.statusChar === '-' ? 'will-not-do' : 'not-started';
+      counts[key] += 1;
+    });
+    currentDay.statusSummary = [
+      { key: 'not-started', statusChar: ' ', label: 'Not started', count: counts['not-started'] },
+      { key: 'in-progress', statusChar: '~', label: 'In progress', count: counts['in-progress'] },
+      { key: 'done', statusChar: 'x', label: 'Done', count: counts.done },
+      { key: 'will-not-do', statusChar: '-', label: 'Won’t do', count: counts['will-not-do'] }
+    ].filter(status => status.count > 0);
   }
 
   days.forEach(day => {
@@ -1135,7 +1154,12 @@ const saveEntryEdits = (entry) => {
   }
 
   const currentDueDate = formatDuePeriodValue(extractDuePeriod(entry.task.text));
-  const updatedText = updateTaskNameAndDueDate(entry.task.text, editTaskName.value, currentDueDate);
+  let updatedText = updateTaskNameAndDueDate(entry.task.text, editTaskName.value, currentDueDate);
+  if (isTerminalEntry(entry)) {
+    const completion = extractCompletionDateValue(entry.task.text);
+    const completionValue = formatDateInputValue(completion);
+    updatedText = setCompletionDate(updatedText, completionValue);
+  }
   cancelEntryEdit();
   if (updatedText === entry.task.text) return;
 
@@ -1169,50 +1193,39 @@ const dateShortcuts = computed(() => {
     remainingDate.setDate(remainingDate.getDate() + 1);
   }
 
-  const nextMonday = new Date(endOfWeek);
-  nextMonday.setDate(endOfWeek.getDate() + 2);
-  addOption('Next week', nextMonday);
+  // A completed/not-completing task always records one exact completion day.
+  if (isTerminalEntry(dateMenuEntry.value)) {
+    const nextMonday = new Date(endOfWeek);
+    nextMonday.setDate(endOfWeek.getDate() + 2);
+    addOption('Next week', nextMonday);
+    return options;
+  }
 
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
   options.push({ label: 'This week', value: `week:${formatDateInputValue(weekStart)}` });
   const nextWeek = new Date(weekStart);
   nextWeek.setDate(weekStart.getDate() + 7);
-  options.push({ label: 'Whole next week', value: `week:${formatDateInputValue(nextWeek)}` });
+  options.push({ label: 'Next week', value: `week:${formatDateInputValue(nextWeek)}` });
   options.push({ label: 'This month', value: `month:${formatDateInputValue(today).slice(0, 7)}` });
   const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
   options.push({ label: 'Next month', value: `month:${formatDateInputValue(nextMonth).slice(0, 7)}` });
   return options;
 });
 
-const dueWeekFromInput = (weekValue) => {
-  const [yearText, weekText] = weekValue.split('-W');
-  const januaryFourth = new Date(Number(yearText), 0, 4);
-  const monday = new Date(januaryFourth);
-  monday.setDate(januaryFourth.getDate() - ((januaryFourth.getDay() + 6) % 7) + (Number(weekText) - 1) * 7);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() - 1);
-  return `week:${formatDateInputValue(sunday)}`;
-};
-
-const weekInputFromSunday = (date) => {
-  const thursday = new Date(date);
-  thursday.setDate(date.getDate() + (4 - (date.getDay() || 7)));
-  const weekYear = thursday.getFullYear();
-  const yearStart = new Date(weekYear, 0, 1);
-  const week = Math.ceil((((thursday - yearStart) / 86400000) + yearStart.getDay() + 1) / 7);
-  return `${weekYear}-W${String(week).padStart(2, '0')}`;
-};
-
 const customDateInputValue = computed(() => {
+  if (isTerminalEntry(dateMenuEntry.value)) {
+    return formatDateInputValue(extractCompletionDateValue(dateMenuEntry.value.task.text));
+  }
   const period = dateMenuEntry.value ? extractDuePeriod(dateMenuEntry.value.task.text) : null;
   if (!period || period.kind !== customDateKind.value) return '';
-  if (period.kind === 'week') return weekInputFromSunday(period.start);
+  if (period.kind === 'week') return isoWeekInputFromSunday(period.start);
   if (period.kind === 'month') return formatDateInputValue(period.start).slice(0, 7);
   return formatDateInputValue(period.start);
 });
 
 const customDateInputType = computed(() => customDateKind.value === 'day' ? 'date' : customDateKind.value);
+const customDateInputLabel = computed(() => `Custom ${isTerminalEntry(dateMenuEntry.value) ? 'completion' : 'due'} ${customDateKind.value}`);
 
 const showCustomDatePicker = async () => {
   await nextTick();
@@ -1226,7 +1239,9 @@ const showCustomDatePicker = async () => {
 
 const openCustomDatePicker = () => {
   if (!customDatePickerOpen.value) {
-    const existingKind = dateMenuEntry.value && extractDuePeriod(dateMenuEntry.value.task.text)?.kind;
+    const existingKind = isTerminalEntry(dateMenuEntry.value)
+      ? 'day'
+      : dateMenuEntry.value && extractDuePeriod(dateMenuEntry.value.task.text)?.kind;
     customDateKind.value = existingKind || 'day';
     customDatePickerOpen.value = true;
   }
@@ -1234,6 +1249,7 @@ const openCustomDatePicker = () => {
 };
 
 const setCustomDateKind = (kind) => {
+  if (isTerminalEntry(dateMenuEntry.value) && kind !== 'day') return;
   customDateKind.value = kind;
   showCustomDatePicker();
 };
@@ -1241,14 +1257,16 @@ const setCustomDateKind = (kind) => {
 const setCustomDuePeriod = (value) => {
   if (!value || !dateMenuEntry.value) return;
   const dueValue = customDateKind.value === 'week'
-      ? dueWeekFromInput(value)
+      ? `week:${sundayValueFromIsoWeekInput(value)}`
       : customDateKind.value === 'month' ? `month:${value}` : value;
   setEntryDueDate(dateMenuEntry.value, dueValue);
 };
 
 const setEntryDueDate = (entry, dateValue) => {
   const taskName = getStrippedDisplayText(entry.task.text);
-  const updatedText = updateTaskNameAndDueDate(entry.task.text, taskName, dateValue);
+  const updatedText = isTerminalEntry(entry)
+    ? setCompletionDate(entry.task.text, dateValue)
+    : updateTaskNameAndDueDate(entry.task.text, taskName, dateValue);
   closeDateMenu();
   if (updatedText === entry.task.text) return;
 
@@ -1280,6 +1298,10 @@ const setEntryDueDate = (entry, dateValue) => {
 };
 
 const dueBadge = (entry) => {
+  if (isTerminalEntry(entry)) {
+    const label = getCompletionBadgeFromText(entry.task.text);
+    return label ? { kind: 'completion-date', label } : null;
+  }
   const period = extractDuePeriod(entry.task.text);
   const dueDate = period?.start;
   if (!period) return null;
@@ -1292,7 +1314,9 @@ const dueBadge = (entry) => {
   const daysLate = Math.round((today - endDay) / 86400000);
   if (daysLate > 0) return { kind: 'overdue', label: `${daysLate}d late` };
 
-  if (period.kind === 'week') return { kind: 'due-week', label: getDuePeriodLabel(entry.task.text) };
+  // A whole-week commitment is a period (purple), distinct from an exact day
+  // that merely happens to fall later this week (blue).
+  if (period.kind === 'week') return { kind: 'due-week-period', label: getDuePeriodLabel(entry.task.text).toUpperCase() };
   if (period.kind === 'month') return { kind: 'due-month', label: getDuePeriodLabel(entry.task.text) };
 
   // Still to come: name the weekday while it is this week, then fall back to a date
@@ -1333,9 +1357,7 @@ const finishPendingStatus = (taskId) => {
       ? moveToActiveWip(entry)
       : entry.section;
 
-  if (finalStatus === 'x' || finalStatus === '-') {
-    entry.task.text = addCompletionDate(entry.task.text);
-  }
+  entry.task.text = reconcileLifecycleDateForStatus(entry.task.text, finalStatus);
   entry.task.displayText = getStrippedDisplayText(entry.task.text);
   sortTaskToCorrectPosition(section.items, entry.task, () => {});
 
@@ -1834,12 +1856,71 @@ button.focus-week-clock:hover::after {
 .focus-week-day-column.is-current {
   background: #242930;
   border-color: #353b45;
-  opacity: 0.82;
 }
 
 .focus-week-day-column.is-current .focus-day-header {
   background: #242930;
 }
+
+.focus-today-summary {
+  display: flex;
+  min-height: 72px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 4px;
+}
+
+.focus-today-callout {
+  color: #7fb2e5;
+  font-size: 21px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+}
+
+.focus-today-statuses {
+  display: flex;
+  width: min(100%, 122px);
+  flex-direction: column;
+  gap: 5px;
+}
+
+.focus-today-status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: #8f99a8;
+  font-size: 9px;
+  line-height: 14px;
+}
+
+.focus-today-status-mark {
+  flex: 0 0 14px;
+}
+
+.focus-today-status-count {
+  color: #c4cad2;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.focus-today-status-copy {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.focus-today-status-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 
 .focus-week-day-empty {
   display: flex;
@@ -2507,12 +2588,22 @@ button.focus-week-clock:hover::after {
   color: #7fb2e5;
   background: rgba(64, 137, 209, 0.12);
   border: 1px solid rgba(64, 137, 209, 0.35);
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
 }
 
 .focus-badge.due-month {
   color: #b9a6d8;
   background: rgba(139, 103, 177, 0.12);
   border: 1px solid rgba(139, 103, 177, 0.35);
+}
+
+.focus-badge.due-week-period {
+  color: #c4ace5;
+  background: rgba(139, 103, 177, 0.24);
+  border: 1px solid rgba(169, 130, 211, 0.58);
+  letter-spacing: 0.55px;
+  text-transform: uppercase;
 }
 
 .focus-badge.due-later {
@@ -2866,6 +2957,10 @@ button.focus-week-clock:hover::after {
   background: #e8e8e8;
 }
 
+.theme-light .focus-today-status-count {
+  color: #555;
+}
+
 .theme-light .focus-week-day-column.is-this-week {
   background: #f7f3fb;
   border-color: #cbbdde;
@@ -3028,6 +3123,12 @@ button.focus-week-clock:hover::after {
   color: #73588f;
   background: #f4ecfb;
   border-color: rgba(115, 88, 143, 0.35);
+}
+
+.theme-light .focus-badge.due-week-period {
+  color: #684387;
+  background: #eadcf6;
+  border-color: rgba(115, 88, 143, 0.52);
 }
 
 .theme-light .focus-badge.due-later {

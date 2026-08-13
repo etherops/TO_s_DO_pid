@@ -1,91 +1,51 @@
-// Completion date utilities for task and section completion tracking
+import { MONTH_NAMES, removeDueDate, serializeDuePeriodValue } from './dateHelpers';
 
-// Format a date to the completion date format: | Thurs, March 21
+const parseDay = (value) => {
+  const match = String(value || '').match(/^([A-Za-z]+)\s+(\d{1,2})\s+(\d{4})$/);
+  if (!match) return null;
+  const month = MONTH_NAMES.findIndex(name => name.toLowerCase() === match[1].slice(0, 3).toLowerCase());
+  const date = new Date(Number(match[3]), month, Number(match[2]));
+  date.setHours(0, 0, 0, 0);
+  return month >= 0 && date.getMonth() === month && date.getDate() === Number(match[2]) ? date : null;
+};
+
 export const formatCompletionDate = (date = new Date()) => {
-  const days = ['Sun', 'Mon', 'Tues', 'Wed', 'Thurs', 'Fri', 'Sat'];
-  const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                  'July', 'August', 'September', 'October', 'November', 'December'];
-
-  const dayName = days[date.getDay()];
-  const monthName = months[date.getMonth()];
-  const dayNumber = date.getDate();
-
-  return `| ${dayName}, ${monthName} ${dayNumber}`;
+  const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return `| ${serializeDuePeriodValue(value)}`;
 };
 
+export const extractCompletionDate = (text) => String(text || '').match(/(?:^|\s)\|\s+([^!|]+?)\s*$/)?.[1]?.trim() || null;
+export const extractCompletionDateValue = (text) => parseDay(extractCompletionDate(text));
+export const hasCompletionDate = (text) => Boolean(extractCompletionDateValue(text));
+export const isCompletedToday = (text, today = new Date()) => extractCompletionDateValue(text)?.getTime() === new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 
-// Extract completion date from text (looks for |... pattern at the end)
-export const extractCompletionDate = (text) => {
-  if (!text) return null;
-  
-  // Look for pipe followed by date at the end of string
-  const match = text.match(/\|([^|]+)$/);
-  return match ? match[1].trim() : null;
-};
-
-
-// Check if text has a completion date
-export const hasCompletionDate = (text) => {
-  return extractCompletionDate(text) !== null;
-};
-
-// Completion stamps omit the year, so compare against today's canonical stamp.
-export const isCompletedToday = (text, today = new Date()) => {
-  const completionDate = extractCompletionDate(text);
-  if (!completionDate) return false;
-  return completionDate === formatCompletionDate(today).replace(/^\|\s*/, '');
-};
-
-// Add completion date to text
-export const addCompletionDate = (text, date = new Date()) => {
-  if (!text) return formatCompletionDate(date);
-  
-  // Remove existing completion date if present
-  const cleanText = removeCompletionDate(text);
-  
-  // Add new completion date at the end (space before pipe)
-  return `${cleanText} ${formatCompletionDate(date)}`;
-};
-
-// Remove completion date from text
 export const removeCompletionDate = (text) => {
-  if (!text) return '';
-  
-  // Remove pipe and everything after it at the end of string
-  return text.replace(/\s*\|[^|]*$/, '').trim();
+  const value = String(text || '');
+  return hasCompletionDate(value) ? value.replace(/\s+\|\s+[^!|]+?\s*$/, '').trim() : value.trim();
 };
 
-// Abbreviate month names in completion date string
-const abbreviateMonths = (dateStr) => {
-  if (!dateStr) return dateStr;
+export const addCompletionDate = (text, date = new Date()) => `${removeCompletionDate(removeDueDate(text))} ${formatCompletionDate(date)}`.trim();
 
-  const monthMap = {
-    'January': 'Jan',
-    'February': 'Feb',
-    'March': 'Mar',
-    'April': 'Apr',
-    'May': 'May',
-    'June': 'Jun',
-    'July': 'Jul',
-    'August': 'Aug',
-    'September': 'Sep',
-    'October': 'Oct',
-    'November': 'Nov',
-    'December': 'Dec'
-  };
-
-  let result = dateStr;
-  for (const [full, abbr] of Object.entries(monthMap)) {
-    result = result.replace(full, abbr);
-  }
-
-  return result;
+export const setCompletionDate = (text, value) => {
+  const base = removeCompletionDate(removeDueDate(text));
+  const storage = serializeDuePeriodValue(value);
+  return storage && !value.startsWith('week:') && !value.startsWith('month:')
+    ? `${base} | ${storage}`
+    : base;
 };
 
-// Get badge format from completion date text
-export const getCompletionBadgeFromText = (text) => {
-  const completionDateStr = extractCompletionDate(text);
-  if (!completionDateStr) return null;
-
-  return abbreviateMonths(completionDateStr);
+export const reopenCompletionDate = (text) => {
+  const date = extractCompletionDateValue(text);
+  const base = removeCompletionDate(text);
+  if (!date) return base;
+  const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return `${base} ! ${serializeDuePeriodValue(value)}`.trim();
 };
+
+export const reconcileLifecycleDateForStatus = (text, statusChar, completionDate = new Date()) => {
+  const terminal = statusChar === 'x' || statusChar === '-';
+  if (terminal) return hasCompletionDate(text) ? text : addCompletionDate(text, completionDate);
+  return hasCompletionDate(text) ? reopenCompletionDate(text) : text;
+};
+
+export const getCompletionBadgeFromText = (text) => extractCompletionDate(text);

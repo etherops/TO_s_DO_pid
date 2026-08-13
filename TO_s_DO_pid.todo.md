@@ -52,20 +52,20 @@
 
 # ARCHIVE
 ### Just done
-* [x] BUG: right click move to broken | Thurs, July 17
+* [x] BUG: right click move to broken | Jul 17 2025
 * [x] select, multi select, move to section
-* [x] BUG: delete sections w/ same name! | Thurs, June 26
-* [x] V-BUG: too much vertical whitespace in task cards | Thurs, June 26
-* [x] auto poll/websocket server (take server and backup immedietely if there is conflict) | Tues, June 24
-* [x] md5 sum check before writing | Tues, June 24
-* [x] FOCUS MODE (TODO and ARCHIVE slide to the side, WIP pops twice as wide 2 columns.  Automatically?) | Fri, June 20
-* [x] custom file again, or multiple custom directories | Tues, June 10
-* [x] fancier archive button".  It will move all unstarted and in progress tasks into that section.) | Sun, June 8
-* [x] collapsible/hidable DONE | Sun, June 8
-* [x] save with a note puts in progress | Sat, June 7
-* [x] parallelize tests | Sat, June 7
-* [x] BOTH: auto append date completed DD/MM/YY on complete and set to done | Sat, June 7
-* [x] collase in archive by default, put badge at top in archive by default | Mon, June 9
+* [x] BUG: delete sections w/ same name! | Jun 26 2025
+* [x] V-BUG: too much vertical whitespace in task cards | Jun 26 2025
+* [x] auto poll/websocket server (take server and backup immedietely if there is conflict) | Jun 24 2025
+* [x] md5 sum check before writing | Jun 24 2025
+* [x] FOCUS MODE (TODO and ARCHIVE slide to the side, WIP pops twice as wide 2 columns.  Automatically?) | Jun 20 2025
+* [x] custom file again, or multiple custom directories | Jun 10 2025
+* [x] fancier archive button".  It will move all unstarted and in progress tasks into that section.) | Jun 8 2025
+* [x] collapsible/hidable DONE | Jun 8 2025
+* [x] save with a note puts in progress | Jun 7 2025
+* [x] parallelize tests | Jun 7 2025
+* [x] BOTH: auto append date completed DD/MM/YY on complete and set to done | Jun 7 2025
+* [x] collase in archive by default, put badge at top in archive by default | Jun 9 2025
 * [x] VIEW: Auto sort tasks by status
 * [x] display note preview inline
 * [x] details is a pop up instead of "expand card"

@@ -3,14 +3,14 @@
 // Focus mode pulls only from SELECTED and WIP columns - the staged, committed
 // work. What lands on deck for the week is either staged into WIP or carries a
 // due date falling on or before the Saturday that closes this week. Four
-// buckets: IN PROGRESS / BLOCKED (undated work already underway), NOW
+// buckets: IN PROGRESS / BLOCKED (work already underway), NOW
 // (overdue and due-today work), UP NEXT (scheduled future work and undated
-// queued work), and DONE. Completed work
-// due today stays visible in NOW until tomorrow. Work completed or cancelled
-// today also stays in NOW, regardless of its due date.
+// queued work), and DONE. Work completed or cancelled today stays in NOW;
+// its completion date is authoritative because terminal tasks no longer retain
+// a due date.
 
 import { isPast, isToday, extractDuePeriod } from './dateHelpers';
-import { isCompletedToday } from './completionDateHelpers';
+import { extractCompletionDateValue, isCompletedToday } from './completionDateHelpers';
 
 export const UP_NEXT_GROUP_ORDER = ['month', 'week', 'day', 'unscheduled'];
 
@@ -80,11 +80,9 @@ const eachFocusTask = (todoData, visit) => {
 /**
  * Build the focus model from SELECTED and WIP columns.
  * On deck = staged into WIP, or due on or before the end of this week from
- * anywhere. IN PROGRESS / QUEUED holds non-urgent in-progress work and dated
- * queued work. NOW holds undated queued work plus all overdue and due-today work. Both are
- * ordered overdue -> today -> undated ->
- * each upcoming day. UP NEXT keeps future or unstarted work and DONE keeps
- * terminal work, except cards due today or completed/cancelled today remain in NOW.
+ * anywhere. IN PROGRESS / BLOCKED holds non-urgent in-progress work. NOW holds
+ * overdue and due-today work and terminal work completed today. UP NEXT keeps
+ * future or unstarted work and DONE keeps earlier terminal work.
  * @param {Object} todoData - { columnOrder, columnStacks }
  * @returns {{ inProgressQueued: Array, now: Array, upNext: Array, done: Array }}
  *          entries of shape { task, columnName, sectionName, section, dueGroup?, group? }
@@ -99,8 +97,16 @@ export const deriveFocusModel = (todoData) => {
     const { task, stackName } = entry;
 
     const isTerminal = task.statusChar === 'x' || task.statusChar === '-';
-    if (isTerminal && (isToday(task.text) || isCompletedToday(task.text))) {
-      now.push({ ...entry, ...dueGrouping(task) });
+    // Terminal tasks have a completion day instead of a due period.
+    if (isTerminal && isCompletedToday(task.text)) {
+      const completed = extractCompletionDateValue(task.text);
+      now.push({
+        ...entry,
+        ...dueGrouping(task),
+        dueGroup: 'today',
+        dueRank: DUE_RANK.today,
+        dueTime: completed?.getTime() || extractDuePeriod(task.text)?.start.getTime() || 0
+      });
       return;
     }
     if (isTerminal) {

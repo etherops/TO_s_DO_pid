@@ -13,7 +13,7 @@ raw text line in a section SUPERCATS
 * [~] HOBBY - RSVP for local event
 
 ## PROJECTS
-* [~] SOCIAL - Event coordination for friends !!(Jun 1)
+* [~] SOCIAL - Event coordination for friends ! Jun 1 2025
 * [ ] PROJECT - Outdoor activities (Check mobile breakpoints)
 
 ## HELPER
@@ -35,31 +35,31 @@ raw text line in a section SUPERCATS
 # SCHEDULED
 ### WIP
 * [~] BILLS - Phone bill really really really really really really really really really really really really really really really really really long (Jan 14, follow up about refund)
-* [ ] PROJECT - Mountain trip planning !!( Due May 16)
+* [ ] PROJECT - Mountain trip planning ! May 16 2025
 * [x] PROPERTY - Research local zoning regulations !! Due May 16
 
 ### CURRENT WEEK (Week of May 1
-* [~] WORK - Website maintenance !!(May 19)
-* [ ] TECH - Schedule service appointment !!(May 19)
+* [~] WORK - Website maintenance ! May 19 2025
+* [ ] TECH - Schedule service appointment ! May 19 2025
 
 ### CURRENT DAY (Thursday May 1)
 * [x] VEHICLE - Send photos to buyer
-* [ ] WORK - Update software subscriptions !!(May 25)
+* [ ] WORK - Update software subscriptions ! May 25 2025
 * [ ] HOBBY - Prepare for upcoming thing
 
 ### New Section 1
 * [ ] test
 
 ### test archive
-* [x] asdf | Sun, June 8
-* [x] asdf | Sun, June 8
-* [x] asdf | Tues, June 24
-* [~] asdf | Sun, June 8
+* [x] asdf | Jun 8 2025
+* [x] asdf | Jun 8 2025
+* [x] asdf | Jun 24 2025
+* [~] asdf ! Jun 8 2025
 * [x] asdf
-* [x] test4 | Tues, June 24
-* [x] test1 | Tues, June 24
-* [x] test2 | Tues, June 24
-* [ ] test3 | Tues, June 24
+* [x] test4 | Jun 24 2025
+* [x] test1 | Jun 24 2025
+* [x] test2 | Jun 24 2025
+* [ ] test3 ! Jun 24 2025
 
 # TODO-2
 ## LOW-P

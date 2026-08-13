@@ -4,16 +4,16 @@
 * [~] FEATURE - User authentication flow
 * [~] BUGFIX - Memory leak in data processor
 * [~] DOCS - Update API documentation (team meeting notes 5/13)
-* [ ] FEATURE - Dashboard redesign !!(June 2)
+* [ ] FEATURE - Dashboard redesign ! Jun 2 2026
 * [ ] INFRA - Migrate to new server
 
 ## PLANNING
 * [ ] meeting notes for Q3 planning
 
 ## INBOX
-* [ ] code review PR #1234 !!(Jun 5)
+* [ ] code review PR #1234 ! Jun 5 2026
 * [ ] DEPLOY - Production release v2.1
-* [ ] SECURITY - Update dependencies !!(May 30)
+* [ ] SECURITY - Update dependencies ! May 30 2026
 * [ ] FEATURE - Dark mode support (May 12 design approved, waiting on assets)
 * [ ] REFACTOR - Clean up legacy code
 * [ ] TEST - Add integration tests
@@ -30,7 +30,7 @@
 * [x] DEPLOY - Staging environment setup
 * [x] FEATURE - Export functionality (CSV format ready, PDF pending)
 * [x] BUGFIX - Login timeout issue (session extended to 24h)
-* [x] INFRA - Database backup automation !!(May 27)
+* [x] INFRA - Database backup automation | May 27 2026
 * [x] meeting with stakeholders
 * [x] SECURITY - SSL certificate renewal (auto-renewal configured)
 * [x] API - Rate limiting implementation (100 req/min per user)
@@ -58,12 +58,12 @@
 * [ ] FEATURE - Offline mode
 * [ ] INTEGRATION - Third-party API
 * [ ] FEATURE - Advanced filtering
-* [ ] RESEARCH - Machine learning integration !!(Due June 15th)
+* [ ] RESEARCH - Machine learning integration ! Jun 15 2026
 * [ ] PLANNING - Q4 roadmap
 
 ## TECHNICAL
 * [~] migration to TypeScript
-* [ ] PERFORMANCE - Query optimization !!(Sat, June 21)
+* [ ] PERFORMANCE - Query optimization ! Jun 21 2026
 
 ## INFRASTRUCTURE 
 * [ ] DEVOPS - CI/CD pipeline improvements
@@ -76,8 +76,8 @@
 
 # ARCHIVE
 ### Sprint: May Week 3/4
-* [x] HOTFIX - Critical production bug !!(May 17)
-* [x] FEATURE - Email notifications !!(May 18)
+* [x] HOTFIX - Critical production bug | May 17 2026
+* [x] FEATURE - Email notifications | May 18 2026
 * [x] DEPLOY - Hotfix deployment
 * [x] MONITORING - Add performance metrics
 * [x] SECURITY - Penetration testing
@@ -97,7 +97,7 @@
 * [x] code freeze preparation
 * [x] performance benchmarking
 * [x] CLIENT - Feature demo (approved with minor changes)
-* [x] TESTING - E2E test suite !!(Friday May 16)
+* [x] TESTING - E2E test suite | May 16 2026
 * [x] backup strategy review
 
 ### May Week 2
