@@ -971,23 +971,29 @@ onUnmounted(() => {
 }
 
 .task-title.due-today {
-  color: #f44336;
+  color: inherit;
 }
 
 .task-title.due-soon {
-  color: #ff9800;
+  color: inherit;
 }
 
 /* Due date card backgrounds */
-.task-card:has(.task-title.due-past),
-.task-card:has(.task-title.due-today) {
+.task-card:has(.task-title.due-past) {
   background-color: #ffebee;
   box-shadow: 0 2px 5px rgba(255, 0, 0, 0.2);
 }
 
+.task-card:has(.task-title.due-today) {
+  background-color: #e3f2fd;
+  border-color: rgba(33, 150, 243, 0.32);
+  box-shadow: 0 1px 3px rgba(33, 150, 243, 0.14);
+}
+
 .task-card:has(.task-title.due-soon) {
-  background-color: #fffde7;
-  box-shadow: 0 2px 5px rgba(255, 193, 7, 0.2);
+  background-color: #f3f8fc;
+  border-color: rgba(100, 181, 246, 0.2);
+  box-shadow: 0 1px 3px rgba(100, 181, 246, 0.1);
 }
 
 /* Cancel due date styling for completed and cancelled tasks */
@@ -1551,24 +1557,31 @@ onUnmounted(() => {
 }
 
 /* Calendar due date states */
-.task-card:has(.task-title.due-past) .mini-calendar,
-.task-card:has(.task-title.due-today) .mini-calendar {
+.task-card:has(.task-title.due-past) .mini-calendar {
   background-color: #ffebee;
   border-color: #f44336;
 }
 
-.task-card:has(.task-title.due-past) .calendar-day,
-.task-card:has(.task-title.due-today) .calendar-day {
+.task-card:has(.task-title.due-past) .calendar-day {
   color: #f44336;
 }
 
+.task-card:has(.task-title.due-today) .mini-calendar {
+  background-color: #e3f2fd;
+  border-color: #64b5f6;
+}
+
+.task-card:has(.task-title.due-today) .calendar-day {
+  color: #1976d2;
+}
+
 .task-card:has(.task-title.due-soon) .mini-calendar {
-  background-color: #fff8e1;
-  border-color: #ff9800;
+  background-color: #f3f8fc;
+  border-color: #90caf9;
 }
 
 .task-card:has(.task-title.due-soon) .calendar-day {
-  color: #ff9800;
+  color: #5b8db8;
 }
 
 /* ========================= */

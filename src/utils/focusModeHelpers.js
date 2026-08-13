@@ -3,13 +3,13 @@
 // Focus mode pulls only from SELECTED and WIP columns - the staged, committed
 // work. What lands on deck for the week is either staged into WIP or carries a
 // due date falling on or before the Saturday that closes this week. Four
-// buckets: IN PROGRESS / BLOCKED (work already underway), NOW
+// buckets: IN PROGRESS / WAITING (work already underway), NOW
 // (overdue and due-today work), UP NEXT (scheduled future work and undated
 // queued work), and DONE. Work completed or cancelled today stays in NOW;
 // its completion date is authoritative because terminal tasks no longer retain
 // a due date.
 
-import { isPast, isToday, extractDuePeriod } from './dateHelpers';
+import { isPast, isToday, extractDuePeriod, majorityMonthForWeek } from './dateHelpers';
 import { extractCompletionDateValue, isCompletedToday } from './completionDateHelpers';
 
 export const UP_NEXT_GROUP_ORDER = ['month', 'week', 'day', 'unscheduled'];
@@ -62,6 +62,15 @@ const byDueDate = (a, b) => a.dueRank - b.dueRank || a.dueTime - b.dueTime;
 // already underway leads, then dated work by date, then everything undated
 const dueTimeOf = (entry) => extractDuePeriod(entry.task.text)?.start.getTime() ?? Number.MAX_SAFE_INTEGER;
 
+const isDueNextMonthOrLater = (period, today = new Date()) => {
+  if (!period) return false;
+  const owner = period.kind === 'week'
+    ? majorityMonthForWeek(period.start)
+    : { year: period.start.getFullYear(), monthIndex: period.start.getMonth() };
+  const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  return new Date(owner.year, owner.monthIndex, 1) >= nextMonth;
+};
+
 const eachFocusTask = (todoData, visit) => {
   (todoData?.columnOrder || []).forEach(columnName => {
     const column = todoData.columnStacks?.[columnName];
@@ -80,7 +89,7 @@ const eachFocusTask = (todoData, visit) => {
 /**
  * Build the focus model from SELECTED and WIP columns.
  * On deck = staged into WIP, or due on or before the end of this week from
- * anywhere. IN PROGRESS / BLOCKED holds non-urgent in-progress work. NOW holds
+ * anywhere. IN PROGRESS / WAITING holds non-urgent in-progress work. NOW holds
  * overdue and due-today work and terminal work completed today. UP NEXT keeps
  * future or unstarted work and DONE keeps earlier terminal work.
  * @param {Object} todoData - { columnOrder, columnStacks }
@@ -119,6 +128,13 @@ export const deriveFocusModel = (todoData) => {
     const period = extractDuePeriod(task.text);
     const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text);
 
+    // Far-future work is planning context even when its status is already in
+    // progress. Week periods use their majority-month owner for this boundary.
+    if (task.statusChar === '~' && period && isDueNextMonthOrLater(period)) {
+      upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
+      return;
+    }
+
     if (wasOnDeck) {
       const isUrgent = routedEntry.dueGroup === 'today' || routedEntry.dueGroup === 'overdue';
       if (isUrgent) {
@@ -126,8 +142,15 @@ export const deriveFocusModel = (todoData) => {
         return;
       }
 
-      // Status owns execution routing: once work starts it leaves Up Next,
-      // regardless of whether it still carries a future day/week/month date.
+      // A future exact day this week is already represented in Week at a
+      // glance. Keep it in the source model for that strip, but the upper Up
+      // Next display intentionally filters current-week dates out.
+      if (task.statusChar === '~' && period?.kind === 'day' && period.start <= endOfCurrentWeek()) {
+        upNextGroups.day.push({ ...routedEntry, group: 'day' });
+        return;
+      }
+
+      // Status owns execution routing through the current calendar month.
       if (task.statusChar === '~') {
         const group = stackName === 'WIP' ? 'inProgress' : 'waiting';
         inProgressQueued.push({ ...routedEntry, group });

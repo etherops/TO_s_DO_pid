@@ -385,15 +385,21 @@ onUnmounted(() => {
   border-color: #2196f3;
 }
 
-.todo-app.theme-dark .task-card:has(.task-title.due-past),
-.todo-app.theme-dark .task-card:has(.task-title.due-today) {
+.todo-app.theme-dark .task-card:has(.task-title.due-past) {
   background-color: rgba(244, 67, 54, 0.14);
   box-shadow: 0 2px 5px rgba(244, 67, 54, 0.2);
 }
 
+.todo-app.theme-dark .task-card:has(.task-title.due-today) {
+  background-color: rgba(33, 150, 243, 0.14);
+  border-color: rgba(100, 181, 246, 0.32);
+  box-shadow: 0 1px 3px rgba(33, 150, 243, 0.16);
+}
+
 .todo-app.theme-dark .task-card:has(.task-title.due-soon) {
-  background-color: rgba(255, 193, 7, 0.10);
-  box-shadow: 0 2px 5px rgba(255, 193, 7, 0.15);
+  background-color: rgba(100, 181, 246, 0.07);
+  border-color: rgba(144, 202, 249, 0.18);
+  box-shadow: 0 1px 3px rgba(100, 181, 246, 0.1);
 }
 
 .todo-app.theme-dark .custom-checkbox.unchecked {

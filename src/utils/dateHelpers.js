@@ -197,13 +197,13 @@ export const isToday = (text) => {
 };
 
 export const isSoon = (text) => {
-  const date = extractDateFromText(text);
-  if (!date) return false;
+  const period = extractDuePeriod(text);
+  if (!period) return false;
   const tomorrow = atStartOfDay(new Date());
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const limit = atEndOfDay(new Date(tomorrow));
-  limit.setDate(limit.getDate() + 2);
-  return date >= tomorrow && date <= limit;
+  const weekEnd = atEndOfDay(new Date());
+  weekEnd.setDate(weekEnd.getDate() + (6 - weekEnd.getDay()));
+  return period.start >= tomorrow && period.start <= weekEnd;
 };
 
 export const hasDueDate = (text) => Boolean(extractDuePeriod(text));

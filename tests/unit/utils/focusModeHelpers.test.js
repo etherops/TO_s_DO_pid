@@ -100,8 +100,7 @@ describe('focusModeHelpers', () => {
     it('keeps active and waiting work on the right while scheduled work goes left and urgent/general work stays in NOW', () => {
       expect(taskTexts(model().inProgressQueued)).toEqual([
         'Selected inflight undated',
-        'Wip inflight undated',
-        'Selected inflight due Friday'
+        'Wip inflight undated'
       ]);
 
       expect(taskTexts(model().now)).toEqual([
@@ -123,13 +122,13 @@ describe('focusModeHelpers', () => {
       ]);
       expect(model().inProgressQueued.map(entry => entry.dueGroup)).toEqual([
         'undated',
-        'undated',
-        `day-${new Date(2026, 7, 14).getTime()}`
+        'undated'
       ]);
     });
 
     it('puts unstarted scheduled work in UP NEXT by period precision', () => {
       expect(taskTexts(model().upNext)).toEqual([
+        'Selected inflight due Friday',
         'Wip due Saturday',
         'Selected due next week',
         'Selected undated',
@@ -138,6 +137,13 @@ describe('focusModeHelpers', () => {
 
       const groupSequence = model().upNext.map(entry => UP_NEXT_GROUP_ORDER.indexOf(entry.group));
       expect([...groupSequence].sort((a, b) => a - b)).toEqual(groupSequence);
+    });
+
+    it('represents an in-progress future day this week only through the weekly source bucket', () => {
+      const currentWeek = model();
+      expect(taskTexts(currentWeek.inProgressQueued)).not.toContain('Selected inflight due Friday');
+      expect(taskTexts(currentWeek.now)).not.toContain('Selected inflight due Friday');
+      expect(taskTexts(currentWeek.upNext)).toContain('Selected inflight due Friday');
     });
 
     it('keeps month and current-week queued work in UP NEXT', () => {
@@ -149,6 +155,30 @@ describe('focusModeHelpers', () => {
       expect(taskTexts(periods.upNext)).toEqual(['Whole August', 'Whole current week']);
       expect(periods.inProgressQueued).toEqual([]);
       expect(periods.upNext[1].dueGroup).toBe(`week-${new Date(2026, 7, 9).getTime()}`);
+    });
+
+    it('keeps in-progress work due next month or later in UP NEXT', () => {
+      const periods = deriveFocusModel(parseTodoMdFile(`# WIP
+### Current
+* [~] Current-month day ! Aug 20 2026
+* [~] Current whole month ! Aug 2026
+* [~] Next-month day ! Sep 8 2026
+* [~] Next-month week ! Sep Week #1 2026
+* [~] Next whole month ! Sep 2026
+* [~] Later month ! Oct 2026
+`));
+
+      expect(taskTexts(periods.inProgressQueued)).toEqual([
+        'Current whole month',
+        'Current-month day'
+      ]);
+      expect(taskTexts(periods.upNext)).toEqual([
+        'Next whole month',
+        'Later month',
+        'Next-month week',
+        'Next-month day'
+      ]);
+      expect(periods.upNext.every(entry => entry.task.statusChar === '~')).toBe(true);
     });
 
     it('still only pulls from SELECTED and WIP - a due date cannot drag in backlog or archive', () => {

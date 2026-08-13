@@ -1,7 +1,7 @@
 <!-- components/FocusMode.vue -->
 <!-- Full-screen execution view with a single-panel spotlight carousel above
      an always-visible Sunday-Saturday strip. NOW is centered by default, with
-     UP NEXT to its left and IN PROGRESS / BLOCKED to its right. -->
+     UP NEXT to its left and IN PROGRESS / WAITING to its right. -->
 <template>
   <div ref="focusRoot" class="focus-mode" :class="`theme-${theme}`" @wheel="handleWheel">
     <header class="focus-header">
@@ -89,7 +89,7 @@
           </div>
         </section>
 
-        <!-- IN PROGRESS / BLOCKED: active and waiting/blocked work -->
+        <!-- IN PROGRESS / WAITING: active and waiting/blocked work -->
         <section
             class="focus-panel panel-in-progress-queued"
             :class="{ 'is-focused': isFocused(2) }"
@@ -97,7 +97,7 @@
             @click="focusPanel(2)"
         >
           <header class="panel-header">
-            <span class="panel-kicker in-progress-queued-kicker">In Progress / Blocked</span>
+            <span class="panel-kicker in-progress-queued-kicker">In Progress / Waiting</span>
             <span class="panel-count">{{ inProgressQueued.length }}</span>
           </header>
           <div class="panel-body">
@@ -625,11 +625,16 @@ const upNextDisplayGroups = computed(() => {
   const weekEnd = endOfCurrentWeek();
 
   upNext.value.forEach(entry => {
+    const period = extractDuePeriod(entry.task.text);
+
+    // Current-week day and whole-week work is represented only in Week at a
+    // glance, including low-priority work.
+    if (period && period.kind !== 'month' && period.start <= weekEnd) return;
+
     if (isLowPriorityEntry(entry)) {
       lowPriority.push(entry);
       return;
     }
-    const period = extractDuePeriod(entry.task.text);
     if (!period) {
       unscheduled.push(entry);
       return;
@@ -652,9 +657,7 @@ const upNextDisplayGroups = computed(() => {
       return;
     }
 
-    // Current-week day and whole-week work is represented only in Week at a
-    // glance. Anything later is summarized by its Sunday-Saturday week here.
-    if (period.start <= weekEnd) return;
+    // Anything later is summarized by its Sunday-Saturday week here.
     const sunday = new Date(period.start);
     sunday.setHours(0, 0, 0, 0);
     sunday.setDate(period.start.getDate() - period.start.getDay());
@@ -992,10 +995,10 @@ const progressPercent = computed(() =>
 );
 
 // ========================= Carousel =========================
-// Three panels in logical order [up next, now, in progress / blocked]. Exactly
+// Three panels in logical order [up next, now, in progress / waiting]. Exactly
 // one panel is spotlighted; NOW owns the center by default while the other two
 // peek from the edges. The former DONE panel's right-hand slot now belongs to
-// IN PROGRESS / BLOCKED because terminal work lives in the weekly strip below.
+// IN PROGRESS / WAITING because terminal work lives in the weekly strip below.
 const DEFAULT_PANEL = 1;
 const MAX_PANEL = 2;
 const activePanel = ref(DEFAULT_PANEL);
@@ -1349,7 +1352,7 @@ const resortInSection = (entry) => {
   sortTaskToCorrectPosition(entry.section.items, entry.task, () => {});
 };
 
-// Starting or reopening work puts it in IN PROGRESS / BLOCKED, and active work
+// Starting or reopening work puts it in IN PROGRESS / WAITING, and active work
 // lives in WIP: tasks elsewhere get pulled into the active WIP section.
 const moveToActiveWip = (entry) => {
   if (entry.stackName === 'WIP') return entry.section;

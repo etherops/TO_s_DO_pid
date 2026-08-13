@@ -8,6 +8,7 @@ import {
   hasDueDate,
   isoWeekInputFromSunday,
   isPast,
+  isSoon,
   removeDueDate,
   serializeDuePeriodValue,
   sundayValueFromIsoWeekInput,
@@ -66,6 +67,13 @@ describe('canonical due dates', () => {
     expect(isPast('Task ! Aug 13 2026')).toBe(false);
     expect(isPast('Task ! Aug Week #2 2026')).toBe(false);
     expect(isPast('Task ! Jul 2026')).toBe(true);
+  });
+
+  it('treats future days through Saturday as due this week', () => {
+    expect(isSoon('Task ! Aug 13 2026')).toBe(false);
+    expect(isSoon('Task ! Aug 14 2026')).toBe(true);
+    expect(isSoon('Task ! Aug 15 2026')).toBe(true);
+    expect(isSoon('Task ! Aug 16 2026')).toBe(false);
   });
 
   it('removes only a trailing canonical due suffix', () => {

@@ -72,7 +72,7 @@ describe('Focus Mode (execution carousel)', () => {
 
     // NOW owns the single center spotlight; the queue has moved to the right.
     cy.get('.focus-panel.panel-in-progress-queued').should('not.have.class', 'is-focused')
-      .should('contain', 'In Progress / Blocked')
+      .should('contain', 'In Progress / Waiting')
       .should('contain', 'Inflight wip task')
       .find('.focus-section-badge').should('contain', 'CURRENT');
     cy.get('.focus-panel.panel-now').should('have.class', 'is-focused')
@@ -108,7 +108,7 @@ describe('Focus Mode (execution carousel)', () => {
     });
   });
 
-  it('should bucket into up next, in progress / blocked, NOW, and the weekly strip', () => {
+  it('should bucket into up next, in progress / waiting, NOW, and the weekly strip', () => {
     enterFocusMode();
 
     // The right panel contains only undated ~ work, preserving its two legacy groups.
@@ -876,7 +876,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext').should('have.class', 'is-focused');
   });
 
-  it('should move a started Up Next task into In Progress / Blocked after debounce', () => {
+  it('should move a started Up Next task into In Progress / Waiting after debounce', () => {
     enterFocusMode();
 
     cy.get('.panel-upnext').click({ force: true });
