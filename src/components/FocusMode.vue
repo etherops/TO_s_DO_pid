@@ -545,9 +545,9 @@ const magnifyWeekDays = (event) => {
       '--dock-scale': scales[index].toFixed(4),
       '--dock-content-scale': (1 / scales[index]).toFixed(4),
       '--dock-content-width': `${width}px`,
-      // Leave a small inverse-scale rounding buffer. Without it, a pane whose
-      // content fits exactly can acquire a bogus vertical scrollbar at >1x.
-      '--dock-content-min-height': `${Math.max(0, (heights[index] - 4) * scales[index])}px`,
+      // Keep the inner layout at the resting pane height. Scaling this value
+      // forced artificial overflow even when a day contained only one row.
+      '--dock-content-min-height': `${Math.max(0, heights[index] - 4)}px`,
       '--dock-shift-x': `${targetCenters[index] + viewportClamp - centers[index]}px`,
       '--dock-z': String(Math.round(scales[index] * 100))
     };
