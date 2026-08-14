@@ -71,8 +71,10 @@
         <!-- UP NEXT panel: the SELECTED queue -->
         <section
             class="focus-panel panel-upnext"
-            :class="{ 'is-focused': isFocused(0) }"
+            :class="{ 'is-focused': isMainPaneSpotlight(0), 'is-magnified': isMainPaneMagnified(0) }"
             :style="panelStyle(0)"
+            @mouseenter="magnifyMainPane(0)"
+            @mouseleave="resetMainPaneMagnification(0)"
             @click="focusPanel(0)"
         >
           <header class="panel-header">
@@ -127,8 +129,10 @@
         <!-- IN PROGRESS / WAITING: active and waiting/blocked work -->
         <section
             class="focus-panel panel-in-progress-queued"
-            :class="{ 'is-focused': isFocused(2) }"
+            :class="{ 'is-focused': isMainPaneSpotlight(2), 'is-magnified': isMainPaneMagnified(2) }"
             :style="panelStyle(2)"
+            @mouseenter="magnifyMainPane(2)"
+            @mouseleave="resetMainPaneMagnification(2)"
             @click="focusPanel(2)"
         >
           <header class="panel-header">
@@ -197,8 +201,10 @@
         <!-- NOW: all unstarted on-deck work, including this week's schedule -->
         <section
             class="focus-panel panel-now"
-            :class="{ 'is-focused': isFocused(1) }"
+            :class="{ 'is-focused': isMainPaneSpotlight(1), 'is-magnified': isMainPaneMagnified(1) }"
             :style="panelStyle(1)"
+            @mouseenter="magnifyMainPane(1)"
+            @mouseleave="resetMainPaneMagnification(1)"
             @click="focusPanel(1)"
         >
           <header class="panel-header">
@@ -361,7 +367,7 @@
             class="focus-dot"
             :class="[`dot-${label}`, { active: activePanel === index }]"
             :title="label"
-            @click="activePanel = index"
+            @click="focusPanel(index)"
         ></button>
       </div>
     </nav>
@@ -1030,10 +1036,72 @@ const progressPercent = computed(() =>
 const DEFAULT_PANEL = 1;
 const MAX_PANEL = 2;
 const activePanel = ref(DEFAULT_PANEL);
+const mainPaneDock = ref({ panelIndex: null });
 
 const isFocused = (panelIndex) => panelIndex === activePanel.value;
+const isMainPaneMagnified = (panelIndex) => mainPaneDock.value.panelIndex === panelIndex;
+const isMainPaneSpotlight = (panelIndex) =>
+  panelIndex === (mainPaneDock.value.panelIndex ?? activePanel.value);
+
+const magnifyMainPane = (panelIndex) => {
+  if (isFocused(panelIndex) || Math.abs(panelIndex - activePanel.value) !== 1) return;
+  mainPaneDock.value = { panelIndex };
+};
+
+const resetMainPaneMagnification = (panelIndex = null) => {
+  if (panelIndex === null || mainPaneDock.value.panelIndex === panelIndex) {
+    mainPaneDock.value = { panelIndex: null };
+  }
+};
 
 const panelStyle = (panelIndex) => {
+  const dockPanelIndex = mainPaneDock.value.panelIndex;
+  const dockIsActive = dockPanelIndex !== null
+      && Math.abs(dockPanelIndex - activePanel.value) === 1;
+  if (dockIsActive) {
+    const dockOnLeft = dockPanelIndex < activePanel.value;
+    const dockDirection = dockOnLeft ? -1 : 1;
+
+    if (panelIndex === dockPanelIndex) {
+      // Take on the spotlight's size and upright treatment without jumping
+      // into the center slot. Its outside edge remains anchored in place.
+      const x = dockDirection * 29;
+      return {
+        width: '38vw',
+        height: '100%',
+        transform: `translate(-50%, -50%) translateX(${x}vw) rotateY(0deg) scale(1.02)`,
+        zIndex: 70,
+        opacity: 1,
+        pointerEvents: 'auto'
+      };
+    }
+
+    if (panelIndex === activePanel.value) {
+      // Settle halfway between the spotlight and side treatments, shifting
+      // slightly away from the hovered pane while retaining a gentler tilt.
+      const yieldedDirection = -dockDirection;
+      return {
+        width: '33vw',
+        height: '99%',
+        transform: `translate(-50%, -49%) translateX(${yieldedDirection * 5}vw) rotateY(${yieldedDirection < 0 ? 3.5 : -3.5}deg) scale(0.98)`,
+        zIndex: 45,
+        opacity: 0.94,
+        pointerEvents: 'auto'
+      };
+    }
+
+    // The opposite small pane does not move at all.
+    const restingDirection = panelIndex < activePanel.value ? -1 : 1;
+    return {
+      width: '28vw',
+      height: '98%',
+      transform: `translate(-50%, -48%) translateX(${restingDirection * 34}vw) rotateY(${restingDirection < 0 ? 7 : -7}deg) scale(0.94)`,
+      zIndex: 35,
+      opacity: 0.78,
+      pointerEvents: 'auto'
+    };
+  }
+
   if (isFocused(panelIndex)) {
     return {
       transform: 'translate(-50%, -50%) translateX(0) rotateY(0deg) scale(1.02)',
@@ -1059,10 +1127,12 @@ const panelStyle = (panelIndex) => {
 };
 
 const focusPanel = (panelIndex) => {
+  resetMainPaneMagnification();
   activePanel.value = panelIndex;
 };
 
 const step = (direction) => {
+  resetMainPaneMagnification();
   activePanel.value = Math.min(Math.max(activePanel.value + direction, 0), MAX_PANEL);
 };
 
@@ -1750,6 +1820,12 @@ const toggleQuickAdd = async () => {
   cursor: default;
   background: #1c212a;
   border-color: #2c3340;
+}
+
+.focus-panel.is-magnified {
+  cursor: default;
+  border-color: #384456;
+  box-shadow: 0 0 70px rgba(127, 178, 229, 0.13), 0 22px 54px rgba(0, 0, 0, 0.62);
 }
 
 .focus-panel.is-focused {
@@ -3139,6 +3215,12 @@ button.focus-week-clock:hover::after {
   background: #ffffff;
   border-color: #d5d5d5;
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.16);
+}
+
+.theme-light .focus-panel.is-magnified {
+  background: #fff;
+  border-color: #9fc4e5;
+  box-shadow: 0 0 58px rgba(64, 137, 209, 0.16), 0 20px 46px rgba(0, 0, 0, 0.2);
 }
 
 .theme-light .focus-panel.panel-in-progress-queued.is-focused {
