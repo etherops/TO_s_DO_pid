@@ -20,14 +20,49 @@
               title="Add something for this week" @click="toggleQuickAdd">+ Add</button>
       <button class="focus-exit-btn" title="Back to board" @click="$emit('set-view-mode', 'normal')">✕</button>
       <div v-if="showQuickAdd && quickAddTarget" class="focus-quick-add-popover" @click.stop>
-        <input
-            ref="quickAddInput"
-            v-model="quickAddText"
-            class="focus-quick-add-input"
-            :placeholder="`Add to ${quickAddTarget.columnName}`"
-            @keydown.enter="quickAdd"
-            @keydown.esc="showQuickAdd = false"
-        />
+        <div class="focus-quick-add-row">
+          <input
+              ref="quickAddInput"
+              v-model="quickAddText"
+              class="focus-quick-add-input"
+              :placeholder="`Add to ${quickAddTarget.columnName}`"
+              @keydown.enter="quickAdd"
+              @keydown.esc="closeQuickAdd"
+          />
+          <button type="button" class="focus-quick-add-date-btn"
+                  :class="{ active: quickAddDateMenuOpen, empty: !quickAddDueValue }"
+                  :title="quickAddDueValue ? `Due ${quickAddDueLabel}` : 'No due date'"
+                  @click="toggleQuickAddDateMenu">
+            <span v-if="quickAddDueValue">{{ quickAddDueLabel }}</span>
+            <span class="focus-due-clock" aria-hidden="true">◷</span>
+          </button>
+        </div>
+        <div v-if="quickAddDateMenuOpen" class="focus-quick-add-date-menu">
+          <div class="focus-date-menu-title">Set due date</div>
+          <div class="focus-date-options">
+            <button v-for="option in quickAddDateShortcuts" :key="option.value" type="button"
+                    class="focus-date-option focus-quick-add-date-option"
+                    @click="setQuickAddDueDate(option.value)">{{ option.label }}</button>
+            <button type="button" class="focus-date-option focus-date-custom-trigger"
+                    :class="{ active: quickAddCustomPickerOpen }"
+                    @click="openQuickAddCustomPicker">Custom…</button>
+            <button type="button" class="focus-date-option focus-date-clear"
+                    @click="setQuickAddDueDate('')">Clear</button>
+          </div>
+          <div v-if="quickAddCustomPickerOpen" class="focus-unified-date-picker">
+            <div class="focus-period-kind-tabs" role="tablist" aria-label="New task due date precision">
+              <button v-for="kind in ['day', 'week', 'month']" :key="kind" type="button"
+                      class="focus-period-kind-btn" :class="{ active: quickAddDateKind === kind }"
+                      role="tab" :aria-selected="quickAddDateKind === kind"
+                      @click="setQuickAddDateKind(kind)">{{ kind }}</button>
+            </div>
+            <input ref="quickAddCustomDateInput" :key="quickAddDateKind"
+                   class="focus-custom-date-input" :type="quickAddDateKind"
+                   :aria-label="`New task custom due ${quickAddDateKind}`"
+                   :value="quickAddCustomDateInputValue"
+                   @change="setQuickAddCustomDuePeriod($event.target.value)" />
+          </div>
+        </div>
       </div>
     </header>
 
@@ -417,6 +452,11 @@ const emit = defineEmits(['update', 'set-view-mode']);
 const quickAddText = ref('');
 const quickAddInput = ref(null);
 const showQuickAdd = ref(false);
+const quickAddDueValue = ref('');
+const quickAddDateMenuOpen = ref(false);
+const quickAddCustomPickerOpen = ref(false);
+const quickAddDateKind = ref('day');
+const quickAddCustomDateInput = ref(null);
 const editingTaskId = ref(null);
 const editTaskName = ref('');
 const dateMenuTaskId = ref(null);
@@ -1189,7 +1229,7 @@ const saveEntryEdits = (entry) => {
   emit('update');
 };
 
-const dateShortcuts = computed(() => {
+const buildDateShortcuts = (terminal = false) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const endOfWeek = endOfCurrentWeek();
@@ -1214,7 +1254,7 @@ const dateShortcuts = computed(() => {
   }
 
   // A completed/not-completing task always records one exact completion day.
-  if (isTerminalEntry(dateMenuEntry.value)) {
+  if (terminal) {
     const nextMonday = new Date(endOfWeek);
     nextMonday.setDate(endOfWeek.getDate() + 2);
     addOption('Next week', nextMonday);
@@ -1231,7 +1271,78 @@ const dateShortcuts = computed(() => {
   const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
   options.push({ label: 'Next month', value: `month:${formatDateInputValue(nextMonth).slice(0, 7)}` });
   return options;
+};
+
+const dateShortcuts = computed(() => buildDateShortcuts(isTerminalEntry(dateMenuEntry.value)));
+const quickAddDateShortcuts = computed(() => buildDateShortcuts(false));
+
+const quickAddDueLabel = computed(() => {
+  if (!quickAddDueValue.value) return '';
+  const todayValue = formatDateInputValue(new Date());
+  if (quickAddDueValue.value === todayValue) return 'Today';
+  const temporaryText = updateTaskNameAndDueDate('', 'New task', quickAddDueValue.value);
+  return getDuePeriodLabel(temporaryText) || 'Set date';
 });
+
+const quickAddCustomDateInputValue = computed(() => {
+  const value = quickAddDueValue.value;
+  if (!value) return '';
+  if (quickAddDateKind.value === 'month') return value.startsWith('month:') ? value.slice(6) : '';
+  if (quickAddDateKind.value === 'week') {
+    return value.startsWith('week:') ? isoWeekInputFromSunday(value.slice(5)) : '';
+  }
+  return /^(?!week:|month:)\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+});
+
+const focusQuickAddInput = async () => {
+  await nextTick();
+  quickAddInput.value?.focus();
+};
+
+const showQuickAddCustomPicker = async () => {
+  await nextTick();
+  quickAddCustomDateInput.value?.focus();
+  try {
+    quickAddCustomDateInput.value?.showPicker?.();
+  } catch {
+    // The visible native input remains usable where programmatic opening is restricted.
+  }
+};
+
+const toggleQuickAddDateMenu = () => {
+  quickAddDateMenuOpen.value = !quickAddDateMenuOpen.value;
+  if (!quickAddDateMenuOpen.value) quickAddCustomPickerOpen.value = false;
+};
+
+const setQuickAddDueDate = (value) => {
+  quickAddDueValue.value = value;
+  quickAddDateMenuOpen.value = false;
+  quickAddCustomPickerOpen.value = false;
+  focusQuickAddInput();
+};
+
+const openQuickAddCustomPicker = () => {
+  if (!quickAddCustomPickerOpen.value) {
+    quickAddDateKind.value = quickAddDueValue.value.startsWith('week:')
+      ? 'week'
+      : quickAddDueValue.value.startsWith('month:') ? 'month' : 'day';
+    quickAddCustomPickerOpen.value = true;
+  }
+  showQuickAddCustomPicker();
+};
+
+const setQuickAddDateKind = (kind) => {
+  quickAddDateKind.value = kind;
+  showQuickAddCustomPicker();
+};
+
+const setQuickAddCustomDuePeriod = (value) => {
+  if (!value) return;
+  const dueValue = quickAddDateKind.value === 'week'
+    ? `week:${sundayValueFromIsoWeekInput(value)}`
+    : quickAddDateKind.value === 'month' ? `month:${value}` : value;
+  setQuickAddDueDate(dueValue);
+};
 
 const customDateInputValue = computed(() => {
   if (isTerminalEntry(dateMenuEntry.value)) {
@@ -1460,7 +1571,7 @@ const cycleEntryStatus = (entry, sourceBucket) => {
 const quickAdd = () => {
   const taskName = quickAddText.value.trim();
   if (!taskName || !quickAddTarget.value) return;
-  const text = updateTaskNameAndDueDate('', taskName, formatDateInputValue(new Date()));
+  const text = updateTaskNameAndDueDate('', taskName, quickAddDueValue.value);
 
   quickAddTarget.value.section.items.push({
     id: Date.now(),
@@ -1472,15 +1583,26 @@ const quickAdd = () => {
     displayText: getStrippedDisplayText(text)
   });
   quickAddText.value = '';
-  showQuickAdd.value = false;
+  closeQuickAdd();
   emit('update');
 };
 
+const closeQuickAdd = () => {
+  showQuickAdd.value = false;
+  quickAddDateMenuOpen.value = false;
+  quickAddCustomPickerOpen.value = false;
+  quickAddDueValue.value = '';
+};
+
 const toggleQuickAdd = async () => {
-  showQuickAdd.value = !showQuickAdd.value;
-  if (!showQuickAdd.value) return;
-  await nextTick();
-  quickAddInput.value?.focus();
+  if (showQuickAdd.value) {
+    closeQuickAdd();
+    return;
+  }
+  closeDateMenu();
+  showQuickAdd.value = true;
+  quickAddDueValue.value = formatDateInputValue(new Date());
+  await focusQuickAddInput();
 };
 </script>
 
@@ -2846,7 +2968,7 @@ button.focus-week-clock:hover::after {
   position: absolute;
   top: calc(100% + 6px);
   right: 54px;
-  width: min(320px, calc(100vw - 48px));
+  width: min(390px, calc(100vw - 48px));
   padding: 7px;
   border: 1px solid #333c49;
   border-radius: 10px;
@@ -2854,8 +2976,16 @@ button.focus-week-clock:hover::after {
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
 }
 
+.focus-quick-add-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
 .focus-quick-add-input {
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
   box-sizing: border-box;
   background: transparent;
   border: 1px dashed #333c49;
@@ -2865,6 +2995,45 @@ button.focus-week-clock:hover::after {
   padding: 8px 12px;
   outline: none;
   transition: all 0.15s ease;
+}
+
+.focus-quick-add-date-btn {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  min-width: 36px;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid rgba(255, 179, 71, 0.45);
+  border-radius: 7px;
+  color: #ffb347;
+  background: rgba(255, 179, 71, 0.1);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.focus-quick-add-date-btn:hover,
+.focus-quick-add-date-btn.active {
+  border-color: #ffb347;
+  background: rgba(255, 179, 71, 0.18);
+}
+
+.focus-quick-add-date-btn.empty {
+  color: #8792a0;
+  border-color: #3a4352;
+  background: #20262f;
+}
+
+.focus-quick-add-date-menu {
+  margin-top: 7px;
+  padding: 9px;
+  border: 1px solid #303847;
+  border-radius: 8px;
+  background: #171b21;
 }
 
 .focus-quick-add-input::placeholder {
@@ -2928,6 +3097,53 @@ button.focus-week-clock:hover::after {
   border-color: #ccc;
   background: #fff;
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.16);
+}
+
+.theme-light .focus-quick-add-date-btn {
+  color: #e08900;
+  border-color: rgba(224, 137, 0, 0.4);
+  background: #fff8e1;
+}
+
+.theme-light .focus-quick-add-date-btn:hover,
+.theme-light .focus-quick-add-date-btn.active {
+  border-color: #e08900;
+  background: #fff2c7;
+}
+
+.theme-light .focus-quick-add-date-btn.empty {
+  color: #777;
+  border-color: #ccc;
+  background: #f5f5f5;
+}
+
+.theme-light .focus-quick-add-date-menu {
+  border-color: #d5d5d5;
+  background: #fff;
+}
+
+.theme-light .focus-quick-add-date-menu .focus-date-menu-title {
+  color: #777;
+}
+
+.theme-light .focus-quick-add-date-menu .focus-date-option,
+.theme-light .focus-quick-add-date-menu .focus-period-kind-btn {
+  color: #555;
+  border-color: #d5d5d5;
+  background: #f5f5f5;
+}
+
+.theme-light .focus-quick-add-date-menu .focus-period-kind-btn.active {
+  color: #e08900;
+  border-color: #e08900;
+  background: #fff8e1;
+}
+
+.theme-light .focus-quick-add-date-menu .focus-custom-date-input {
+  color: #333;
+  border-color: #ccc;
+  background: #fff;
+  color-scheme: light;
 }
 
 .theme-light .focus-panel {

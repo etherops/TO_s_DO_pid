@@ -975,6 +975,21 @@ describe('Focus Mode (execution carousel)', () => {
     });
   });
 
+  it('should choose a quick due period while adding a focus task', () => {
+    enterFocusMode();
+
+    cy.get('.focus-quick-add-btn').click();
+    cy.get('.focus-quick-add-date-btn').should('contain', 'Today').click();
+    cy.get('.focus-quick-add-date-menu').should('be.visible');
+    cy.get('.focus-quick-add-date-option').contains('Next week').click();
+    cy.get('.focus-quick-add-date-btn').should('contain', 'Week');
+    cy.get('.focus-quick-add-input').type('Plan next week{enter}');
+
+    cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Plan next week')
+      .find('.focus-due-edit').should('have.class', 'due-week-period');
+    cy.get('.panel-now').should('not.contain', 'Plan next week');
+  });
+
   it('should support dark/light/auto theming across board and focus mode', () => {
     // Default is auto; cycle auto -> dark: the board itself goes dark
     cy.get('.theme-toggle-btn').click();
