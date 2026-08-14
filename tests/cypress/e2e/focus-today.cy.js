@@ -137,11 +137,10 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext .focus-task-row').should('have.length', 1)
       .and('contain', 'Selected ready task');
 
-    // The old DONE panel is gone; the weekly strip has a This Week pane plus seven days.
+    // The old DONE panel is gone; the weekly strip contains the seven real days.
     cy.get('.panel-done').should('not.exist');
     cy.get('.focus-week-strip').should('be.visible').and('contain', 'Week at a glance');
-    cy.get('.focus-week-day-column').should('have.length', 8);
-    cy.get('.focus-week-day-column').first().should('have.class', 'is-this-week').and('contain', 'This Week');
+    cy.get('.focus-week-day-column').should('have.length', 7);
     cy.get('.focus-week-day-column.is-current').should('have.length', 1)
       .and('contain', 'Today!')
       .and('contain', '2')
@@ -452,22 +451,26 @@ describe('Focus Mode (execution carousel)', () => {
 
     enterFocusMode();
 
-    // NOW keeps urgent work in the upper card.
-    cy.get('.panel-now .focus-day-header').should('have.length', 1);
-    cy.get('.panel-now .focus-day-header').eq(0).should('contain', 'Today').and('contain', '2');
-    cy.get('.panel-now .focus-day-header').eq(0).should('have.class', 'day-today');
-    cy.get('.panel-now .focus-task-row').should('have.length', 2);
-    cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Wip overdue')
+    // Whole-week work has one purple home above the urgent Today group.
+    cy.get('.panel-now .focus-day-header').should('have.length', 2);
+    cy.get('.panel-now .focus-day-header').eq(0).should('contain', 'This Week').and('contain', '1')
+      .and('have.class', 'day-this-week');
+    cy.get('.panel-now .focus-day-header').eq(1).should('contain', 'Today').and('contain', '2')
+      .and('have.class', 'day-today');
+    cy.get('.panel-now .focus-task-row').should('have.length', 3);
+    cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Wip all week')
+      .and('have.class', 'this-week-row');
+    cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Wip overdue')
       .and('have.class', 'overdue-row');
-    cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Wip due today');
+    cy.get('.panel-now .focus-task-row').eq(2).should('contain', 'Wip due today');
 
-    // The full-width week strip shows All Week before Sunday-Saturday. Future
-    // cards land in their day, while Today mirrors the spotlight.
+    // The full-width week strip contains only Sunday-Saturday. Future cards
+    // land in their day, while Today mirrors the spotlight counts.
     const tomorrowName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' });
     const dayAfterName = dayAfter.toLocaleDateString('en-US', { weekday: 'long' });
     cy.get('.focus-week-strip').should('be.visible').and('contain', 'Week at a glance');
-    cy.get('.focus-week-strip .focus-week-day-column').should('have.length', 8);
-    cy.get('.focus-week-day-column.is-this-week').should('contain', 'Wip all week');
+    cy.get('.focus-week-strip .focus-week-day-column').should('have.length', 7);
+    cy.get('.focus-week-strip').should('not.contain', 'Wip all week');
     cy.contains('.focus-week-day-column', tomorrowName).should('contain', 'Wip tomorrow');
     cy.contains('.focus-week-day-column', dayAfterName).should('contain', 'Wip day after');
     cy.get('.focus-week-day-column.is-current').then(($todayColumn) => {
@@ -542,8 +545,7 @@ describe('Focus Mode (execution carousel)', () => {
       });
     });
 
-    // Current-week scheduled work is represented only in Week at a glance;
-    // the upper panel retains only this fixture's Unscheduled item.
+    // Exact-day work remains in Week at a glance; whole-week work is in NOW.
     cy.get('.panel-upnext .focus-task-row').should('have.length', 1)
       .and('contain', 'Wip undated');
     cy.get('.panel-upnext').should('not.contain', 'Wip tomorrow')
@@ -1047,7 +1049,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext .focus-task-row').should('not.exist');
     cy.get('.panel-now .focus-task-row').should('not.exist');
     cy.get('.panel-done').should('not.exist');
-    cy.get('.focus-week-day-column').should('have.length', 8);
+    cy.get('.focus-week-day-column').should('have.length', 7);
 
     cy.get('.panel-in-progress-queued').click({ force: true })
       .should('have.class', 'is-focused');

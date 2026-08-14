@@ -7,10 +7,10 @@ Focus Mode is the execution-oriented view of the current week. It is intentional
 Focus Mode derives its tasks from SELECTED and WIP.
 
 - A task is on deck when it is in WIP or due no later than the Saturday ending the current Sunday–Saturday week.
-- NOW contains overdue and due-today nonterminal work plus work completed or cancelled today.
-- UP NEXT contains whole-month work, exact dates or whole-week work after the current week grouped into canonical month-owned week labels such as AUG WEEK #3, and undated non-`~` work under UNSCHEDULED. Current-week dates and whole-current-week assignments are omitted here because Week at a glance already represents them.
+- NOW contains whole-current-week commitments in a purple THIS WEEK group above TODAY, overdue and due-today nonterminal work, plus work completed or cancelled today.
+- UP NEXT contains whole-month work, exact dates or whole-week work after the current week grouped into canonical month-owned week labels such as Aug Week #3, and undated non-`~` work under UNSCHEDULED. Current-week dates are omitted here because Week at a glance already represents them; whole-current-week assignments instead have one authoritative home in NOW.
 - UP NEXT's dated groups form a chronological month timeline: each whole-month group is followed by the weeks owned by that month, then the next whole-month group and its weeks. UNSCHEDULED and LOW PRIORITY remain last.
-- IN PROGRESS / WAITING contains only `~` tasks due within the current calendar month or without a date. Undated `~` tasks from the former General group appear under IN PROGRESS / PARKED; undated `~` tasks from the former Waiting group appear under WAITING / BLOCKED. Starting a dated Up Next task moves it here after debounce unless it is due today/overdue (NOW) or due next month or later (UP NEXT). Whole weeks use their majority-month owner for that boundary.
+- IN PROGRESS / WAITING contains only `~` tasks due within the current calendar month or without a date, except whole-current-week work, which remains in NOW. Undated `~` tasks from the former General group appear under IN PROGRESS / PARKED; undated `~` tasks from the former Waiting group appear under WAITING / BLOCKED. Starting a dated Up Next task moves it here after debounce unless it is due today/overdue/current whole week (NOW) or due next month or later (UP NEXT). Whole weeks use their majority-month owner for that boundary.
 - A `~` task assigned to a future exact day in the current week is shown only under that day in WEEK AT A GLANCE, not duplicated in either upper side panel.
 - A future-dated queued task appears in UP NEXT and under its date in Week at a glance. It is not duplicated into IN PROGRESS / WAITING.
 - A nonterminal task has one trailing due marker: `! Aug 13 2026`, `! Aug Week #2 2026`, or `! Aug 2026`. A terminal task instead has one exact completion marker such as `| Aug 13 2026`; completing replaces the due marker with today’s completion marker, while reopening converts that completion day back into an exact due day.
@@ -29,9 +29,7 @@ The spotlight is larger. When NOW is centered, both side panels remain fully vis
 
 ## Week at a glance
 
-The lower strip always shows a THIS WEEK pane followed by Sunday through Saturday and replaces the old DONE panel.
-
-- THIS WEEK holds tasks assigned to the current whole-week period. It is the same size as each day pane but uses subtly distinct styling.
+The lower strip always shows Sunday through Saturday and replaces the old DONE panel. Whole-current-week commitments live only in NOW's purple THIS WEEK group rather than occupying a synthetic eighth day here.
 - Every day is a contained, independently scrolling pane.
 - Future days show scheduled tasks.
 - Past days retain completed and cancelled tasks. When a terminal task has no due date, its completion stamp determines its day.

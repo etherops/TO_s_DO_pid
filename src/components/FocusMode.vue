@@ -215,7 +215,10 @@
                 <span class="day-count">{{ day.entries.length }}</span>
               </div>
               <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row"
-                   :class="[rowClasses(entry), { 'overdue-row': entry.dueGroup === 'overdue' }]"
+                   :class="[rowClasses(entry), {
+                     'overdue-row': entry.dueGroup === 'overdue',
+                     'this-week-row': entry.dueGroup === 'this-week'
+                   }]"
                    :data-task-id="entry.task.id">
                 <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
@@ -264,7 +267,6 @@
                  :style="weekDayDockStyles[dayIndex]">
               <div class="focus-week-day-column"
                    :class="{
-                     'is-this-week': day.isThisWeek,
                      'is-past': day.isPast,
                      'is-current': day.isToday,
                      'is-expanded': expandedWeekDayIndex === dayIndex,
@@ -776,7 +778,7 @@ const groupByDueDay = (entries) => {
   return days;
 };
 
-const dayHeaderClass = (key) => `day-${key === 'today' ? 'today' : key === 'undated' ? 'general' : 'upcoming'}`;
+const dayHeaderClass = (key) => `day-${key === 'this-week' ? 'this-week' : key === 'today' ? 'today' : key === 'undated' ? 'general' : 'upcoming'}`;
 
 const inProgressQueuedGroups = computed(() => {
   const lowPriority = inProgressQueued.value.filter(isLowPriorityEntry);
@@ -798,8 +800,8 @@ const immediateNow = computed(() => now.value.filter(entry =>
   !isScheduledThisWeek(entry)
 ));
 const nowDays = computed(() => {
-  const lowPriority = immediateNow.value.filter(isLowPriorityEntry);
-  const groups = groupByDueDay(immediateNow.value.filter(entry => !isLowPriorityEntry(entry)));
+  const lowPriority = immediateNow.value.filter(entry => isLowPriorityEntry(entry) && entry.dueGroup !== 'this-week');
+  const groups = groupByDueDay(immediateNow.value.filter(entry => !isLowPriorityEntry(entry) || entry.dueGroup === 'this-week'));
   if (lowPriority.length) groups.push({ key: 'low-priority', label: 'Low Priority', entries: lowPriority });
   return groups;
 });
@@ -847,23 +849,10 @@ const weekDays = computed(() => {
     };
   });
 
-  const thisWeek = {
-    key: 'this-week',
-    date: start,
-    label: 'This Week',
-    isThisWeek: true,
-    isPast: false,
-    isToday: false,
-    entries: []
-  };
-
   weeklySourceEntries.value.forEach(entry => {
     const isTerminal = entry.task.statusChar === 'x' || entry.task.statusChar === '-';
     const period = extractDuePeriod(entry.task.text);
-    if (period?.kind === 'week' && period.start.getTime() === start.getTime()) {
-      thisWeek.entries.push(entry);
-      return;
-    }
+    if (period?.kind === 'week') return;
     const dueDate = period?.kind === 'day' ? period.start : null;
     const dueThisWeek = dueDate && dueDate >= start && dueDate <= end;
     // Completion history owns terminal placement. A task completed Wednesday
@@ -902,8 +891,7 @@ const weekDays = computed(() => {
   days.forEach(day => {
     day.entries = clusterBySection(day.entries);
   });
-  thisWeek.entries = clusterBySection(thisWeek.entries);
-  return [thisWeek, ...days];
+  return days;
 });
 const weekStripCount = computed(() => weekDays.value.reduce((total, day) => total + day.entries.length, 0));
 
@@ -1942,14 +1930,9 @@ const toggleQuickAdd = async () => {
   display: grid;
 }
 
-.focus-week-day-column.is-this-week {
+.focus-task-row.this-week-row {
   background: #1d202a;
   border-color: #514666;
-}
-
-.focus-week-day-column.is-this-week .focus-day-header {
-  color: #b9a6d8;
-  background: #1d202a;
 }
 
 .focus-week-clock::before,
@@ -3195,14 +3178,9 @@ button.focus-week-clock:hover::after {
   color: #555;
 }
 
-.theme-light .focus-week-day-column.is-this-week {
+.theme-light .focus-task-row.this-week-row {
   background: #f7f3fb;
   border-color: #cbbdde;
-}
-
-.theme-light .focus-week-day-column.is-this-week .focus-day-header {
-  color: #73588f;
-  background: #f7f3fb;
 }
 
 .theme-light .panel-header {

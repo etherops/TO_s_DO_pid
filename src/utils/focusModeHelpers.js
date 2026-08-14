@@ -45,7 +45,15 @@ export const isOnDeckThisWeek = (text) => {
 // Ordering for the execution panels: today's problems first - what's late,
 // then what's due today - followed by undated work you can pick up any time,
 // with the days still to come bringing up the rear
-const DUE_RANK = { overdue: 0, today: 1, undated: 2, upcoming: 3 };
+const DUE_RANK = { thisWeek: -1, overdue: 0, today: 1, undated: 2, upcoming: 3 };
+
+const isCurrentWholeWeek = (period, today = new Date()) => {
+  if (period?.kind !== 'week') return false;
+  const start = new Date(today);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - start.getDay());
+  return period.start.getTime() === start.getTime();
+};
 
 const dueGrouping = (task) => {
   const period = extractDuePeriod(task.text);
@@ -127,6 +135,19 @@ export const deriveFocusModel = (todoData) => {
     const routedEntry = { ...entry, ...dueGrouping(task) };
     const period = extractDuePeriod(task.text);
     const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text);
+
+    // A whole-current-week commitment has no honest weekday slot. Give it one
+    // authoritative home at the top of NOW, regardless of whether it has
+    // started, instead of duplicating it across the side panel and week strip.
+    if (isCurrentWholeWeek(period)) {
+      now.push({
+        ...routedEntry,
+        dueGroup: 'this-week',
+        dueRank: DUE_RANK.thisWeek,
+        dueTime: period.start.getTime()
+      });
+      return;
+    }
 
     // Far-future work is planning context even when its status is already in
     // progress. Week periods use their majority-month owner for this boundary.
