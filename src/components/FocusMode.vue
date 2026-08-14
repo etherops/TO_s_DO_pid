@@ -280,11 +280,13 @@
                    }">
                 <div class="focus-week-day-content">
                   <div class="focus-day-header">
-                    <span class="day-name">{{ day.label }}</span>
+                    <span class="day-name">
+                      {{ day.label }}
+                      <span v-if="day.isToday" class="focus-current-day-label">Today!</span>
+                    </span>
                     <span class="day-count">{{ day.entries.length }}</span>
                   </div>
                   <div v-if="day.isToday" class="focus-today-summary">
-                    <div class="focus-today-callout">Today!</div>
                     <div class="focus-today-statuses">
                       <div v-for="status in day.statusSummary" :key="status.key"
                            class="focus-today-status" :class="`status-${status.key}`">
@@ -2055,6 +2057,7 @@ button.focus-week-clock:hover::after {
 }
 
 .focus-week-day-column.is-current {
+  overflow-y: hidden;
   background: #242930;
   border-color: #353b45;
 }
@@ -2074,11 +2077,13 @@ button.focus-week-clock:hover::after {
   padding: 7px 4px;
 }
 
-.focus-today-callout {
+.focus-current-day-label {
+  margin-left: 5px;
   color: #7fb2e5;
   font-size: 21px;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: 0.04em;
+  line-height: 1;
 }
 
 .focus-today-statuses {
