@@ -716,8 +716,6 @@ describe('Focus Mode (execution carousel)', () => {
     cy.reload();
     cy.get('.focus-mode').should('be.visible').and('contain', 'Renamed focus task');
 
-    cy.get('.panel-upnext').click({ force: true })
-      .should('have.class', 'is-focused');
     cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Renamed focus task')
       .should('not.have.class', 'transitioning')
       .find('.focus-row-title').click();
@@ -759,9 +757,6 @@ describe('Focus Mode (execution carousel)', () => {
   it('should debounce a completed task in place, then whisk it into NOW', () => {
     enterFocusMode();
 
-    cy.get('.panel-in-progress-queued').click({ force: true })
-      .should('have.class', 'is-focused');
-
     // Drive the staged move by the clock rather than racing it
     cy.clock(Date.now(), ['setTimeout', 'clearTimeout']);
 
@@ -798,9 +793,6 @@ describe('Focus Mode (execution carousel)', () => {
   it('should complete an in-progress task, keep it in NOW today, and persist across reload', () => {
     enterFocusMode();
 
-    cy.get('.panel-in-progress-queued').click({ force: true })
-      .should('have.class', 'is-focused');
-
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
       .find('.focus-row-check').should('have.css', 'pointer-events', 'auto').click({ force: true });
 
@@ -818,71 +810,56 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-now .focus-task-row').should('contain', 'Inflight wip task');
   });
 
-  it('should navigate the single-panel spotlight with dots, arrows, and panel clicks', () => {
+  it('should keep the top panes fixed and magnify a side pane from its background', () => {
     enterFocusMode();
 
-    cy.get('.focus-dot').should('have.length', 3);
-
-    // Exactly one panel owns the spotlight.
-    cy.get('.focus-dot.dot-upnext').click();
-    cy.get('.panel-upnext').should('have.class', 'is-focused');
-    cy.get('.panel-in-progress-queued').should('not.have.class', 'is-focused');
-    cy.get('.panel-now').should('not.have.class', 'is-focused');
-    cy.get('.panel-now').then(($now) => {
-      cy.get('.panel-in-progress-queued').then(($queued) => {
-        expect($queued[0].getBoundingClientRect().left)
-          .to.be.greaterThan($now[0].getBoundingClientRect().left);
-      });
-    });
-
-    // Logical order is UP NEXT -> NOW -> IN PROGRESS / QUEUED.
-    cy.get('body').type('{rightarrow}');
+    cy.get('.focus-dot').should('not.exist');
     cy.get('.panel-now').should('have.class', 'is-focused');
-    cy.get('.panel-upnext').should('not.have.class', 'is-focused');
-    cy.get('.panel-in-progress-queued').should('not.have.class', 'is-focused');
-    cy.get('body').type('{rightarrow}');
-    cy.get('.panel-in-progress-queued').should('have.class', 'is-focused');
-    cy.get('.panel-now').should('not.have.class', 'is-focused');
-    cy.get('.panel-upnext').then(($upNext) => {
-      cy.get('.panel-now').then(($now) => {
-        expect($upNext[0].getBoundingClientRect().left)
-          .to.be.lessThan($now[0].getBoundingClientRect().left);
-      });
-    });
-
-    // Clicking a side card brings only that card to center.
-    cy.get('.panel-now').click({ force: true });
-    cy.get('.panel-now').should('have.class', 'is-focused');
-    cy.get('.panel-in-progress-queued').should('not.have.class', 'is-focused');
+    cy.get('.panel-upnext .panel-header').click({ force: true });
+    cy.get('.panel-upnext').should('have.class', 'is-magnified').and('have.class', 'is-focused');
+    cy.get('.panel-in-progress-queued').should('not.have.class', 'is-magnified');
   });
 
-  it('should navigate with two-finger horizontal swipes', () => {
+  it('should navigate the week carousel with arrows and full sibling week panels', () => {
     enterFocusMode();
 
-    // Swipe left (positive deltaX) moves from NOW to IN PROGRESS / QUEUED.
-    cy.get('.focus-mode').trigger('wheel', { deltaX: 150, deltaY: 0 });
-    cy.get('.panel-in-progress-queued').should('have.class', 'is-focused');
-
-    // After the gesture settles, swipe right steps back to NOW.
-    cy.wait(600);
-    cy.get('.focus-mode').trigger('wheel', { deltaX: -150, deltaY: 0 });
-    cy.get('.panel-now').should('have.class', 'is-focused');
-    cy.get('.panel-in-progress-queued').should('not.have.class', 'is-focused');
-
-    cy.wait(600);
-    cy.get('.focus-mode').trigger('wheel', { deltaX: -150, deltaY: 0 });
-    cy.get('.panel-upnext').should('have.class', 'is-focused');
-
-    // Momentum-tail events while disarmed do not overswipe
-    cy.get('.focus-mode').trigger('wheel', { deltaX: -150, deltaY: 0 });
-    cy.get('.panel-upnext').should('have.class', 'is-focused');
+    cy.get('.focus-week-carousel-shell > .focus-week-strip').should('have.length', 3);
+    cy.get('.focus-week-strip-previous').should('be.visible');
+    cy.get('.focus-week-strip-next').should('be.visible');
+    cy.get('.focus-week-strip-current').then(($current) => {
+      const currentRect = $current[0].getBoundingClientRect();
+      const viewportWidth = $current[0].ownerDocument.defaultView.innerWidth;
+      expect(currentRect.width).to.be.closeTo(viewportWidth * 0.95, 2);
+      cy.get('.focus-week-strip-previous').then(($previous) => {
+        expect($previous[0].getBoundingClientRect().right).to.be.closeTo(viewportWidth * 0.025 - 8, 3);
+        expect($previous[0].getBoundingClientRect().height).to.be.lessThan(currentRect.height);
+      });
+      cy.get('.focus-week-strip-next').then(($next) => {
+        expect($next[0].getBoundingClientRect().left).to.be.closeTo(viewportWidth * 0.975 + 8, 3);
+        expect($next[0].getBoundingClientRect().height).to.be.lessThan(currentRect.height);
+      });
+    });
+    cy.get('.focus-week-range').invoke('text').as('currentWeekLabel');
+    cy.window().trigger('keydown', { key: 'ArrowRight' });
+    cy.get('@currentWeekLabel').then((label) => {
+      cy.get('.focus-week-range').should('not.have.text', label);
+    });
+    cy.get('.focus-week-carousel-shell').should('have.class', 'carousel-next');
+    cy.window().trigger('keydown', { key: 'ArrowLeft' });
+    cy.get('@currentWeekLabel').then((label) => {
+      cy.get('.focus-week-range').should('have.text', label);
+    });
+    cy.get('.focus-week-strip-next').click({ force: true });
+    cy.get('.focus-week-carousel-shell').should('have.class', 'carousel-next');
+    cy.get('.focus-week-return').should('contain', 'This week').click();
+    cy.get('@currentWeekLabel').then((label) => {
+      cy.get('.focus-week-range').should('have.text', label);
+    });
+    cy.get('.focus-week-return').should('not.exist');
   });
 
   it('should move a started Up Next task into In Progress / Waiting after debounce', () => {
     enterFocusMode();
-
-    cy.get('.panel-upnext').click({ force: true });
-    cy.get('.panel-upnext').should('have.class', 'is-focused');
 
     cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task')
       .find('.focus-row-check').click({ force: true });
@@ -928,14 +905,12 @@ describe('Focus Mode (execution carousel)', () => {
       .find('.focus-row-check.unchecked').click({ force: true });
 
     cy.wait(2100);
-    cy.get('.panel-in-progress-queued').should('have.class', 'is-focused');
     cy.get('.panel-in-progress-queued .focus-task-row').should('contain', 'Inflight wip task');
   });
 
   it('should complete a task directly from the up-next panel', () => {
     enterFocusMode();
 
-    cy.get('.panel-upnext').click({ force: true });
     cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task')
       .find('.focus-row-check').click({ force: true });
 
@@ -1051,8 +1026,6 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-done').should('not.exist');
     cy.get('.focus-week-day-column').should('have.length', 7);
 
-    cy.get('.panel-in-progress-queued').click({ force: true })
-      .should('have.class', 'is-focused');
     cy.get('.focus-plan-btn').click();
 
     cy.get('.kanban-container').should('be.visible');

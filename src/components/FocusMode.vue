@@ -1,9 +1,8 @@
 <!-- components/FocusMode.vue -->
-<!-- Full-screen execution view with a single-panel spotlight carousel above
-     an always-visible Sunday-Saturday strip. NOW is centered by default, with
-     UP NEXT to its left and IN PROGRESS / WAITING to its right. -->
+<!-- Full-screen execution view with three magnifying work panels above an
+     always-visible, week-by-week Sunday-Saturday carousel. -->
 <template>
-  <div ref="focusRoot" class="focus-mode" :class="`theme-${theme}`" @wheel="handleWheel">
+  <div ref="focusRoot" class="focus-mode" :class="`theme-${theme}`">
     <header class="focus-header">
       <div class="focus-heading">
         <div class="focus-kicker">Focus</div>
@@ -76,7 +75,7 @@
             @mouseenter="magnifyMainPane(0)"
             @mouseleave="resetMainPaneMagnification(0)"
             @pointerdown.capture="handleMainPaneInteraction($event)"
-            @click="handleMainPaneClick(0, $event)"
+            @click="magnifyMainPaneOnClick(0, $event)"
         >
           <header class="panel-header">
             <span class="panel-kicker upnext-kicker">‹ Up Next</span>
@@ -135,7 +134,7 @@
             @mouseenter="magnifyMainPane(2)"
             @mouseleave="resetMainPaneMagnification(2)"
             @pointerdown.capture="handleMainPaneInteraction($event)"
-            @click="handleMainPaneClick(2, $event)"
+            @click="magnifyMainPaneOnClick(2, $event)"
         >
           <header class="panel-header">
             <span class="panel-kicker in-progress-queued-kicker">In Progress / Waiting</span>
@@ -208,7 +207,6 @@
             @mouseenter="magnifyMainPane(1)"
             @mouseleave="resetMainPaneMagnification(1)"
             @pointerdown.capture="handleMainPaneInteraction($event)"
-            @click="handleMainPaneClick(1, $event)"
         >
           <header class="panel-header">
             <span class="panel-kicker now-kicker">Now</span>
@@ -264,16 +262,43 @@
 
       </div>
 
-      <section class="focus-week-strip">
+      <div class="focus-week-carousel-shell" :class="weekCarouselClass">
+        <section :key="`previous-${selectedWeekKey}`"
+                 class="focus-week-strip focus-week-strip-adjacent focus-week-strip-previous"
+                 :title="`Open previous week: ${previousWeekLabel}`" @click="shiftSelectedWeek(-1)">
+        <header class="panel-header">
+          <span class="panel-kicker week-strip-kicker">‹ {{ previousWeekLabel }}</span>
+          <span class="panel-count">{{ previousWeekCount }}</span>
+        </header>
+        <div class="focus-adjacent-week-days">
+          <div v-for="day in previousWeekDays" :key="day.key" class="focus-adjacent-week-day">
+            <div class="focus-day-header"><span class="day-name">{{ day.label }}</span><span class="day-count">{{ day.entries.length }}</span></div>
+            <div v-for="entry in day.entries.slice(0, 4)" :key="entry.task.id" class="focus-adjacent-task-row">
+              <span class="focus-row-check" :class="checkClasses(entry)" aria-hidden="true"></span>
+              <span>{{ cardTitle(entry) }}</span>
+            </div>
+          </div>
+        </div>
+        </section>
+
+        <section :key="`current-${selectedWeekKey}`" class="focus-week-strip focus-week-strip-current">
         <header class="panel-header">
           <span class="panel-kicker week-strip-kicker">Week at a glance</span>
+          <div class="focus-week-nav" aria-label="Week navigation">
+            <button type="button" title="Previous week" aria-label="Previous week" @click="shiftSelectedWeek(-1)">‹</button>
+            <span class="focus-week-range">{{ selectedWeekLabel }}</span>
+            <button type="button" title="Next week" aria-label="Next week" @click="shiftSelectedWeek(1)">›</button>
+            <button v-if="selectedWeekOffset !== 0" type="button" class="focus-week-return"
+                    title="Back to this week" @click="returnToCurrentWeek">This week</button>
+          </div>
           <span class="panel-count">{{ weekStripCount }}</span>
         </header>
         <div class="panel-body week-strip-body">
-          <div class="focus-week-day-columns" :class="{ 'has-expanded-day': expandedWeekDayIndex !== null }"
+          <div :key="selectedWeekKey" class="focus-week-day-columns"
+               :class="{ 'has-expanded-day': expandedWeekDayIndex !== null }"
                @mousemove="magnifyWeekDays" @mouseleave="resetWeekDayMagnification">
-            <div v-for="(day, dayIndex) in weekDays" :key="day.key" class="focus-week-day-slot"
-                 :data-week-day-index="dayIndex"
+            <div v-for="(day, dayIndex) in selectedWeekDays" :key="day.key" class="focus-week-day-slot"
+                 :data-week-day-value="formatDateInputValue(day.date)"
                  :style="weekDayDockStyles[dayIndex]">
               <div class="focus-week-day-column"
                    :class="{
@@ -310,9 +335,11 @@
                      :class="rowClasses(entry)" :data-task-id="entry.task.id">
                 <span v-if="day.isToday" class="focus-row-check" :class="checkClasses(entry)"
                       aria-hidden="true"></span>
-                <button v-else-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
+                <button v-else-if="!isEditingEntry(entry) && entry.sourceBucket" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                         @click.stop="cycleEntryStatus(entry, entry.sourceBucket, $event)"></button>
+                <span v-else-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
+                      :title="STATUS_LABELS[entry.task.statusChar]" aria-hidden="true"></span>
                 <div v-if="!day.isToday && isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -358,25 +385,31 @@
             </div>
           </div>
         </div>
-      </section>
+        </section>
+
+        <section :key="`next-${selectedWeekKey}`"
+                 class="focus-week-strip focus-week-strip-adjacent focus-week-strip-next"
+                 :title="`Open next week: ${nextWeekLabel}`" @click="shiftSelectedWeek(1)">
+        <header class="panel-header">
+          <span class="panel-kicker week-strip-kicker">{{ nextWeekLabel }} ›</span>
+          <span class="panel-count">{{ nextWeekCount }}</span>
+        </header>
+        <div class="focus-adjacent-week-days">
+          <div v-for="day in nextWeekDays" :key="day.key" class="focus-adjacent-week-day">
+            <div class="focus-day-header"><span class="day-name">{{ day.label }}</span><span class="day-count">{{ day.entries.length }}</span></div>
+            <div v-for="entry in day.entries.slice(0, 4)" :key="entry.task.id" class="focus-adjacent-task-row">
+              <span class="focus-row-check" :class="checkClasses(entry)" aria-hidden="true"></span>
+              <span>{{ cardTitle(entry) }}</span>
+            </div>
+          </div>
+        </div>
+        </section>
+      </div>
     </div>
 
     <!-- Cards in flight are cloned into this layer so they sail over the panels
          instead of being clipped by them -->
     <div ref="flightLayer" class="focus-flight-layer"></div>
-
-    <nav class="focus-carousel-nav">
-      <div class="focus-dots">
-        <button
-            v-for="(label, index) in ['upnext', 'now', 'inprogress']"
-            :key="`dot-${label}`"
-            class="focus-dot"
-            :class="[`dot-${label}`, { active: activePanel === index }]"
-            :title="label"
-            @click="focusPanel(index)"
-        ></button>
-      </div>
-    </nav>
 
     <Teleport to="body">
       <div v-if="dateMenuEntry" class="focus-date-menu" :class="`theme-${theme}`"
@@ -482,6 +515,9 @@ const customDateInput = ref(null);
 const sectionTooltip = ref(null);
 const expandedWeekDayIndex = ref(null);
 const weekDayDockStyles = ref([]);
+const selectedWeekOffset = ref(0);
+const weekSlideDirection = ref('next');
+const hasNavigatedWeek = ref(false);
 
 const resetWeekDayMagnification = () => {
   expandedWeekDayIndex.value = null;
@@ -753,8 +789,37 @@ const upNextDisplayGroups = computed(() => {
 const upNextDisplayCount = computed(() =>
   upNextDisplayGroups.value.reduce((total, group) => total + group.entries.length, 0)
 );
-const dateMenuEntry = computed(() => Object.values(model.value)
-    .flat()
+const timelineEntries = computed(() => {
+  const focusBuckets = new Map();
+  Object.entries(model.value).forEach(([bucketName, entries]) => {
+    entries.forEach(entry => focusBuckets.set(entry.task.id, bucketName));
+  });
+
+  const entries = [];
+  (props.todoData?.columnOrder || []).forEach(columnName => {
+    const column = props.todoData.columnStacks?.[columnName];
+    if (!column || column.type === 'raw-text' || columnName.toUpperCase().includes('ICE')) return;
+    (column.sections || []).forEach(section => {
+      if (section.type === 'raw-text') return;
+      (section.items || []).forEach(task => {
+        if (task.type !== 'task') return;
+        entries.push({
+          task,
+          columnName,
+          stackName: column.name,
+          sectionName: section.name,
+          section,
+          sourceBucket: focusBuckets.get(task.id) || null
+        });
+      });
+    });
+  });
+  return entries;
+});
+const dateMenuEntry = computed(() => [
+  ...Object.values(model.value).flat(),
+  ...timelineEntries.value
+]
     .find(entry => entry?.task?.id === dateMenuTaskId.value) || null);
 const dateMenuStyle = computed(() => ({
   top: `${dateMenuPosition.value.top}px`,
@@ -835,6 +900,47 @@ const startOfThisWeek = () => {
   return start;
 };
 
+const startOfWeekAtOffset = (offset) => {
+  const start = startOfThisWeek();
+  start.setDate(start.getDate() + offset * 7);
+  return start;
+};
+
+const weekRangeLabel = (start, includeRelative = false) => {
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  const range = sameMonth
+    ? `${start.toLocaleDateString('en-US', { month: 'short' })} ${start.getDate()}–${end.getDate()}`
+    : `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  if (!includeRelative) return range;
+  if (selectedWeekOffset.value === 0) return `This week · ${range}`;
+  if (selectedWeekOffset.value === -1) return `Last week · ${range}`;
+  if (selectedWeekOffset.value === 1) return `Next week · ${range}`;
+  return range;
+};
+
+const selectedWeekStart = computed(() => startOfWeekAtOffset(selectedWeekOffset.value));
+const selectedWeekKey = computed(() => selectedWeekStart.value.getTime());
+const selectedWeekLabel = computed(() => weekRangeLabel(selectedWeekStart.value, true));
+const previousWeekLabel = computed(() => weekRangeLabel(startOfWeekAtOffset(selectedWeekOffset.value - 1)));
+const nextWeekLabel = computed(() => weekRangeLabel(startOfWeekAtOffset(selectedWeekOffset.value + 1)));
+const weekCarouselClass = computed(() => hasNavigatedWeek.value ? `carousel-${weekSlideDirection.value}` : '');
+
+const shiftSelectedWeek = (direction) => {
+  resetWeekDayMagnification();
+  weekSlideDirection.value = direction < 0 ? 'previous' : 'next';
+  hasNavigatedWeek.value = true;
+  selectedWeekOffset.value += direction;
+};
+
+const returnToCurrentWeek = () => {
+  resetWeekDayMagnification();
+  weekSlideDirection.value = selectedWeekOffset.value > 0 ? 'previous' : 'next';
+  hasNavigatedWeek.value = true;
+  selectedWeekOffset.value = 0;
+};
+
 const weeklySourceEntries = computed(() => {
   const entries = [];
   const seen = new Set();
@@ -851,14 +957,10 @@ const weeklySourceEntries = computed(() => {
   return entries;
 });
 
-const weekDays = computed(() => {
-  const start = startOfThisWeek();
+const emptyWeekDays = (start) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-
-  const days = Array.from({ length: 7 }, (_, index) => {
+  return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
     return {
@@ -870,6 +972,13 @@ const weekDays = computed(() => {
       entries: []
     };
   });
+};
+
+const currentWeekDays = () => {
+  const start = startOfThisWeek();
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const days = emptyWeekDays(start);
 
   weeklySourceEntries.value.forEach(entry => {
     const isTerminal = entry.task.statusChar === 'x' || entry.task.statusChar === '-';
@@ -914,19 +1023,57 @@ const weekDays = computed(() => {
     day.entries = clusterBySection(day.entries);
   });
   return days;
-});
-const weekStripCount = computed(() => weekDays.value.reduce((total, day) => total + day.entries.length, 0));
+};
+
+const calendarWeekDays = (start) => {
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const currentStart = startOfThisWeek();
+  const isFutureWeek = start > currentStart;
+  const days = emptyWeekDays(start);
+
+  timelineEntries.value.forEach(entry => {
+    const terminal = entry.task.statusChar === 'x' || entry.task.statusChar === '-';
+    const completionDate = terminal ? extractCompletionDateValue(entry.task.text) : null;
+    const period = terminal ? null : extractDuePeriod(entry.task.text);
+    let slotDate = completionDate;
+
+    if (!terminal && period?.kind === 'day') slotDate = period.start;
+    else if (!terminal && isFutureWeek && period?.kind === 'week'
+        && period.start.getTime() === start.getTime()) slotDate = start;
+
+    if (!slotDate || slotDate < start || slotDate > end) return;
+    const dayIndex = Math.round((slotDate - start) / 86400000);
+    days[dayIndex].entries.push({ ...entry, dueGroup: `day-${slotDate.getTime()}` });
+  });
+
+  days.forEach(day => {
+    day.entries = clusterBySection(day.entries);
+  });
+  return days;
+};
+
+const selectedWeekDays = computed(() => selectedWeekOffset.value === 0
+  ? currentWeekDays()
+  : calendarWeekDays(selectedWeekStart.value));
+const weekDaysAtOffset = (offset) => offset === 0
+  ? currentWeekDays()
+  : calendarWeekDays(startOfWeekAtOffset(offset));
+const previousWeekDays = computed(() => weekDaysAtOffset(selectedWeekOffset.value - 1));
+const nextWeekDays = computed(() => weekDaysAtOffset(selectedWeekOffset.value + 1));
+const countWeekEntries = (days) => days.reduce((total, day) => total + day.entries.length, 0);
+const previousWeekCount = computed(() => countWeekEntries(previousWeekDays.value));
+const nextWeekCount = computed(() => countWeekEntries(nextWeekDays.value));
+const weekStripCount = computed(() => selectedWeekDays.value.reduce((total, day) => total + day.entries.length, 0));
 
 const destinationElement = (destinationBucket, entry) => {
   if (!focusRoot.value) return null;
   if (destinationBucket === 'done') {
     const completionDate = extractCompletionDateValue(entry.task.text);
     if (completionDate) {
-      const weekStart = startOfThisWeek();
-      const dayIndex = Math.round((completionDate - weekStart) / 86400000);
-      if (dayIndex >= 0 && dayIndex < 7) {
-        return focusRoot.value.querySelector(`[data-week-day-index="${dayIndex}"] .focus-week-day-column`);
-      }
+      const dateValue = formatDateInputValue(completionDate);
+      const visibleDay = focusRoot.value.querySelector(`[data-week-day-value="${dateValue}"] .focus-week-day-column`);
+      if (visibleDay) return visibleDay;
     }
     return focusRoot.value.querySelector('.focus-week-strip');
   }
@@ -1097,31 +1244,26 @@ const progressPercent = computed(() =>
   totalCount.value === 0 ? '0%' : `${Math.round((completedCount.value / totalCount.value) * 100)}%`
 );
 
-// ========================= Carousel =========================
-// Three panels in logical order [up next, now, in progress / waiting]. Exactly
-// one panel is spotlighted; NOW owns the center by default while the other two
-// peek from the edges. The former DONE panel's right-hand slot now belongs to
-// IN PROGRESS / WAITING because terminal work lives in the weekly strip below.
-const DEFAULT_PANEL = 1;
-const MAX_PANEL = 2;
+// ========================= Main panes =========================
+// The layout is fixed: Up Next on the left, NOW in the center, and In Progress
+// / Waiting on the right. Hover magnification is temporary and never rotates
+// or reselects these panes.
+const CENTER_PANEL = 1;
 const MAIN_PANE_MAGNIFY_DELAY_MS = 3000;
-const activePanel = ref(DEFAULT_PANEL);
 const mainPaneDock = ref({ panelIndex: null });
 let mainPaneMagnifyTimer = null;
 
-const isFocused = (panelIndex) => panelIndex === activePanel.value;
+const isFocused = (panelIndex) => panelIndex === CENTER_PANEL;
 const isMainPaneMagnified = (panelIndex) => mainPaneDock.value.panelIndex === panelIndex;
 const isMainPaneSpotlight = (panelIndex) =>
-  panelIndex === (mainPaneDock.value.panelIndex ?? activePanel.value);
+  panelIndex === (mainPaneDock.value.panelIndex ?? CENTER_PANEL);
 
 const magnifyMainPane = (panelIndex) => {
-  if (isFocused(panelIndex) || Math.abs(panelIndex - activePanel.value) !== 1) return;
+  if (isFocused(panelIndex)) return;
   clearTimeout(mainPaneMagnifyTimer);
   mainPaneMagnifyTimer = setTimeout(() => {
     mainPaneMagnifyTimer = null;
-    if (!isFocused(panelIndex) && Math.abs(panelIndex - activePanel.value) === 1) {
-      mainPaneDock.value = { panelIndex };
-    }
+    if (!isFocused(panelIndex)) mainPaneDock.value = { panelIndex };
   }, MAIN_PANE_MAGNIFY_DELAY_MS);
 };
 
@@ -1145,17 +1287,17 @@ const handleMainPaneInteraction = (event) => {
   if (isMainPaneTaskInteraction(event.target)) cancelMainPaneMagnifyTimer();
 };
 
-const handleMainPaneClick = (panelIndex, event) => {
-  if (isMainPaneTaskInteraction(event.target)) return;
-  focusPanel(panelIndex);
+const magnifyMainPaneOnClick = (panelIndex, event) => {
+  if (isMainPaneTaskInteraction(event.target) || isFocused(panelIndex)) return;
+  cancelMainPaneMagnifyTimer();
+  mainPaneDock.value = { panelIndex };
 };
 
 const panelStyle = (panelIndex) => {
   const dockPanelIndex = mainPaneDock.value.panelIndex;
-  const dockIsActive = dockPanelIndex !== null
-      && Math.abs(dockPanelIndex - activePanel.value) === 1;
+  const dockIsActive = dockPanelIndex !== null && dockPanelIndex !== CENTER_PANEL;
   if (dockIsActive) {
-    const dockOnLeft = dockPanelIndex < activePanel.value;
+    const dockOnLeft = dockPanelIndex < CENTER_PANEL;
     const dockDirection = dockOnLeft ? -1 : 1;
 
     if (panelIndex === dockPanelIndex) {
@@ -1172,7 +1314,7 @@ const panelStyle = (panelIndex) => {
       };
     }
 
-    if (panelIndex === activePanel.value) {
+    if (panelIndex === CENTER_PANEL) {
       // Settle halfway between the spotlight and side treatments, shifting
       // slightly away from the hovered pane while retaining a gentler tilt.
       const yieldedDirection = -dockDirection;
@@ -1187,7 +1329,7 @@ const panelStyle = (panelIndex) => {
     }
 
     // The opposite small pane does not move at all.
-    const restingDirection = panelIndex < activePanel.value ? -1 : 1;
+    const restingDirection = panelIndex < CENTER_PANEL ? -1 : 1;
     return {
       width: '28vw',
       height: '98%',
@@ -1207,32 +1349,17 @@ const panelStyle = (panelIndex) => {
     };
   }
 
-  // The carousel is linear, not circular. Adjacent panels occupy the visible
-  // side slots; a panel two positions away remains beyond that same edge.
-  const relativePosition = panelIndex - activePanel.value;
+  const relativePosition = panelIndex - CENTER_PANEL;
   const leftSide = relativePosition < 0;
-  const distance = Math.abs(relativePosition);
-  const x = `${(leftSide ? -1 : 1) * 34 * distance}vw`;
+  const x = `${(leftSide ? -1 : 1) * 34}vw`;
 
   return {
     transform: `translate(-50%, -48%) translateX(${x}) rotateY(${leftSide ? 7 : -7}deg) scale(0.94)`,
-    zIndex: distance === 1 ? 40 : 30,
-    opacity: distance === 1 ? 0.88 : 0.35,
-    pointerEvents: distance === 1 ? 'auto' : 'none'
+    zIndex: 40,
+    opacity: 0.88,
+    pointerEvents: 'auto'
   };
 };
-
-const focusPanel = (panelIndex) => {
-  resetMainPaneMagnification();
-  activePanel.value = panelIndex;
-};
-
-const step = (direction) => {
-  resetMainPaneMagnification();
-  activePanel.value = Math.min(Math.max(activePanel.value + direction, 0), MAX_PANEL);
-};
-
-const isEditableTarget = (target) => target?.closest?.('input, textarea, select, [contenteditable="true"]');
 
 const handleKeydown = (event) => {
   if (event.key === 'Escape' && dateMenuTaskId.value !== null) {
@@ -1240,36 +1367,9 @@ const handleKeydown = (event) => {
     return;
   }
   if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-  if (isEditableTarget(event.target)) return;
+  if (event.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
   event.preventDefault();
-  step(event.key === 'ArrowLeft' ? -1 : 1);
-};
-
-// Two-finger trackpad swipes arrive as wheel events with horizontal deltas.
-// Step once per gesture: fire as soon as the swipe is unambiguous, then stay
-// disarmed until the deltas (including the momentum tail) go quiet.
-let wheelAccum = 0;
-let wheelArmed = true;
-let wheelIdleTimer = null;
-
-const handleWheel = (event) => {
-  if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
-  event.preventDefault();
-
-  clearTimeout(wheelIdleTimer);
-  wheelIdleTimer = setTimeout(() => {
-    wheelArmed = true;
-    wheelAccum = 0;
-  }, 180);
-
-  if (!wheelArmed) return;
-
-  wheelAccum += event.deltaX;
-  if (Math.abs(wheelAccum) < 30) return;
-
-  wheelArmed = false;
-  step(wheelAccum > 0 ? 1 : -1);
-  wheelAccum = 0;
+  shiftSelectedWeek(event.key === 'ArrowLeft' ? -1 : 1);
 };
 
 const closeDateMenu = () => {
@@ -1287,7 +1387,6 @@ onUnmounted(() => {
   clearTimeout(mainPaneMagnifyTimer);
   window.removeEventListener('keydown', handleKeydown);
   document.removeEventListener('click', closeDateMenu);
-  clearTimeout(wheelIdleTimer);
   timers.forEach(clearTimeout);
   timers.clear();
   statusTimers.forEach(clearTimeout);
@@ -1935,25 +2034,135 @@ const toggleQuickAdd = async () => {
   box-shadow: 0 0 90px rgba(255, 179, 71, 0.13), 0 18px 44px rgba(0, 0, 0, 0.55);
 }
 
-.focus-week-strip {
+.focus-week-carousel-shell {
   position: relative;
-  z-index: 60;
   left: 50%;
-  top: auto;
-  width: calc(100vw - 24px);
+  width: 95vw;
   height: min(25vh, 220px);
-  max-height: min(25vh, 220px);
   margin-top: 0;
   flex: 0 0 min(25vh, 220px);
   box-sizing: border-box;
+  transform: translateX(-50%);
+  overflow: visible;
+  perspective: 1600px;
+}
+
+.focus-week-strip {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  transform: translateX(-50%);
   overflow: visible;
   background: #1a1f26;
   border: 1px solid #2c3340;
   border-radius: 14px;
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.48);
+}
+
+.focus-week-strip-current {
+  z-index: 62;
+}
+
+.focus-week-strip-adjacent {
+  z-index: 61;
+  top: 3%;
+  bottom: auto;
+  height: 94%;
+  opacity: 0.62;
+  cursor: pointer;
+  transition: transform 0.32s cubic-bezier(0.22, 0.9, 0.34, 1),
+              opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.focus-week-strip-previous {
+  transform: translateX(calc(-100% - 8px)) rotateY(-2.5deg) scaleY(0.96);
+  transform-origin: right center;
+}
+
+.focus-week-strip-next {
+  transform: translateX(calc(100% + 8px)) rotateY(2.5deg) scaleY(0.96);
+  transform-origin: left center;
+}
+
+.focus-week-strip-adjacent:hover {
+  opacity: 0.82;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.58);
+}
+
+.focus-week-carousel-shell.carousel-next .focus-week-strip-current {
+  animation: weekPanelFromRight 0.36s cubic-bezier(0.22, 0.9, 0.34, 1);
+}
+
+.focus-week-carousel-shell.carousel-next .focus-week-strip-previous {
+  animation: weekPanelToLeft 0.36s cubic-bezier(0.22, 0.9, 0.34, 1);
+}
+
+.focus-week-carousel-shell.carousel-previous .focus-week-strip-current {
+  animation: weekPanelFromLeft 0.36s cubic-bezier(0.22, 0.9, 0.34, 1);
+}
+
+.focus-week-carousel-shell.carousel-previous .focus-week-strip-next {
+  animation: weekPanelToRight 0.36s cubic-bezier(0.22, 0.9, 0.34, 1);
+}
+
+@keyframes weekPanelFromRight {
+  from { transform: translateX(calc(100% + 8px)) rotateY(2.5deg) scaleY(0.96); opacity: 0.62; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes weekPanelToLeft {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(calc(-100% - 8px)) rotateY(-2.5deg) scaleY(0.96); opacity: 0.62; }
+}
+
+@keyframes weekPanelFromLeft {
+  from { transform: translateX(calc(-100% - 8px)) rotateY(-2.5deg) scaleY(0.96); opacity: 0.62; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes weekPanelToRight {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(calc(100% + 8px)) rotateY(2.5deg) scaleY(0.96); opacity: 0.62; }
+}
+
+.focus-adjacent-week-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  flex: 1;
+  min-height: 0;
+  gap: 6px;
+  padding: 6px;
+  overflow: hidden;
+}
+
+.focus-adjacent-week-day {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #171c23;
+  border: 1px solid #2b3441;
+  border-radius: 8px;
+}
+
+.focus-adjacent-task-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 4px 5px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.focus-adjacent-task-row > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .week-strip-kicker {
@@ -1963,6 +2172,55 @@ const toggleQuickAdd = async () => {
 .panel-body.week-strip-body {
   min-height: 0;
   overflow: visible;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 5px;
+  padding: 6px;
+}
+
+.focus-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.focus-week-nav button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: #8f99a8;
+  background: #20262f;
+  border: 1px solid #333c49;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.focus-week-nav button:hover {
+  color: #7fb2e5;
+  border-color: #4f6f92;
+}
+
+.focus-week-nav .focus-week-return {
+  width: auto;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.focus-week-range {
+  min-width: 132px;
+  color: #8f99a8;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .focus-week-day-columns {
@@ -2236,25 +2494,6 @@ button.focus-week-clock:hover::after {
 
 .focus-week-day-column.is-current .focus-task-row {
   opacity: 0.88;
-}
-
-/* Keep side-panel rows safe from accidental status changes while still
-   allowing quick edits without first moving the panel into the spotlight. */
-.focus-panel:not(.is-focused) .panel-body button {
-  pointer-events: none;
-}
-
-.focus-panel:not(.is-focused) .panel-body .focus-row-title,
-.focus-panel:not(.is-focused) .panel-body .focus-due-edit,
-.focus-panel:not(.is-focused) .panel-body .focus-priority-toggle,
-.focus-panel:not(.is-focused) .panel-body .focus-inline-editor button {
-  pointer-events: auto;
-}
-
-.focus-panel:not(.is-focused) .panel-body .focus-row-title,
-.focus-panel:not(.is-focused) .panel-body .focus-due-edit,
-.focus-panel:not(.is-focused) .panel-body .focus-priority-toggle {
-  cursor: pointer;
 }
 
 .panel-header {
@@ -3035,52 +3274,6 @@ button.focus-week-clock:hover::after {
 }
 
 /* ========================= */
-/* Nav: dots + prev/next     */
-/* ========================= */
-.focus-carousel-nav {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  padding: 3px 0 2px;
-  line-height: 0;
-}
-
-.focus-dots {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.focus-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: none;
-  padding: 0;
-  background: #333c49;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.focus-dot:hover {
-  background: #4a5568;
-}
-
-.focus-dot.dot-now {
-  background: rgba(123, 163, 200, 0.55);
-}
-
-.focus-dot.active {
-  background: #ffb347;
-  transform: scale(1.35);
-}
-
-.focus-dot.dot-now.active {
-  background: #7fb2e5;
-}
-
-/* ========================= */
 /* Quick add                 */
 /* ========================= */
 .focus-quick-add-btn {
@@ -3313,6 +3506,31 @@ button.focus-week-clock:hover::after {
   background: #fff;
   border-color: #ddd;
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .focus-week-strip-adjacent:hover {
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.22);
+}
+
+.theme-light .focus-adjacent-week-day {
+  background: #f8f8f8;
+  border-color: #dedede;
+}
+
+.theme-light .focus-week-nav button {
+  color: #777;
+  background: #f7f7f7;
+  border-color: #d8d8d8;
+}
+
+.theme-light .focus-week-nav button:hover {
+  color: #1976d2;
+  background: #eef6fd;
+  border-color: #9fc4e5;
+}
+
+.theme-light .focus-week-range {
+  color: #777;
 }
 
 .theme-light .focus-week-day-column {
@@ -3608,26 +3826,6 @@ button.focus-week-clock:hover::after {
 .theme-light .focus-plan-btn:hover,
 .theme-light .focus-reopen-btn:hover {
   background: #e8e8e8;
-}
-
-.theme-light .focus-dot {
-  background: #ccc;
-}
-
-.theme-light .focus-dot:hover {
-  background: #aaa;
-}
-
-.theme-light .focus-dot.dot-done {
-  background: rgba(76, 175, 80, 0.45);
-}
-
-.theme-light .focus-dot.active {
-  background: #ff9800;
-}
-
-.theme-light .focus-dot.dot-done.active {
-  background: #4caf50;
 }
 
 .theme-light .focus-quick-add-input {
