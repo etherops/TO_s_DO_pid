@@ -75,7 +75,8 @@
             :style="panelStyle(0)"
             @mouseenter="magnifyMainPane(0)"
             @mouseleave="resetMainPaneMagnification(0)"
-            @click="focusPanel(0)"
+            @pointerdown.capture="handleMainPaneInteraction($event)"
+            @click="handleMainPaneClick(0, $event)"
         >
           <header class="panel-header">
             <span class="panel-kicker upnext-kicker">‹ Up Next</span>
@@ -95,7 +96,7 @@
                    :class="rowClasses(entry)" :data-task-id="entry.task.id">
               <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                       :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
-                      @click.stop="cycleEntryStatus(entry, 'upNext')"></button>
+                      @click.stop="cycleEntryStatus(entry, 'upNext', $event)"></button>
               <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                 <input v-model="editTaskName" class="focus-edit-name"
                        aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -133,7 +134,8 @@
             :style="panelStyle(2)"
             @mouseenter="magnifyMainPane(2)"
             @mouseleave="resetMainPaneMagnification(2)"
-            @click="focusPanel(2)"
+            @pointerdown.capture="handleMainPaneInteraction($event)"
+            @click="handleMainPaneClick(2, $event)"
         >
           <header class="panel-header">
             <span class="panel-kicker in-progress-queued-kicker">In Progress / Waiting</span>
@@ -154,7 +156,7 @@
                      :data-task-id="entry.task.id">
                   <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                           :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
-                          @click.stop="cycleEntryStatus(entry, 'inProgressQueued')"></button>
+                          @click.stop="cycleEntryStatus(entry, 'inProgressQueued', $event)"></button>
                   <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                     <input v-model="editTaskName" class="focus-edit-name"
                            aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -205,7 +207,8 @@
             :style="panelStyle(1)"
             @mouseenter="magnifyMainPane(1)"
             @mouseleave="resetMainPaneMagnification(1)"
-            @click="focusPanel(1)"
+            @pointerdown.capture="handleMainPaneInteraction($event)"
+            @click="handleMainPaneClick(1, $event)"
         >
           <header class="panel-header">
             <span class="panel-kicker now-kicker">Now</span>
@@ -228,7 +231,7 @@
                    :data-task-id="entry.task.id">
                 <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
-                        @click.stop="cycleEntryStatus(entry, 'now')"></button>
+                        @click.stop="cycleEntryStatus(entry, 'now', $event)"></button>
                 <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -270,6 +273,7 @@
           <div class="focus-week-day-columns" :class="{ 'has-expanded-day': expandedWeekDayIndex !== null }"
                @mousemove="magnifyWeekDays" @mouseleave="resetWeekDayMagnification">
             <div v-for="(day, dayIndex) in weekDays" :key="day.key" class="focus-week-day-slot"
+                 :data-week-day-index="dayIndex"
                  :style="weekDayDockStyles[dayIndex]">
               <div class="focus-week-day-column"
                    :class="{
@@ -308,7 +312,7 @@
                       aria-hidden="true"></span>
                 <button v-else-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
-                        @click.stop="cycleEntryStatus(entry, entry.sourceBucket)"></button>
+                        @click.stop="cycleEntryStatus(entry, entry.sourceBucket, $event)"></button>
                 <div v-if="!day.isToday && isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
@@ -471,6 +475,7 @@ const editingTaskId = ref(null);
 const editTaskName = ref('');
 const dateMenuTaskId = ref(null);
 const dateMenuPosition = ref({ top: 0, left: 0 });
+const dateMenuSourceRect = ref(null);
 const customDatePickerOpen = ref(false);
 const customDateKind = ref('day');
 const customDateInput = ref(null);
@@ -587,6 +592,15 @@ const focusRoot = ref(null);
 const flightLayer = ref(null);
 
 const timers = new Set();
+
+const snapshotRect = (rect) => rect ? ({
+  top: rect.top,
+  left: rect.left,
+  right: rect.right,
+  bottom: rect.bottom,
+  width: rect.width,
+  height: rect.height
+}) : null;
 
 const schedule = (fn, delay) => {
   const id = setTimeout(() => {
@@ -903,24 +917,77 @@ const weekDays = computed(() => {
 });
 const weekStripCount = computed(() => weekDays.value.reduce((total, day) => total + day.entries.length, 0));
 
+const destinationElement = (destinationBucket, entry) => {
+  if (!focusRoot.value) return null;
+  if (destinationBucket === 'done') {
+    const completionDate = extractCompletionDateValue(entry.task.text);
+    if (completionDate) {
+      const weekStart = startOfThisWeek();
+      const dayIndex = Math.round((completionDate - weekStart) / 86400000);
+      if (dayIndex >= 0 && dayIndex < 7) {
+        return focusRoot.value.querySelector(`[data-week-day-index="${dayIndex}"] .focus-week-day-column`);
+      }
+    }
+    return focusRoot.value.querySelector('.focus-week-strip');
+  }
+
+  const selector = destinationBucket === 'upNext'
+    ? '.panel-upnext .panel-body'
+    : destinationBucket === 'inProgressQueued'
+      ? '.panel-in-progress-queued .panel-body'
+      : '.panel-now .panel-body';
+  return focusRoot.value.querySelector(selector);
+};
+
+const rowNearestRect = (taskId, preferredRect) => {
+  const rows = [...(focusRoot.value?.querySelectorAll(`.focus-stage .focus-task-row[data-task-id="${taskId}"]`) || [])];
+  if (!preferredRect || rows.length < 2) return rows[0] || null;
+  const preferredX = preferredRect.left + preferredRect.width / 2;
+  const preferredY = preferredRect.top + preferredRect.height / 2;
+  return rows.reduce((nearest, row) => {
+    const rect = row.getBoundingClientRect();
+    const distance = Math.hypot(rect.left + rect.width / 2 - preferredX, rect.top + rect.height / 2 - preferredY);
+    return !nearest || distance < nearest.distance ? { row, distance } : nearest;
+  }, null)?.row || null;
+};
+
+const fallbackFlightVector = (direction) => ({
+  x: direction === 'right' ? window.innerWidth * 0.46 : direction === 'left' ? window.innerWidth * -0.46 : 0,
+  y: direction === 'within' ? -72 : 0
+});
+
 // The panels clip their contents, so a card can't visibly leave one. Clone it
-// into the fixed overlay at the moment it takes off - the clone sails above
-// every panel while the original collapses out of the list behind it.
-const launchFlight = (taskId, direction) => {
-  const row = focusRoot.value?.querySelector(`.focus-stage .focus-task-row[data-task-id="${taskId}"]`);
+// into the fixed overlay and aim the clone at the actual destination region.
+const launchFlight = (taskId, direction, destinationBucket, entry, preferredSourceRect = null) => {
+  const row = rowNearestRect(taskId, preferredSourceRect);
   if (!row || !flightLayer.value) return;
 
   const { top, left, width, height } = row.getBoundingClientRect();
+  const sourceCenter = { x: left + width / 2, y: top + height / 2 };
+  const target = destinationElement(destinationBucket, entry);
+  const targetRect = target?.getBoundingClientRect();
+  const vector = targetRect
+    ? {
+        x: targetRect.left + targetRect.width / 2 - sourceCenter.x,
+        y: targetRect.top + Math.min(targetRect.height / 2, 110) - sourceCenter.y
+      }
+    : fallbackFlightVector(direction);
   const flier = row.cloneNode(true);
 
   flier.classList.remove('transitioning', 'phase-held', 'arriving');
-  flier.classList.add('flight-card', `fly-${direction}`);
+  flier.classList.add('flight-card', 'fly-target');
+  const horizontalSign = Math.sign(vector.x);
   Object.assign(flier.style, {
     top: `${top}px`,
     left: `${left}px`,
     width: `${width}px`,
     height: `${height}px`
   });
+  flier.style.setProperty('--flight-x', `${vector.x}px`);
+  flier.style.setProperty('--flight-y', `${vector.y}px`);
+  flier.style.setProperty('--flight-kick-x', `${horizontalSign * -18}px`);
+  flier.style.setProperty('--flight-kick-y', `${vector.y > 20 ? -7 : 7}px`);
+  flier.style.setProperty('--flight-rotation', `${horizontalSign * 3}deg`);
 
   flightLayer.value.appendChild(flier);
   schedule(() => flier.remove(), WHISK_MS);
@@ -935,7 +1002,7 @@ const cardPlacement = (focusModel, bucketName, taskId, preservePendingState = tr
   return { index, dueGroup: dueGroup || null };
 };
 
-const moveWithTransition = (entry, sourceBucket, destinationBucket, applyChange) => {
+const moveWithTransition = (entry, sourceBucket, destinationBucket, applyChange, sourceRect = null) => {
   const taskId = entry.task.id;
   if (transitions.value.has(taskId)) return;
 
@@ -974,7 +1041,7 @@ const moveWithTransition = (entry, sourceBucket, destinationBucket, applyChange)
   schedule(() => {
     const transition = transitions.value.get(taskId);
     if (!transition) return;
-    launchFlight(taskId, direction);
+    launchFlight(taskId, direction, resolvedDestination, entry, sourceRect);
     transitions.value.set(taskId, { ...transition, phase: 'whisking' });
   }, HOLD_MS);
 
@@ -1037,8 +1104,10 @@ const progressPercent = computed(() =>
 // IN PROGRESS / WAITING because terminal work lives in the weekly strip below.
 const DEFAULT_PANEL = 1;
 const MAX_PANEL = 2;
+const MAIN_PANE_MAGNIFY_DELAY_MS = 3000;
 const activePanel = ref(DEFAULT_PANEL);
 const mainPaneDock = ref({ panelIndex: null });
+let mainPaneMagnifyTimer = null;
 
 const isFocused = (panelIndex) => panelIndex === activePanel.value;
 const isMainPaneMagnified = (panelIndex) => mainPaneDock.value.panelIndex === panelIndex;
@@ -1047,13 +1116,38 @@ const isMainPaneSpotlight = (panelIndex) =>
 
 const magnifyMainPane = (panelIndex) => {
   if (isFocused(panelIndex) || Math.abs(panelIndex - activePanel.value) !== 1) return;
-  mainPaneDock.value = { panelIndex };
+  clearTimeout(mainPaneMagnifyTimer);
+  mainPaneMagnifyTimer = setTimeout(() => {
+    mainPaneMagnifyTimer = null;
+    if (!isFocused(panelIndex) && Math.abs(panelIndex - activePanel.value) === 1) {
+      mainPaneDock.value = { panelIndex };
+    }
+  }, MAIN_PANE_MAGNIFY_DELAY_MS);
+};
+
+const cancelMainPaneMagnifyTimer = () => {
+  clearTimeout(mainPaneMagnifyTimer);
+  mainPaneMagnifyTimer = null;
 };
 
 const resetMainPaneMagnification = (panelIndex = null) => {
+  cancelMainPaneMagnifyTimer();
   if (panelIndex === null || mainPaneDock.value.panelIndex === panelIndex) {
     mainPaneDock.value = { panelIndex: null };
   }
+};
+
+const isMainPaneTaskInteraction = (target) => Boolean(target?.closest?.(
+  '.focus-task-row, .focus-inline-editor, button, input, textarea, select, [contenteditable="true"]'
+));
+
+const handleMainPaneInteraction = (event) => {
+  if (isMainPaneTaskInteraction(event.target)) cancelMainPaneMagnifyTimer();
+};
+
+const handleMainPaneClick = (panelIndex, event) => {
+  if (isMainPaneTaskInteraction(event.target)) return;
+  focusPanel(panelIndex);
 };
 
 const panelStyle = (panelIndex) => {
@@ -1180,6 +1274,7 @@ const handleWheel = (event) => {
 
 const closeDateMenu = () => {
   dateMenuTaskId.value = null;
+  dateMenuSourceRect.value = null;
   customDatePickerOpen.value = false;
 };
 
@@ -1189,6 +1284,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  clearTimeout(mainPaneMagnifyTimer);
   window.removeEventListener('keydown', handleKeydown);
   document.removeEventListener('click', closeDateMenu);
   clearTimeout(wheelIdleTimer);
@@ -1259,6 +1355,7 @@ const startDueDateEdit = (entry, event) => {
         : Math.max(8, badgeRect.top - estimatedMenuHeight - 8),
     left: Math.min(Math.max(8, badgeRect.right - menuWidth), window.innerWidth - menuWidth - 8)
   };
+  dateMenuSourceRect.value = snapshotRect(event.currentTarget.closest('.focus-task-row')?.getBoundingClientRect());
   dateMenuTaskId.value = dateMenuTaskId.value === entry.task.id ? null : entry.task.id;
 };
 
@@ -1460,6 +1557,7 @@ const setEntryDueDate = (entry, dateValue) => {
   const updatedText = isTerminalEntry(entry)
     ? setCompletionDate(entry.task.text, dateValue)
     : updateTaskNameAndDueDate(entry.task.text, taskName, dateValue);
+  const sourceRect = dateMenuSourceRect.value;
   closeDateMenu();
   if (updatedText === entry.task.text) return;
 
@@ -1483,7 +1581,7 @@ const setEntryDueDate = (entry, dateValue) => {
   };
 
   if (sourceBucket && destinationBucket) {
-    moveWithTransition(entry, sourceBucket, destinationBucket, applyDateChange);
+    moveWithTransition(entry, sourceBucket, destinationBucket, applyDateChange, sourceRect);
   } else {
     applyDateChange();
     emit('update');
@@ -1544,7 +1642,7 @@ const finishPendingStatus = (taskId) => {
   if (!pending) return;
   statusTimers.delete(taskId);
 
-  const { entry, source, index, sourcePlacement, initialStatus } = pending;
+  const { entry, source, index, sourcePlacement, sourceRect, initialStatus } = pending;
   const finalStatus = entry.task.statusChar;
   const section = initialStatus === ' ' && finalStatus === '~'
       ? moveToActiveWip(entry)
@@ -1586,7 +1684,7 @@ const finishPendingStatus = (taskId) => {
   emit('update');
 
   nextTick(() => {
-    launchFlight(taskId, direction);
+    launchFlight(taskId, direction, destination, entry, sourceRect);
     const transition = transitions.value.get(taskId);
     if (transition) transitions.value.set(taskId, { ...transition, phase: 'whisking' });
   });
@@ -1596,13 +1694,9 @@ const finishPendingStatus = (taskId) => {
     arrivals.value.set(taskId, direction);
     schedule(() => arrivals.value.delete(taskId), ARRIVE_MS);
   }, WHISK_MS);
-
-  activePanel.value = destination === 'upNext'
-      ? 0
-      : destination === 'inProgressQueued' ? 2 : DEFAULT_PANEL;
 };
 
-const cycleEntryStatus = (entry, sourceBucket) => {
+const cycleEntryStatus = (entry, sourceBucket, event = null) => {
   const taskId = entry.task.id;
   if (transitions.value.has(taskId)) return;
 
@@ -1614,7 +1708,8 @@ const cycleEntryStatus = (entry, sourceBucket) => {
       index: Math.max(index, 0),
       entry,
       initialStatus: entry.task.statusChar,
-      sourcePlacement: cardPlacement(model.value, sourceBucket, taskId)
+      sourcePlacement: cardPlacement(model.value, sourceBucket, taskId),
+      sourceRect: snapshotRect(event?.currentTarget?.closest('.focus-task-row')?.getBoundingClientRect())
     };
     pendingStatuses.value.set(taskId, pending);
   }
@@ -2866,34 +2961,14 @@ button.focus-week-clock:hover::after {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
 }
 
-.flight-card.fly-right {
-  animation: flyRight 0.55s cubic-bezier(0.45, 0, 0.72, 0.3) forwards;
+.flight-card.fly-target {
+  animation: flyTowardTarget 0.55s cubic-bezier(0.45, 0, 0.72, 0.3) forwards;
 }
 
-.flight-card.fly-left {
-  animation: flyLeft 0.55s cubic-bezier(0.45, 0, 0.72, 0.3) forwards;
-}
-
-.flight-card.fly-within {
-  animation: flyWithin 0.55s cubic-bezier(0.45, 0, 0.72, 0.3) forwards;
-}
-
-@keyframes flyRight {
-  0% { transform: translateX(0) scale(1) rotate(0deg); opacity: 1; }
-  15% { transform: translateX(-22px) scale(1.03) rotate(-1deg); opacity: 1; }
-  100% { transform: translateX(46vw) scale(0.68) rotate(3deg); opacity: 0; }
-}
-
-@keyframes flyLeft {
-  0% { transform: translateX(0) scale(1) rotate(0deg); opacity: 1; }
-  15% { transform: translateX(22px) scale(1.03) rotate(1deg); opacity: 1; }
-  100% { transform: translateX(-46vw) scale(0.68) rotate(-3deg); opacity: 0; }
-}
-
-@keyframes flyWithin {
-  0% { transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
-  18% { transform: translateY(8px) scale(1.03) rotate(0.5deg); opacity: 1; }
-  100% { transform: translateY(-72px) scale(0.72) rotate(-2deg); opacity: 0; }
+@keyframes flyTowardTarget {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+  15% { transform: translate(var(--flight-kick-x), var(--flight-kick-y)) scale(1.03) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--flight-x), var(--flight-y)) scale(0.68) rotate(var(--flight-rotation)); opacity: 0; }
 }
 
 /* Landing: slide in from the side the card travelled from, with a green flash */
