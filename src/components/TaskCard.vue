@@ -135,14 +135,16 @@
           </div>
 
           <!-- Completion date badge - positioned between content and buttons -->
-          <div
-              v-if="hasCompletionDate(task.text) && !isOnIce"
-              :class="['completion-badge', { 'completion-badge-cancelled': task.statusChar === '-' }]"
-              :title="`${task.statusChar === 'x' ? 'Completed' : 'Cancelled'}: ${getCompletionBadgeFromText(task.text)}`"
+          <button
+              v-if="isTerminalTask && !isOnIce"
+              type="button"
+              :class="['completion-badge', 'completion-date-trigger', { 'completion-badge-cancelled': task.statusChar === '-' }]"
+              :title="hasCompletionDate(task.text) ? `Change completion date: ${getCompletionBadgeFromText(task.text)}` : 'Set completion date'"
+              @click.stop="toggleCompletionDateMenu"
           >
             <span :class="task.statusChar === 'x' ? 'completion-checkmark' : 'completion-cancel-mark'"></span>
-            {{ getCompletionBadgeFromText(task.text) }}
-          </div>
+            {{ getCompletionBadgeFromText(task.text) || 'Set date' }}
+          </button>
 
           <!-- Fixed buttons container -->
           <div v-if="!isArchiveColumn" class="task-buttons-container">
@@ -240,6 +242,21 @@
       </div>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div v-if="completionDateMenuOpen" class="completion-date-popover"
+         :style="completionDateMenuStyle" role="dialog" aria-label="Set completion date" @click.stop>
+      <div class="completion-date-popover-title">Set completion date</div>
+      <div class="completion-date-options">
+        <button type="button" @click="setTaskCompletionDate(completionDateShortcuts.yesterday)">Yesterday</button>
+        <button type="button" @click="setTaskCompletionDate(completionDateShortcuts.today)">Today</button>
+        <button type="button" :class="{ active: completionCustomDateOpen }" @click="openCompletionCustomDate">Custom…</button>
+      </div>
+      <input v-if="completionCustomDateOpen" ref="completionCustomDateInput" type="date"
+             class="completion-custom-date-input" :value="currentCompletionDateValue"
+             aria-label="Custom completion date" @change="setTaskCompletionDate($event.target.value)" />
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -330,11 +347,84 @@ const sortTimeout = ref(null);
 const isPendingCompletion = ref(false);
 const completionTimeout = ref(null);
 const isTerminalTask = computed(() => props.task.statusChar === 'x' || props.task.statusChar === '-');
+const completionDateMenuOpen = ref(false);
+const completionCustomDateOpen = ref(false);
+const completionDateMenuPosition = ref({ top: 0, left: 0 });
 
 // Template refs
 const taskTextInput = ref(null);
 const noteTextInput = ref(null);
 const datePickerRef = ref(null);
+const completionCustomDateInput = ref(null);
+
+const formatDateInputValue = (date) => date
+  ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  : '';
+
+const completionDateShortcuts = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  return {
+    yesterday: formatDateInputValue(yesterday),
+    today: formatDateInputValue(today)
+  };
+});
+
+const currentCompletionDateValue = computed(() =>
+  formatDateInputValue(extractCompletionDateValue(props.task.text))
+);
+
+const completionDateMenuStyle = computed(() => ({
+  top: `${completionDateMenuPosition.value.top}px`,
+  left: `${completionDateMenuPosition.value.left}px`
+}));
+
+const closeCompletionDateMenu = () => {
+  completionDateMenuOpen.value = false;
+  completionCustomDateOpen.value = false;
+};
+
+const toggleCompletionDateMenu = (event) => {
+  if (!isTerminalTask.value) return;
+  if (completionDateMenuOpen.value) return closeCompletionDateMenu();
+  const rect = event.currentTarget.getBoundingClientRect();
+  const menuWidth = Math.min(260, window.innerWidth - 24);
+  const estimatedHeight = 126;
+  completionDateMenuPosition.value = {
+    top: rect.bottom + estimatedHeight + 8 <= window.innerHeight
+      ? rect.bottom + 6
+      : Math.max(8, rect.top - estimatedHeight - 6),
+    left: Math.min(Math.max(8, rect.right - menuWidth), window.innerWidth - menuWidth - 8)
+  };
+  completionDateMenuOpen.value = true;
+};
+
+const openCompletionCustomDate = async () => {
+  completionCustomDateOpen.value = true;
+  await nextTick();
+  completionCustomDateInput.value?.focus();
+  try {
+    completionCustomDateInput.value?.showPicker?.();
+  } catch {
+    // The visible native input remains available when programmatic opening is restricted.
+  }
+};
+
+const setTaskCompletionDate = (value) => {
+  if (!value || !isTerminalTask.value) return;
+  const updatedText = setCompletionDate(props.task.text, value);
+  closeCompletionDateMenu();
+  if (updatedText === props.task.text) return;
+  props.task.text = updatedText;
+  props.task.displayText = getStrippedDisplayText(updatedText);
+  emit('task-updated');
+};
+
+const handleCompletionDateMenuKeydown = (event) => {
+  if (event.key === 'Escape') closeCompletionDateMenu();
+};
 
 // Toggle task status
 const toggleTaskStatus = () => {
@@ -415,8 +505,9 @@ const handleEditClick = (event) => {
 };
 
 // Handle date click - start edit mode with focus on date
-const handleDateClick = () => {
-  startEditingAll('date');
+const handleDateClick = (event) => {
+  if (isTerminalTask.value) toggleCompletionDateMenu(event);
+  else startEditingAll('date');
 };
 
 // Handle notes click - start edit mode with focus on notes
@@ -674,10 +765,14 @@ const handleContextMenu = (event) => {
 // Process display text on mount if the task is new
 onMounted(() => {
   if (props.task.isNew) nextTick(() => startEditingAll());
+  document.addEventListener('click', closeCompletionDateMenu);
+  document.addEventListener('keydown', handleCompletionDateMenuKeydown);
 });
 
 // Clean up timeouts on unmount
 onUnmounted(() => {
+  document.removeEventListener('click', closeCompletionDateMenu);
+  document.removeEventListener('keydown', handleCompletionDateMenuKeydown);
   if (sortTimeout.value) {
     clearTimeout(sortTimeout.value);
   }
@@ -1078,6 +1173,13 @@ onUnmounted(() => {
   align-self: center;
   margin-top: 3px; /* Align with task title baseline */
   min-width: fit-content; /* Ensure badge never gets compressed */
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.completion-badge:hover {
+  filter: brightness(0.97);
+  box-shadow: 0 1px 4px rgba(46, 125, 50, 0.24);
 }
 
 .completion-checkmark {
@@ -1106,6 +1208,69 @@ onUnmounted(() => {
   background-color: #f5f5f5;
   border-color: #757575;
   color: #424242;
+}
+
+.completion-date-popover {
+  position: fixed;
+  z-index: 10000;
+  width: min(260px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 9px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.completion-date-popover-title {
+  margin-bottom: 7px;
+  color: #777;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.completion-date-options {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.completion-date-options button {
+  width: auto;
+  padding: 4px 7px;
+  color: #333;
+  background: #f7f7f7;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.completion-date-options button:hover,
+.completion-date-options button.active {
+  color: #1976d2;
+  background: #f2f7fc;
+  border-color: #7fb2e5;
+}
+
+.completion-custom-date-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 5px 7px;
+  color: #333;
+  background: #fff;
+  border: 1px solid #7fb2e5;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
 }
 
 /* Delete button specific */

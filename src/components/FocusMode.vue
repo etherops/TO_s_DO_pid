@@ -1300,6 +1300,16 @@ const buildDateShortcuts = (terminal = false) => {
     value: formatDateInputValue(date)
   });
 
+  // Completion is historical: make the common backdating action immediate
+  // and leave arbitrary earlier dates to the custom day picker.
+  if (terminal) {
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    addOption('Yesterday', yesterday);
+    addOption('Today', today);
+    return options;
+  }
+
   addOption('Today', today);
 
   const tomorrow = new Date(today);
@@ -1311,14 +1321,6 @@ const buildDateShortcuts = (terminal = false) => {
   while (remainingDate <= endOfWeek) {
     addOption(remainingDate.toLocaleDateString('en-US', { weekday: 'long' }), new Date(remainingDate));
     remainingDate.setDate(remainingDate.getDate() + 1);
-  }
-
-  // A completed/not-completing task always records one exact completion day.
-  if (terminal) {
-    const nextMonday = new Date(endOfWeek);
-    nextMonday.setDate(endOfWeek.getDate() + 2);
-    addOption('Next week', nextMonday);
-    return options;
   }
 
   const weekStart = new Date(today);
