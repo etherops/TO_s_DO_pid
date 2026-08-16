@@ -41,6 +41,13 @@
         @set-view-mode="setViewMode"
     />
 
+    <ReviewMode
+        v-else-if="viewMode === 'review'"
+        :todo-data="todoData"
+        :theme="resolvedTheme"
+        @set-view-mode="setViewMode"
+    />
+
     <KanbanBoard
         v-else
         :todo-data="todoData"
@@ -57,6 +64,7 @@ import { onMounted, onUnmounted, computed, ref } from 'vue';
 import FileTabBar from './components/FileTabBar.vue';
 import KanbanBoard from './components/KanbanBoard.vue';
 import FocusMode from './components/FocusMode.vue';
+import ReviewMode from './components/ReviewMode.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import { useTodoData } from './composables/useTodoData';
 import { useUndoRedo } from './composables/useUndoRedo';
@@ -76,8 +84,9 @@ const {
   registerAfterLoad
 } = useTodoData();
 
-// View mode state - load from localStorage ('normal', 'triage', 'plan', 'focus')
-// 'plan' arranges the board drawers for planning; 'focus' is the full-screen execute-today view
+// View mode state - load from localStorage ('normal', 'triage', 'plan', 'focus', 'review')
+// 'plan' arranges the board drawers for planning; 'focus' is the full-screen
+// execute-today view; 'review' is the full-screen calendar retrospective
 const viewMode = ref(
   localStorage.getItem('viewMode') || 'normal'
 );
