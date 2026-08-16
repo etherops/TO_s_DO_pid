@@ -213,8 +213,6 @@ const props = defineProps({
   theme: { type: String, default: 'light' }
 });
 
-defineEmits(['set-view-mode']);
-
 const anchor = ref(new Date());
 const selectedBucketKey = ref(null);
 

@@ -45,7 +45,6 @@
         v-else-if="viewMode === 'review'"
         :todo-data="todoData"
         :theme="resolvedTheme"
-        @set-view-mode="setViewMode"
     />
 
     <KanbanBoard

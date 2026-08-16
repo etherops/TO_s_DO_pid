@@ -41,9 +41,9 @@ A Vue 3 Kanban board whose "database" is one or more plain markdown files. Every
   - `useTaskDisplay.js` — task filtering and display helpers.
   - `useTaskSelection.js` — multi-select set of task ids and click handler (normal click, cmd/ctrl click, shift click).
 - Components (`src/components/`):
-  - `FileTabBar.vue` — tabs, view-mode buttons (Triage/Plan/Focus/Review), undo/redo, History button. The full-screen modes have no close button of their own; the view-mode buttons are the only way in and out.
+  - `FileTabBar.vue` — tabs, view-mode buttons (Triage/Plan/Focus/Review), undo/redo, History button.
   - `KanbanBoard.vue` — renders the five column stacks, owns drag/drop glue, date-picker, archive-confirm modal, context menu, multi-drag handler. Drawer presets per view mode: `triage` (expand TODO/PROJECTS, collapse WIP/DONE) and `plan` (expand SELECTED/WIP, collapse the rest).
-  - `ReviewMode.vue` — full-screen Review retrospective: a month calendar of what was completed, dropped, and is still due, topped by a clickable Jan–Dec bar chart of its calendar year. The chart spans the calendar's width with the stat tiles in the rail-width slot beside it. The rail carries the selected day's detail, an 8-week throughput trend, section ranking, and still-overdue work, each card shrinking with its own internal scroll so no card header falls below the fold. Read-only.
+  - `ReviewMode.vue` — read-only Review mode implementation; its product contract lives in `SPEC.md`.
   - `FocusMode.vue` — full-screen Focus execution view. Its product behavior and interaction contract live in `docs/focus-mode-spec.md`; read that spec before changing Focus UX or routing.
   - `KanbanColumn.vue` — single column stack (TODO/PROJECTS/SELECTED/WIP/DONE); tri-state collapse caret; passes multi-drag through.
   - `KanbanSection.vue` — an H2/H3 section inside a column; hosts `vuedraggable`; handles multi-drag stacking (clones `.task-card.selected` into the drag wrapper, hides originals with `.multi-drag-hidden`).
