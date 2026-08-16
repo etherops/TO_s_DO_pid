@@ -14,7 +14,7 @@ describe('Archive Confirmation Modal', () => {
     // Verify modal appears
     cy.get('.modal-backdrop').should('exist');
     cy.get('.modal-content').should('exist');
-    cy.get('.modal-header h3').should('contain', 'Archive Section');
+    cy.get('.modal-header h3').should('contain', 'Archive Completed Tasks');
     
     // Verify section name is shown
     cy.get('.confirmation-message').should('contain', sectionName);
@@ -24,29 +24,28 @@ describe('Archive Confirmation Modal', () => {
     cy.get('.modal-backdrop').should('not.exist');
   });
 
-  it('should show new leftovers section name in modal', () => {
+  it('should show the current-week archive section name in modal', () => {
     const sectionName = 'WIP';
     
     findSection(sectionName).within(() => {
       cy.get('.archive-section-btn').click();
     });
     
-    // Check that new section name contains "Leftovers from" and the original section name
-    cy.get('.detail-text').should('contain', 'Leftovers from');
-    cy.get('.detail-text').should('contain', `"${sectionName}"`);
+    // The archive target is named using the canonical current-week format.
+    cy.get('.detail-text').should('match', /[A-Z][a-z]{2} Week #\d+ \d{4}/);
     
     // Cancel
     cy.get('.btn-cancel').click();
   });
 
-  it('should show incomplete tasks that will be moved', () => {
+  it('should show completed tasks that will be archived', () => {
     const sectionName = 'WIP';
     
     findSection(sectionName).within(() => {
       cy.get('.archive-section-btn').click();
     });
     
-    // Check for incomplete tasks preview
+    // Check for terminal-task preview
     cy.get('.incomplete-tasks-preview').should('exist');
     cy.get('.task-list .task-item').should('have.length.at.least', 1);
     
@@ -57,7 +56,7 @@ describe('Archive Confirmation Modal', () => {
     cy.get('.btn-cancel').click();
   });
 
-  it('should archive section and create new week section on confirm', () => {
+  it('should archive terminal tasks without moving the source section', () => {
     const sectionName = 'WIP';
     
     // Get initial sections count in WIP
@@ -73,7 +72,7 @@ describe('Archive Confirmation Modal', () => {
     });
     
     // Confirm archive
-    cy.get('.btn-confirm').contains('Archive Section').click();
+    cy.get('.btn-confirm').contains('Archive Completed Tasks').click();
     
     // If archive column picker appears (multiple DONE columns), select ARCHIVE
     cy.get('body').then($body => {
@@ -85,24 +84,14 @@ describe('Archive Confirmation Modal', () => {
     // Wait for DOM updates
     cy.wait(500);
     
-    // Verify original section was archived (no longer in WIP column)
-    // Need to be specific because "Leftovers from WIP" contains "WIP" too
+    // The source section remains in WIP.
     cy.get('.column-stack').eq(1).within(() => {
-      cy.get('.section-header').each(($header) => {
-        const text = $header.text().trim();
-        // Should not find the exact original section name
-        expect(text).to.not.equal(sectionName);
-      });
+      cy.contains('.section-header', sectionName).should('exist');
     });
     
-    // Verify new leftovers section was created in WIP
-    cy.get('.column-stack').eq(1).within(() => {
-      cy.contains('.section-header', `Leftovers from "${sectionName}"`).should('exist');
-    });
-    
-    // Verify archived section appears in DONE column
+    // Verify a current-week archive section appears in DONE.
     cy.get('.column-stack').eq(2).within(() => {
-      cy.contains('.section', sectionName).should('exist');
+      cy.contains('.section-header', /Week #\d+ \d{4}/).should('exist');
     });
   });
 
@@ -125,8 +114,8 @@ describe('Archive Confirmation Modal', () => {
           cy.get('.archive-section-btn').click();
         });
         
-        // Modal should indicate no new section needed
-        cy.get('.detail-text').should('contain', 'All tasks are complete');
+        // Modal should indicate there are no terminal tasks to archive.
+        cy.get('.detail-text').should('contain', 'no completed or will-not-do');
         
         // Confirm archive
         cy.get('.btn-confirm').click();
@@ -162,7 +151,7 @@ describe('Archive Confirmation Modal', () => {
     findSection(sectionName).should('exist');
   });
 
-  it('should move only incomplete tasks to new section', () => {
+  it('should leave incomplete tasks in the source section', () => {
     // We need a section with mixed complete/incomplete tasks
     // The WIP section in the fixture has this
     const sectionName = 'WIP';
@@ -185,14 +174,12 @@ describe('Archive Confirmation Modal', () => {
     // Wait for DOM updates
     cy.wait(500);
     
-    // Verify new leftovers section has the incomplete tasks
+    // Verify the source section still has the incomplete tasks and the
+    // archive section contains only terminal tasks.
     cy.get('@incompleteCount').then(incompleteCount => {
-      findSection(`Leftovers from "${sectionName}"`).within(() => {
-        cy.get('.task-card').should('have.length', incompleteCount);
-        
-        // All tasks should be incomplete
-        cy.get('.custom-checkbox.checked').should('not.exist');
-        cy.get('.custom-checkbox.cancelled').should('not.exist');
+      findSection(sectionName).within(() => {
+        cy.get('.custom-checkbox.unchecked, .custom-checkbox.in-progress')
+          .should('have.length', incompleteCount);
       });
     });
   });

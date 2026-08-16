@@ -159,7 +159,7 @@ import { ref, watch, computed } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
 import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
 import ContextMenu from './ContextMenu.vue';
-import { generateLeftoversSectionName } from '../utils/sectionHelpers.js';
+import { formatWeekPeriodLabel, startOfSundayWeek } from '../utils/dateHelpers.js';
 import { useTaskSelection } from '../composables/useTaskSelection.js';
 import { sortTaskToCorrectPosition } from '../utils/sortHelpers.js';
 
@@ -602,34 +602,6 @@ const getDoneFileColumns = () => {
   return doneColumns;
 };
 
-// Archive a section in the nested structure
-const archiveSectionInNestedStructure = (section, sourceColumn, targetColumn) => {
-  // Remove from source column
-  const sourceColumnData = props.todoData.columnStacks[sourceColumn];
-  if (sourceColumnData && sourceColumnData.sections) {
-    const sectionIndex = sourceColumnData.sections.indexOf(section);
-    if (sectionIndex !== -1) {
-      sourceColumnData.sections.splice(sectionIndex, 1);
-    }
-  }
-  
-  // Update section properties
-  section.archivable = false;
-  section.headerStyle = 'SMALL';
-  
-  // Add to target column at the beginning (newest archives go to top)
-  if (!props.todoData.columnStacks[targetColumn]) {
-    props.todoData.columnStacks[targetColumn] = {
-      name: 'DONE',
-      sections: []
-    };
-    props.todoData.columnOrder.push(targetColumn);
-  }
-  
-  props.todoData.columnStacks[targetColumn].sections.unshift(section);
-};
-
-
 // Handle section updates from columns
 const handleSectionUpdate = (payload) => {
   if (payload && payload.action === 'delete') {
@@ -662,7 +634,6 @@ const handleSectionUpdate = (payload) => {
     // Handle section archiving - show confirmation modal first
     // Find section in nested structure
     let sectionToArchive = null;
-    let sourceColumn = null;
     
     // Search through all columns to find the section
     for (const columnName of props.todoData.columnOrder) {
@@ -671,15 +642,15 @@ const handleSectionUpdate = (payload) => {
         const section = columnData.sections.find(s => s.name === payload.sectionName);
         if (section) {
           sectionToArchive = section;
-          sourceColumn = columnName;
           break;
         }
       }
     }
     
     if (sectionToArchive) {
-      // Generate the new leftovers section name
-      const newSectionName = generateLeftoversSectionName(payload.sectionName);
+      // Archive sections are named for the Sunday-Saturday week in which the
+      // archive action happens, using the same canonical naming as due weeks.
+      const newSectionName = formatWeekPeriodLabel(startOfSundayWeek(new Date()), { includeYear: true });
       
       // Get available DONE columns
       const doneColumns = getDoneFileColumns();
@@ -691,7 +662,6 @@ const handleSectionUpdate = (payload) => {
         sectionItems: sectionToArchive.items || [],
         newSectionName: newSectionName,
         section: sectionToArchive,
-        sourceColumn: sourceColumn,
         availableColumns: availableColumns
       };
       return; // Don't update yet, wait for user confirmation
@@ -711,39 +681,38 @@ const cancelArchiveConfirmation = () => {
 const confirmArchive = (selectedColumn) => {
   if (!archiveConfirmation.value) return;
   
-  const { section, sourceColumn, newSectionName } = archiveConfirmation.value;
-  
-  // Filter incomplete tasks (not completed or cancelled)
-  const incompleteTasks = section.items.filter(item => 
-    item.type === 'task' && item.statusChar !== 'x' && item.statusChar !== '-'
+  const { section, newSectionName } = archiveConfirmation.value;
+
+  // Only terminal cards belong in the archive. Leave the source section and
+  // every unfinished card in place.
+  const completedItems = section.items.filter(item =>
+    item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')
   );
-  
-  // Create new week section if there are incomplete tasks
-  if (incompleteTasks.length > 0) {
-    // Create the new section in the same column position
-    const newSection = {
-      name: newSectionName,
-      headerStyle: 'SMALL',
-      archivable: true,
-      on_ice: false,
-      items: [...incompleteTasks] // Move incomplete tasks to new section
-    };
-    
-    // Find the index of the current section being archived
-    const sourceColumnData = props.todoData.columnStacks[sourceColumn];
-    const sectionIndex = sourceColumnData.sections.indexOf(section);
-    
-    // Insert the new section at the same position
-    sourceColumnData.sections.splice(sectionIndex, 0, newSection);
-    
-    // Remove incomplete tasks from the original section
-    section.items = section.items.filter(item => 
-      item.type !== 'task' || item.statusChar === 'x' || item.statusChar === '-'
-    );
+
+  if (completedItems.length > 0) {
+    if (!props.todoData.columnStacks[selectedColumn]) {
+      props.todoData.columnStacks[selectedColumn] = { name: 'DONE', sections: [] };
+      props.todoData.columnOrder.push(selectedColumn);
+    }
+
+    const targetSections = props.todoData.columnStacks[selectedColumn].sections;
+    const existingArchive = targetSections.find(candidate => candidate.name === newSectionName);
+    if (existingArchive) {
+      existingArchive.items.push(...completedItems);
+    } else {
+      targetSections.unshift({
+        name: newSectionName,
+        type: 'section',
+        headerStyle: 'SMALL',
+        archivable: false,
+        on_ice: false,
+        items: [...completedItems]
+      });
+    }
+
+    section.items = section.items.filter(item => !completedItems.includes(item));
   }
-  
-  // Archive to the selected column
-  archiveSectionInNestedStructure(section, sourceColumn, selectedColumn);
+
   emit('update');
   
   // Clear confirmation modal

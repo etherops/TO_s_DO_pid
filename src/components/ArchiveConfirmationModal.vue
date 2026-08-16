@@ -3,7 +3,7 @@
   <div class="modal-backdrop" @click="$emit('close')">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
-        <h3>Archive Section</h3>
+        <h3>Archive Completed Tasks</h3>
       </div>
       
       <div class="modal-body">
@@ -12,29 +12,29 @@
         </p>
         
         <div class="archive-details">
-          <div v-if="incompleteTasks.length > 0" class="detail-item">
+          <div v-if="archiveTasks.length > 0" class="detail-item">
             <span class="detail-icon">📋</span>
             <span class="detail-text">
-              {{ incompleteTasks.length }} undone task{{ incompleteTasks.length > 1 ? 's' : '' }} 
-              will be moved to a new section: <strong>"{{ newSectionName }}"</strong>
+              {{ archiveTasks.length }} completed or will-not-do task{{ archiveTasks.length > 1 ? 's' : '' }}
+              will be moved to: <strong>"{{ newSectionName }}"</strong>
             </span>
           </div>
           
           <div v-else class="detail-item">
             <span class="detail-icon">✅</span>
-            <span class="detail-text">All tasks are complete - no new section needed</span>
+            <span class="detail-text">There are no completed or will-not-do tasks to archive</span>
           </div>
         </div>
         
-        <div v-if="incompleteTasks.length > 0" class="incomplete-tasks-preview">
-          <h4>Tasks to be moved:</h4>
+        <div v-if="archiveTasks.length > 0" class="incomplete-tasks-preview">
+          <h4>Tasks to be archived:</h4>
           <ul class="task-list">
-            <li v-for="task in incompleteTasks.slice(0, 5)" :key="task.id" class="task-item">
+            <li v-for="task in archiveTasks.slice(0, 5)" :key="task.id" class="task-item">
               <div class="task-status-icon" :class="getStatusClass(task.statusChar)"></div>
               <span class="task-text">{{ task.displayText || task.text }}</span>
             </li>
-            <li v-if="incompleteTasks.length > 5" class="more-tasks">
-              ... and {{ incompleteTasks.length - 5 }} more task{{ incompleteTasks.length - 5 > 1 ? 's' : '' }}
+            <li v-if="archiveTasks.length > 5" class="more-tasks">
+              ... and {{ archiveTasks.length - 5 }} more task{{ archiveTasks.length - 5 > 1 ? 's' : '' }}
             </li>
           </ul>
         </div>
@@ -65,7 +65,7 @@
           Cancel
         </button>
         <button class="btn-confirm" @click="handleConfirm">
-          Archive Section
+          Archive Completed Tasks
         </button>
       </div>
     </div>
@@ -99,10 +99,10 @@ const emit = defineEmits(['close', 'confirm']);
 // Selected archive destination
 const selectedColumn = ref(props.availableColumns[0]);
 
-// Get incomplete tasks (not completed or cancelled)
-const incompleteTasks = computed(() => {
+// Only completed and explicitly will-not-do tasks are archived.
+const archiveTasks = computed(() => {
   return props.sectionItems.filter(item => 
-    item.type === 'task' && item.statusChar !== 'x' && item.statusChar !== '-'
+    item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')
   );
 });
 
