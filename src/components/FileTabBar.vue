@@ -154,6 +154,14 @@
         >
           Focus
         </button>
+        <button
+            class="view-mode-btn review-mode-btn"
+            :class="{ active: viewMode === 'review' }"
+            @click="$emit('set-view-mode', 'review')"
+            title="Review Mode: Week or month calendar of what was completed, dropped, and still due, over a year of monthly bars"
+        >
+          Review
+        </button>
       </div>
     </div>
     <Teleport to="body">

@@ -17,7 +17,6 @@
       </div>
       <button v-if="quickAddTarget" class="focus-quick-add-btn" :class="{ active: showQuickAdd }"
               title="Add something for this week" @click="toggleQuickAdd">+ Add</button>
-      <button class="focus-exit-btn" title="Back to board" @click="$emit('set-view-mode', 'normal')">✕</button>
       <div v-if="showQuickAdd && quickAddTarget" class="focus-quick-add-popover" @click.stop>
         <div class="focus-quick-add-row">
           <input
@@ -1942,25 +1941,6 @@ const toggleQuickAdd = async () => {
   background: #4caf50;
 }
 
-.focus-exit-btn {
-  background: transparent;
-  border: 1px solid #333c49;
-  border-radius: 6px;
-  color: #9aa4b2;
-  width: 30px;
-  height: 30px;
-  cursor: pointer;
-  font-size: 14px;
-  margin-bottom: 2px;
-  transition: all 0.2s ease;
-}
-
-.focus-exit-btn:hover {
-  color: #f4f6f8;
-  border-color: #556070;
-  background: #262c36;
-}
-
 /* ========================= */
 /* Stage + panels            */
 /* ========================= */
@@ -3402,17 +3382,6 @@ button.focus-week-clock:hover::after {
 
 .theme-light .focus-progress-track {
   background: #e0e0e0;
-}
-
-.theme-light .focus-exit-btn {
-  border-color: #ccc;
-  color: #666;
-}
-
-.theme-light .focus-exit-btn:hover {
-  color: #333;
-  border-color: #aaa;
-  background: #e8e8e8;
 }
 
 .theme-light .focus-quick-add-btn {
