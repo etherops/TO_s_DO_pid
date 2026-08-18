@@ -789,7 +789,7 @@ onUnmounted(() => {
 .task-card {
   background-color: white;
   border-radius: 5px;
-  padding: 3px 10px;
+  padding: 3px 10px 3px 6px;
   margin-bottom: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   display: flex;
@@ -820,10 +820,49 @@ onUnmounted(() => {
 }
 
 .task-card.low-priority-task-card {
-  padding-top: 1px;
-  padding-bottom: 1px;
+  --low-priority-left-trim: 3px;
+  margin-left: var(--low-priority-left-trim);
+  margin-right: var(--low-priority-left-trim);
+  padding: 0 8px;
   background-color: #fafafa;
   border-color: #dedede;
+}
+
+.task-card.low-priority-task-card .task-content-wrapper {
+  position: relative;
+  left: calc(-1 * var(--low-priority-left-trim));
+  width: calc(100% + var(--low-priority-left-trim) + var(--low-priority-left-trim));
+}
+
+.task-card.low-priority-task-card .task-content-wrapper,
+.task-card.low-priority-task-card .task-container {
+  align-items: center;
+}
+
+.task-card.low-priority-task-card .checkbox-wrapper {
+  width: 17px;
+  height: 14px;
+  margin-top: 0;
+}
+
+.task-card.low-priority-task-card .custom-checkbox {
+  width: 15px;
+  height: 12px;
+  border-width: 1.5px;
+}
+
+.task-card.low-priority-task-card .custom-checkbox.checked::after {
+  top: 1px;
+  left: 5px;
+  width: 3px;
+  height: 7px;
+}
+
+.task-card.low-priority-task-card .task-content-area {
+  margin-top: 0;
+  margin-left: 6px;
+  gap: 6px;
+  line-height: 1.15;
 }
 
 .task-card.low-priority-task-card .task-title {
@@ -831,9 +870,20 @@ onUnmounted(() => {
   font-size: 0.9em;
 }
 
+.task-card.low-priority-task-card .task-buttons-container {
+  min-width: 88px;
+  width: 88px;
+  flex-basis: 88px;
+}
+
+.task-card.low-priority-task-card .task-icon-btn {
+  padding: 1px 2px;
+  font-size: 11px;
+}
+
 .low-priority-badge {
   flex: 0 0 auto;
-  padding: 1px 4px;
+  padding: 0 4px;
   color: #666;
   background: #eee;
   border: 1px solid #ccc;
@@ -928,20 +978,20 @@ onUnmounted(() => {
 }
 
 .custom-checkbox.in-progress {
-  background-color: #fff8e1;
+  background-color: #fff3d6;
   border-color: #ff9800;
 }
 
 .custom-checkbox.in-progress:after {
-  content: "~";
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background-color: #ff9800;
   transform: translate(-50%, -50%);
-  color: #ff9800;
-  font-size: 16px;
-  font-weight: bold;
-  line-height: 1;
 }
 
 .custom-checkbox.checked {

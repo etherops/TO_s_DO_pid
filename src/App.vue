@@ -1,6 +1,9 @@
 <!-- App.vue -->
 <template>
-  <div class="todo-app" :class="`theme-${resolvedTheme}`">
+  <div
+      class="todo-app"
+      :class="[`theme-${resolvedTheme}`, 'design-system-active']"
+  >
     <FileTabBar
         :available-files="availableFiles"
         :selected-file="selectedFile"
@@ -311,8 +314,9 @@ onUnmounted(() => {
 }
 
 .todo-app.theme-dark .view-mode-btn.active {
-  background-color: #4caf50;
-  color: white;
+  background-color: #1a1f26;
+  color: #81c784;
+  box-shadow: inset 0 -3px 0 #4caf50;
 }
 
 /* --- Columns and sections --- */

@@ -2,6 +2,19 @@
 
 This file records the current product contracts that are easy to regress during maintenance. The detailed Focus Mode layout and routing rules are in [`docs/focus-mode-spec.md`](docs/focus-mode-spec.md).
 
+## Shared visual system
+
+All modes use the same visual language defined in `src/styles/design-system.css`:
+
+- slate text and neutral surfaces establish hierarchy without mode-specific gray palettes;
+- orange marks action and in-progress work;
+- blue marks navigation, scheduling, and current/upcoming work;
+- green marks completed work;
+- cards use the same surface, border, radius, and shadow vocabulary across the board, Focus, and Review;
+- mode-specific layouts may differ, but controls, status indicators, date badges, and spacing should reuse these tokens.
+
+The shared board styling preserves state-specific presentation. Partial-collapse fans, summary cards, due-state cards, selected cards, low-priority cards, on-ice sections, raw text, and drag/sort animations retain their specialized styling and take precedence over the ordinary task surface.
+
 ## Markdown task model
 
 - `* [ ]` and `* [~]` are normal queued and in-progress tasks.
@@ -49,4 +62,3 @@ every column in the file, including ARCHIVE, and never mutates tasks.
 ## Verification expectations
 
 Changes must preserve the existing Vue/Vite architecture, plain-markdown persistence, undo/history behavior, and the 100% unit-test requirement documented in `CLAUDE.md`.
-

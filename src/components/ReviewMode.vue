@@ -331,19 +331,18 @@ const statTiles = computed(() => {
 
 <style scoped>
 .review-mode {
-  --review-bg: #f4f6f9;
-  --review-surface: #ffffff;
-  --review-border: #dde3ea;
-  --review-text: #1f2733;
-  --review-muted: #6b7684;
-  /* The board's green, muted a touch - completed work covers most of this view,
-     and the full-strength fill at that area glares. Same green, less shout. */
-  --review-done: #4fa254;
-  --review-done-soft: rgba(79, 162, 84, 0.14);
-  --review-dropped: #9aa4b2;
-  --review-open: #2196f3;
+  --review-bg: var(--ui-bg, #f4f6f9);
+  --review-surface: var(--ui-surface, #ffffff);
+  --review-border: var(--ui-border, #dde3ea);
+  --review-text: var(--ui-text, #1f2733);
+  --review-muted: var(--ui-muted, #6b7684);
+  --review-done: #a5d6a7;
+  --review-done-soft: #e8f5e9;
+  --review-done-text: #397a43;
+  --review-dropped: var(--ui-gray, #9aa4b2);
+  --review-open: var(--ui-blue, #4d8fd6);
   --review-overdue: #e5534b;
-  --review-accent: #4fa254;
+  --review-accent: #81c784;
 
   display: flex;
   flex-direction: column;
@@ -356,15 +355,18 @@ const statTiles = computed(() => {
 }
 
 .review-mode.theme-dark {
-  --review-bg: #14171c;
-  --review-surface: #1c2129;
-  --review-border: #2a3240;
-  --review-text: #dfe3e8;
-  --review-muted: #8d97a5;
-  --review-dropped: #6f7a88;
-  --review-done: #58a95d;
-  --review-done-soft: rgba(88, 169, 93, 0.18);
-  --review-accent: #58a95d;
+  --review-bg: var(--ui-bg, #14171c);
+  --review-surface: var(--ui-surface, #1c2129);
+  --review-border: var(--ui-border, #2a3240);
+  --review-text: var(--ui-text, #dfe3e8);
+  --review-muted: var(--ui-muted, #8d97a5);
+  --review-dropped: var(--ui-gray, #6f7a88);
+  --review-done: #81c784;
+  --review-done-soft: rgba(129, 199, 132, 0.18);
+  --review-done-text: #a5d6a7;
+  --review-open: var(--ui-blue, #4d8fd6);
+  --review-overdue: #e5534b;
+  --review-accent: #81c784;
 }
 
 /* --- Header: the year chart, with the date controls hard right --- */
@@ -714,7 +716,7 @@ const statTiles = computed(() => {
   color: #fff;
 }
 
-.review-chip.done { background: var(--review-done); }
+.review-chip.done { color: var(--review-done-text); background: var(--review-done); }
 .review-chip.dropped { background: var(--review-dropped); }
 .review-chip.open { background: var(--review-open); }
 
@@ -788,7 +790,7 @@ const statTiles = computed(() => {
   margin-bottom: 4px;
 }
 
-.review-group-title.bucket-completed { color: var(--review-done); }
+.review-group-title.bucket-completed { color: var(--review-done-text); }
 .review-group-title.bucket-queued { color: var(--review-open); }
 
 .review-entry-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }

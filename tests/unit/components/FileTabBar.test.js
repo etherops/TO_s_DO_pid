@@ -93,4 +93,18 @@ describe('FileTabBar', () => {
     expect(wrapper.find('.file-selector-popover').exists()).toBe(false);
     wrapper.unmount();
   });
+
+  it('uses the same button treatment for every view mode', () => {
+    const wrapper = mount(FileTabBar, { props: { viewMode: 'normal' } });
+    const modeButtons = wrapper.findAll('.view-mode-btn');
+
+    expect(modeButtons).toHaveLength(4);
+    expect(modeButtons.map(button => button.classes())).toEqual([
+      ['view-mode-btn'],
+      ['view-mode-btn'],
+      ['view-mode-btn'],
+      ['view-mode-btn']
+    ]);
+    wrapper.unmount();
+  });
 });

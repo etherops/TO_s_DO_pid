@@ -58,6 +58,7 @@ A Vue 3 Kanban board whose "database" is one or more plain markdown files. Every
   - `reviewModeHelpers.js` — pure derivation for Review mode (`deriveReviewModel`, `deriveCalendarYearBars`, `deriveWeeklyTrend`, `anchorForTask`, `shiftAnchor`).
   - `dateHelpers.js`, `completionDateHelpers.js` — date parsing/formatting.
   - `sectionHelpers.js`, `sortHelpers.js`, `taskTextHelpers.js` — section/task manipulation helpers.
+- `src/styles/design-system.css` — shared visual tokens and cross-mode surface/control styling. Keep mode-specific layout behavior in its component, but reuse these tokens for color, spacing, borders, and elevation.
 
 ### Backend (`server.js`)
 

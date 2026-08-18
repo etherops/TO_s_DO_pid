@@ -1,0 +1,240 @@
+/* Shared visual language across Triage/Plan, Focus, and Review. */
+:root {
+  --ui-bg: #eef2f6;
+  --ui-surface: #ffffff;
+  --ui-surface-soft: #f7f9fb;
+  --ui-surface-muted: #edf1f5;
+  --ui-border: #d8e0e8;
+  --ui-border-strong: #c4cfda;
+  --ui-text: #27313d;
+  --ui-muted: #788493;
+  --ui-faint: #a5b0bb;
+  --ui-orange: #ee9f2d;
+  --ui-orange-soft: #fff4df;
+  --ui-blue: #4d8fd6;
+  --ui-blue-soft: #eaf3fd;
+  --ui-green: #4caf50;
+  --ui-green-soft: #e8f5e9;
+  --ui-gray: #8b96a2;
+  --ui-gray-soft: #f0f2f4;
+  --ui-shadow-sm: 0 2px 8px rgba(40, 55, 72, 0.08);
+  --ui-shadow-md: 0 12px 30px rgba(40, 55, 72, 0.12);
+  --ui-radius: 12px;
+  --ui-radius-sm: 8px;
+  --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+}
+
+.todo-app.design-system-active {
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  font-family: var(--ui-font);
+}
+
+/* Shared chrome */
+.todo-app.design-system-active .file-tabs-container {
+  min-height: 0;
+  margin-top: 5px;
+  padding: 4px 0;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--ui-border);
+  box-shadow: 0 2px 10px rgba(40, 55, 72, 0.06);
+  backdrop-filter: blur(12px);
+}
+
+.todo-app.design-system-active .app-title {
+  color: var(--ui-muted);
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: normal;
+}
+
+.todo-app.design-system-active .file-selector-trigger {
+  min-height: 0;
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
+  border-left: 3px solid var(--ui-blue);
+  border-radius: var(--ui-radius-sm);
+  box-shadow: none;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.todo-app.design-system-active .file-selector-trigger:hover,
+.todo-app.design-system-active .file-selector-trigger[aria-expanded="true"] {
+  background: var(--ui-blue-soft);
+  border-color: #9fc3e8;
+  color: #2e6496;
+  box-shadow: 0 0 0 3px rgba(77, 143, 214, 0.1);
+}
+
+.todo-app.design-system-active .history-btn {
+  color: var(--ui-muted);
+  border-radius: 7px;
+}
+
+.todo-app.design-system-active .history-btn:hover:not(:disabled) {
+  background: var(--ui-surface-muted);
+  border-color: var(--ui-border-strong);
+  color: var(--ui-text);
+}
+
+/* Board shell, columns, and sections */
+.todo-app .kanban-container {
+  gap: 10px;
+  padding: 10px;
+  background: var(--ui-bg);
+}
+
+.todo-app .kanban-column:not(.ice-column) {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.todo-app .kanban-column:not(.ice-column) .column-content {
+  padding: 5px;
+  background: var(--ui-surface-soft);
+}
+.todo-app .section:not(.on-ice-section):not(.raw-text-section) {
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  box-shadow: none;
+}
+
+/* Shared task row treatment. Focus keeps its own richer layout, while the
+   board receives the same surface, spacing, and status language. */
+.todo-app :where(.task-card-wrapper:not(.collapsed-completed):not(.collapsed-in-progress):not(.collapsed-summary):not(.summary-only-card) > .task-card:not(.ice-task-card):not(.low-priority-task-card)) {
+  margin-bottom: 3px;
+  padding: 3px 10px 3px 6px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  box-shadow: none;
+  color: var(--ui-text);
+}
+.todo-app :where(.task-card-wrapper:not(.collapsed-completed):not(.collapsed-in-progress):not(.collapsed-summary):not(.summary-only-card) > .task-card:not(.ice-task-card):not(.low-priority-task-card):hover) {
+  border-color: #a8bfd6;
+  box-shadow: var(--ui-shadow-sm);
+}
+.todo-app :where(.task-card-wrapper:not(.collapsed-completed):not(.collapsed-in-progress):not(.collapsed-summary):not(.summary-only-card) > .task-card:not(.low-priority-task-card) .task-title) {
+  font-weight: 650;
+}
+.todo-app :where(.task-card-wrapper:not(.collapsed-completed):not(.collapsed-in-progress):not(.collapsed-summary):not(.summary-only-card) > .task-card:not(.low-priority-task-card) .inline-note-preview:not(.cancelled-note)) {
+  background: var(--ui-blue-soft);
+  border-left-color: var(--ui-blue);
+  border-radius: 5px;
+}
+
+/* Low-priority work stays readable, but is deliberately denser and quieter
+   than an ordinary row. This is the board treatment introduced with task
+   priority; keep it explicit so broad card rules cannot flatten it. */
+.todo-app .task-card.low-priority-task-card {
+  margin-bottom: 2px;
+  background: var(--ui-surface-soft);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--ui-text);
+}
+.todo-app .task-card.low-priority-task-card:hover {
+  border-color: var(--ui-border-strong);
+  box-shadow: var(--ui-shadow-sm);
+}
+.todo-app .task-card.low-priority-task-card .task-title {
+  color: var(--ui-text);
+  font-size: 0.9em;
+  font-weight: 600;
+}
+.todo-app .task-card.low-priority-task-card .low-priority-badge {
+  color: var(--ui-muted);
+  background: var(--ui-surface-muted);
+  border-color: var(--ui-border-strong);
+}
+
+/* Review adopts the same slate/orange/blue/green vocabulary as Focus. */
+.todo-app .review-mode {
+  --review-bg: var(--ui-bg);
+  --review-surface: var(--ui-surface);
+  --review-border: var(--ui-border);
+  --review-text: var(--ui-text);
+  --review-muted: var(--ui-muted);
+  --review-done: #a5d6a7;
+  --review-done-soft: #e8f5e9;
+  --review-done-text: #397a43;
+  --review-dropped: var(--ui-gray);
+  --review-open: var(--ui-blue);
+  --review-overdue: #e5534b;
+  --review-accent: #81c784;
+  font-family: var(--ui-font);
+}
+
+.todo-app .review-header,
+.todo-app .review-card,
+.todo-app .review-day {
+  border-color: var(--ui-border);
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow-sm);
+}
+.todo-app .review-header { background: rgba(255, 255, 255, 0.94); }
+.todo-app .review-year-col.is-anchor { border-color: var(--review-accent); background: var(--review-done-soft); }
+.todo-app .review-day.is-today { border-color: var(--ui-blue); box-shadow: inset 0 0 0 1px var(--ui-blue); }
+.todo-app .review-day.is-selected { border-color: var(--review-accent); box-shadow: inset 0 0 0 2px var(--review-accent); }
+
+/* Focus is the reference composition: keep its generous stage and motion, but
+   bring its light surfaces and controls onto the same token set. */
+.todo-app .focus-mode.theme-light {
+  background: radial-gradient(1200px 500px at 50% -10%, #ffffff 0%, var(--ui-bg) 62%);
+  color: var(--ui-text);
+}
+.todo-app .focus-mode.theme-light .focus-date { color: var(--ui-text); }
+.todo-app .focus-mode.theme-light .focus-kicker,
+.todo-app .focus-mode.theme-light .in-progress-queued-kicker { color: var(--ui-orange); }
+.todo-app .focus-mode.theme-light .focus-panel,
+.todo-app .focus-mode.theme-light .focus-week-strip {
+  background: var(--ui-surface);
+  border-color: var(--ui-border);
+  box-shadow: var(--ui-shadow-md);
+}
+.todo-app .focus-mode.theme-light .focus-panel.is-focused { border-color: var(--ui-border-strong); }
+.todo-app .focus-mode.theme-light .focus-panel.is-magnified { border-color: #9fc3e8; box-shadow: 0 0 58px rgba(77, 143, 214, 0.16), var(--ui-shadow-md); }
+.todo-app .focus-mode.theme-light .panel-header { border-bottom-color: var(--ui-border); }
+.todo-app .focus-mode.theme-light .panel-body { scrollbar-color: var(--ui-border-strong) transparent; }
+.todo-app .focus-mode.theme-light .focus-task-row { background: var(--ui-surface-soft); border-color: var(--ui-border); }
+.todo-app .focus-mode.theme-light .focus-task-row.inflight-row { background: var(--ui-orange-soft); border-color: #f3ce8e; }
+.todo-app .focus-mode.theme-light .focus-task-row.this-week-row { background: var(--ui-blue-soft); border-color: #a8c9ea; }
+.todo-app .focus-mode.theme-light .focus-task-row.done-row { background: var(--ui-green-soft); border-color: #b9dcbf; }
+.todo-app .focus-mode.theme-light .focus-row-title { color: var(--ui-text); }
+.todo-app .focus-mode.theme-light .focus-row-title.done-title { color: var(--ui-muted); }
+.todo-app .focus-mode.theme-light .focus-row-check.inflight { border-color: var(--ui-orange); background: var(--ui-orange-soft); }
+.todo-app .focus-mode.theme-light .focus-row-check.checked { border-color: var(--ui-green); background: var(--ui-green-soft); }
+.todo-app .focus-mode.theme-light .focus-badge.due-today { color: #ad6b08; background: var(--ui-orange-soft); border-color: #f3ce8e; }
+.todo-app .focus-mode.theme-light .focus-badge.due-week { color: #326da7; background: var(--ui-blue-soft); border-color: #a8c9ea; }
+.todo-app .focus-mode.theme-light .focus-badge.due-month,
+.todo-app .focus-mode.theme-light .focus-badge.due-week-period { color: #725ca4; background: #f1edfb; border-color: #c9bde5; }
+.todo-app .focus-mode.theme-light .focus-day-header.day-today { color: var(--ui-orange); border-bottom-color: #f3ce8e; }
+.todo-app .focus-mode.theme-light .focus-day-header.day-upcoming { color: var(--ui-blue); border-bottom-color: #a8c9ea; }
+
+/* Dark mode uses the same hierarchy, only swapping the surfaces. */
+.todo-app.theme-dark {
+  --ui-bg: #14171c;
+  --ui-surface: #1c2129;
+  --ui-surface-soft: #171c23;
+  --ui-surface-muted: #232a35;
+  --ui-border: #2e3744;
+  --ui-border-strong: #465365;
+  --ui-text: #e8eaed;
+  --ui-muted: #9aa4b2;
+  --ui-faint: #6f7a88;
+  --ui-green: #66bb6a;
+  --ui-blue-soft: #20364d;
+  --ui-orange-soft: #3b2e1e;
+  --ui-green-soft: #203326;
+  --ui-gray-soft: #272d36;
+}
+
+.todo-app.theme-dark.design-system-active .file-tabs-container,
+.todo-app.theme-dark.design-system-active .review-header { background: rgba(28, 33, 41, 0.96); }
+.todo-app.theme-dark .review-card,
+.todo-app.theme-dark .review-day { background: var(--ui-surface) !important; }

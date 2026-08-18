@@ -147,7 +147,7 @@
           Plan
         </button>
         <button
-            class="view-mode-btn focus-mode-btn"
+            class="view-mode-btn"
             :class="{ active: viewMode === 'focus' }"
             @click="$emit('set-view-mode', 'focus')"
             title="Focus Mode: Execute this week — NOW / UP NEXT / DONE pulled from SELECTED and WIP"
@@ -155,7 +155,7 @@
           Focus
         </button>
         <button
-            class="view-mode-btn review-mode-btn"
+            class="view-mode-btn"
             :class="{ active: viewMode === 'review' }"
             @click="$emit('set-view-mode', 'review')"
             title="Review Mode: Week or month calendar of what was completed, dropped, and still due, over a year of monthly bars"
@@ -221,7 +221,14 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['file-selected', 'set-view-mode', 'cycle-theme', 'show-history', 'undo', 'redo']);
+const emit = defineEmits([
+  'file-selected',
+  'set-view-mode',
+  'cycle-theme',
+  'show-history',
+  'undo',
+  'redo'
+]);
 
 const themeGlyph = computed(() => ({ auto: '◐', dark: '☾', light: '☀' }[props.themePreference] || '◐'));
 const fileSelectorOpen = ref(false);
@@ -703,12 +710,14 @@ onBeforeUnmount(() => {
 }
 
 .view-mode-btn.active {
-  background-color: #4caf50;
-  color: white;
+  background-color: #f5f5f5;
+  color: #2e7d32;
+  box-shadow: inset 0 -3px 0 #4caf50;
 }
 
 .view-mode-btn.active:hover {
-  background-color: #43a047;
+  background-color: #e8e8e8;
+  color: #2e7d32;
 }
 
 .history-btn {
