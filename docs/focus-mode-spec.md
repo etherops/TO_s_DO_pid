@@ -25,6 +25,8 @@ The top area contains three panels with one spotlight at a time:
 2. NOW, spotlighted by default
 3. IN PROGRESS / WAITING
 
+The current date is centered prominently above the panels using the full weekday, abbreviated month, and ordinal day (for example, `Tuesday, Aug 18th`).
+
 The spotlight is larger. When NOW is centered, both side panels remain fully visible and slightly shorter and narrower than the spotlight, and sit just below vertical center so their breathing room remains nearly balanced. The carousel is linear—UP NEXT → NOW → IN PROGRESS / WAITING—and never wraps an end panel around to the opposite side. The stage uses most of the available viewport height while preserving a small footer buffer around the compact navigation dots. Navigation works through adjacent panel clicks, the three compact dots, left/right arrow keys, and horizontal swipe.
 
 ## Week at a glance
@@ -33,7 +35,7 @@ The lower strip always shows Sunday through Saturday and replaces the old DONE p
 - Every day is a contained, independently scrolling pane.
 - Future days show scheduled tasks.
 - Past days retain completed and cancelled tasks. When a terminal task has no due date, its completion stamp determines its day.
-- Today is lightly muted and replaces the duplicate NOW cards with a blue “Today!” callout and one vertical summary of the nonzero task-status counts, using the standard status indicators.
+- Today is lightly muted and replaces the weekday header and duplicate NOW cards with a centered blue “Today!” callout and one vertical summary of the nonzero task-status counts, using the standard status indicators.
 - Weekly cards omit the redundant due-date badge and collapse notes to an icon. Their one-letter section marker and clickable due-date clock remain hidden at rest to preserve title width, then appear when that pane is magnified.
 
 ### Dock magnification

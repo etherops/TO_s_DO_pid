@@ -160,13 +160,14 @@
   --review-border: var(--ui-border);
   --review-text: var(--ui-text);
   --review-muted: var(--ui-muted);
-  --review-done: #a5d6a7;
-  --review-done-soft: #e8f5e9;
+  --review-done: #1ca41c;
+  --review-done-fill: linear-gradient(45deg, #1ca41c 0%, 18%, #b8ecb3 100%);
   --review-done-text: #397a43;
+  --review-chip-done: #7abc7e;
   --review-dropped: var(--ui-gray);
   --review-open: var(--ui-blue);
   --review-overdue: #e5534b;
-  --review-accent: #81c784;
+  --review-accent: #1ca41c;
   font-family: var(--ui-font);
 }
 
@@ -178,7 +179,7 @@
   box-shadow: var(--ui-shadow-sm);
 }
 .todo-app .review-header { background: rgba(255, 255, 255, 0.94); }
-.todo-app .review-year-col.is-anchor { border-color: var(--review-accent); background: var(--review-done-soft); }
+.todo-app .review-year-col.is-anchor { border-color: var(--review-open); background: var(--ui-blue-soft); }
 .todo-app .review-day.is-today { border-color: var(--ui-blue); box-shadow: inset 0 0 0 1px var(--ui-blue); }
 .todo-app .review-day.is-selected { border-color: var(--review-accent); box-shadow: inset 0 0 0 2px var(--review-accent); }
 
@@ -188,8 +189,7 @@
   background: radial-gradient(1200px 500px at 50% -10%, #ffffff 0%, var(--ui-bg) 62%);
   color: var(--ui-text);
 }
-.todo-app .focus-mode.theme-light .focus-date { color: var(--ui-text); }
-.todo-app .focus-mode.theme-light .focus-kicker,
+.todo-app .focus-mode.theme-light .focus-date { color: var(--ui-blue); }
 .todo-app .focus-mode.theme-light .in-progress-queued-kicker { color: var(--ui-orange); }
 .todo-app .focus-mode.theme-light .focus-panel,
 .todo-app .focus-mode.theme-light .focus-week-strip {

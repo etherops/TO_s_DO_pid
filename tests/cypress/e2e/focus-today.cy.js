@@ -148,6 +148,9 @@ describe('Focus Mode (execution carousel)', () => {
       .and('not.contain', 'In progress')
       .and('not.contain', 'Done')
       .and('not.contain', 'Won’t do');
+    cy.get('.focus-week-day-column.is-current .focus-day-header')
+      .invoke('text')
+      .then(text => expect(text.trim()).to.equal('Today!'));
     cy.get('.focus-week-day-column.is-current .focus-task-row').should('not.exist');
     cy.get('.focus-week-day-column.is-current .focus-today-status').should('have.length', 1)
       .find('.focus-row-check.unchecked').should('exist');

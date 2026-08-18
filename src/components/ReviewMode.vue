@@ -336,13 +336,14 @@ const statTiles = computed(() => {
   --review-border: var(--ui-border, #dde3ea);
   --review-text: var(--ui-text, #1f2733);
   --review-muted: var(--ui-muted, #6b7684);
-  --review-done: #a5d6a7;
-  --review-done-soft: #e8f5e9;
+  --review-done: #1ca41c;
+  --review-done-fill: linear-gradient(45deg, #1ca41c 0%, 18%, #b8ecb3 100%);
   --review-done-text: #397a43;
+  --review-chip-done: #7abc7e;
   --review-dropped: var(--ui-gray, #9aa4b2);
   --review-open: var(--ui-blue, #4d8fd6);
   --review-overdue: #e5534b;
-  --review-accent: #81c784;
+  --review-accent: #1ca41c;
 
   display: flex;
   flex-direction: column;
@@ -361,12 +362,12 @@ const statTiles = computed(() => {
   --review-text: var(--ui-text, #dfe3e8);
   --review-muted: var(--ui-muted, #8d97a5);
   --review-dropped: var(--ui-gray, #6f7a88);
-  --review-done: #81c784;
-  --review-done-soft: rgba(129, 199, 132, 0.18);
+  --review-done: #1ca41c;
+  --review-done-fill: linear-gradient(45deg, #147f14 0%, 18%, #91dc8b 100%);
   --review-done-text: #a5d6a7;
   --review-open: var(--ui-blue, #4d8fd6);
   --review-overdue: #e5534b;
-  --review-accent: #81c784;
+  --review-accent: #1ca41c;
 }
 
 /* --- Header: the year chart, with the date controls hard right --- */
@@ -613,7 +614,10 @@ const statTiles = computed(() => {
 
 .review-year-col:hover { background: rgba(127, 143, 165, 0.12); }
 .review-year-col.is-current .review-year-label { color: var(--review-open); font-weight: 600; }
-.review-year-col.is-anchor { border-color: var(--review-accent); background: var(--review-done-soft); }
+.review-year-col.is-anchor {
+  border-color: var(--review-open);
+  background: var(--ui-blue-soft, rgba(77, 143, 214, 0.12));
+}
 .review-year-col.is-future { opacity: 0.5; }
 
 .review-year-value {
@@ -636,14 +640,14 @@ const statTiles = computed(() => {
 }
 
 .review-year-seg { width: 100%; }
-.review-year-seg.done { background: var(--review-done); }
+.review-year-seg.done { background: var(--review-done-fill); }
 .review-year-seg.dropped { background: var(--review-dropped); }
 .review-year-seg.open { background: var(--review-open); opacity: 0.55; }
 
 .review-year-label { font-size: 11px; text-align: center; }
 
 .review-legend-swatch { flex: none; width: 9px; height: 9px; border-radius: 2px; }
-.review-legend-swatch.done { background: var(--review-done); }
+.review-legend-swatch.done { background: var(--review-done-fill); }
 .review-legend-swatch.dropped { background: var(--review-dropped); }
 .review-legend-swatch.open { background: var(--review-open); opacity: 0.55; }
 
@@ -689,7 +693,7 @@ const statTiles = computed(() => {
 }
 
 .meter-fill { height: 100%; }
-.meter-fill.done { background: var(--review-done); }
+.meter-fill.done { background: var(--review-done-fill); }
 .meter-fill.dropped { background: var(--review-dropped); }
 .meter-fill.open { background: var(--review-open); opacity: 0.55; }
 
@@ -701,7 +705,7 @@ const statTiles = computed(() => {
   background: var(--review-open);
 }
 
-.review-item-dot.bucket-completed { background: var(--review-done); }
+.review-item-dot.bucket-completed { background: var(--review-done-fill); }
 .review-item-dot.bucket-cancelled { background: var(--review-dropped); }
 
 .review-day.is-empty .review-day-meter { visibility: hidden; }
@@ -716,7 +720,7 @@ const statTiles = computed(() => {
   color: #fff;
 }
 
-.review-chip.done { color: var(--review-done-text); background: var(--review-done); }
+.review-chip.done { color: var(--review-done-text); background: var(--review-chip-done); }
 .review-chip.dropped { background: var(--review-dropped); }
 .review-chip.open { background: var(--review-open); }
 
@@ -850,7 +854,7 @@ const statTiles = computed(() => {
 }
 
 .review-trend-bar { width: 100%; }
-.review-trend-bar.done { background: var(--review-done); }
+.review-trend-bar.done { background: var(--review-done-fill); }
 .review-trend-bar.dropped { background: var(--review-dropped); }
 .review-trend-label { font-size: 10px; color: var(--review-muted); padding-top: 3px; }
 
@@ -868,7 +872,7 @@ const statTiles = computed(() => {
 }
 
 .review-bar-track { flex: 1; height: 6px; border-radius: 3px; background: rgba(127, 143, 165, 0.2); }
-.review-bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--review-done); }
+.review-bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--review-done-fill); }
 .review-bar-count { width: 18px; text-align: right; }
 
 @media (max-width: 1100px) {

@@ -5,8 +5,7 @@
   <div ref="focusRoot" class="focus-mode" :class="`theme-${theme}`">
     <header class="focus-header">
       <div class="focus-heading">
-        <div class="focus-kicker">Focus</div>
-        <h1 class="focus-date">This Week</h1>
+        <h1 class="focus-date">{{ currentDateLabel }}</h1>
       </div>
       <div v-if="totalCount > 0" class="focus-progress">
         <div class="focus-progress-text">{{ completedCount }} / {{ totalCount }} done</div>
@@ -307,12 +306,12 @@
                      'is-expanded-neighbor': expandedWeekDayIndex !== null && Math.abs(expandedWeekDayIndex - dayIndex) === 1
                    }">
                 <div class="focus-week-day-content">
-                  <div class="focus-day-header">
-                    <span class="day-name">
-                      {{ day.label }}
-                      <span v-if="day.isToday" class="focus-current-day-label">Today!</span>
-                    </span>
-                    <span class="day-count">{{ day.entries.length }}</span>
+                  <div class="focus-day-header" :class="{ 'focus-current-day-header': day.isToday }">
+                    <span v-if="day.isToday" class="focus-current-day-label">Today!</span>
+                    <template v-else>
+                      <span class="day-name">{{ day.label }}</span>
+                      <span class="day-count">{{ day.entries.length }}</span>
+                    </template>
                   </div>
                   <div v-if="day.isToday" class="focus-today-summary">
                     <div class="focus-today-statuses">
@@ -517,6 +516,20 @@ const weekDayDockStyles = ref([]);
 const selectedWeekOffset = ref(0);
 const weekSlideDirection = ref('next');
 const hasNavigatedWeek = ref(false);
+const currentDate = ref(new Date());
+let currentDateTimer = null;
+
+const ordinalSuffix = (day) => {
+  if (day >= 11 && day <= 13) return 'th';
+  return { 1: 'st', 2: 'nd', 3: 'rd' }[day % 10] || 'th';
+};
+
+const currentDateLabel = computed(() => {
+  const weekday = currentDate.value.toLocaleDateString('en-US', { weekday: 'long' });
+  const month = currentDate.value.toLocaleDateString('en-US', { month: 'short' });
+  const day = currentDate.value.getDate();
+  return `${weekday}, ${month} ${day}${ordinalSuffix(day)}`;
+});
 
 const resetWeekDayMagnification = () => {
   expandedWeekDayIndex.value = null;
@@ -1378,11 +1391,13 @@ const closeDateMenu = () => {
 };
 
 onMounted(() => {
+  currentDateTimer = window.setInterval(() => { currentDate.value = new Date(); }, 60000);
   window.addEventListener('keydown', handleKeydown);
   document.addEventListener('click', closeDateMenu);
 });
 
 onUnmounted(() => {
+  clearInterval(currentDateTimer);
   clearTimeout(mainPaneMagnifyTimer);
   window.removeEventListener('keydown', handleKeydown);
   document.removeEventListener('click', closeDateMenu);
@@ -1883,28 +1898,27 @@ const toggleQuickAdd = async () => {
   width: 100%;
   box-sizing: border-box;
   margin: 0;
-  padding: 10px 24px 0;
+  min-height: 46px;
+  padding: 10px 24px 6px;
 }
 
 .focus-heading {
-  flex: 1;
-}
-
-.focus-kicker {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: #ffb347;
-  margin-bottom: 1px;
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
 }
 
 .focus-date {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: clamp(22px, 1.8vw, 29px);
+  font-weight: 750;
   margin: 0;
-  color: #f4f6f8;
-  letter-spacing: -0.5px;
+  color: #7fb2e5;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .focus-progress {
@@ -1912,6 +1926,7 @@ const toggleQuickAdd = async () => {
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
+  margin-left: auto;
   padding-bottom: 2px;
 }
 
@@ -2398,6 +2413,7 @@ button.focus-week-clock:hover::after {
 }
 
 .focus-week-day-column.is-current .focus-day-header {
+  justify-content: center;
   background: #242930;
 }
 
@@ -2413,7 +2429,6 @@ button.focus-week-clock:hover::after {
 }
 
 .focus-current-day-label {
-  margin-left: 5px;
   color: #7fb2e5;
   font-size: 21px;
   font-weight: 800;
@@ -3368,12 +3383,8 @@ button.focus-week-clock:hover::after {
   color: #333;
 }
 
-.theme-light .focus-kicker {
-  color: #e08900;
-}
-
 .theme-light .focus-date {
-  color: #333;
+  color: #4d8fd6;
 }
 
 .theme-light .focus-progress-text {
