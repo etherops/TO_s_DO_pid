@@ -2,6 +2,11 @@
 
 * [ ] small - prepare the example todo file for open-source publishing
 * [ ] improve - expand the README with clearer instructions for using todo files
+
+## 2026-08-19
+
+* [x] improve - preview each next status with checkbox highlight colors in Focus mode
+
 ## 2026-08-18
 
 * [x] improve - add a centered on-theme current-date heading and simplify Focus mode's current-day summary

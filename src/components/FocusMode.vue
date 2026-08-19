@@ -2675,9 +2675,9 @@ button.focus-week-clock:hover::after {
   transition: all 0.15s ease;
 }
 
-.focus-row-check:hover {
-  border-color: #4caf50;
-  background: rgba(76, 175, 80, 0.15);
+button.focus-row-check.unchecked:hover {
+  border-color: #ff9800;
+  background: rgba(255, 152, 0, 0.12);
 }
 
 .focus-row-check.pending {
@@ -2737,6 +2737,21 @@ button.focus-week-clock:hover::after {
   height: 2px;
   background: #9e9e9e;
   transform: translateY(-50%);
+}
+
+button.focus-row-check.inflight:hover {
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.2);
+}
+
+button.focus-row-check.checked:hover {
+  border-color: #757575;
+  background: rgba(117, 117, 117, 0.16);
+}
+
+button.focus-row-check.cancelled:hover {
+  border-color: #4a5568;
+  background: transparent;
 }
 
 .focus-row-main {
@@ -3616,9 +3631,9 @@ button.focus-week-clock:hover::after {
   border-color: #aaa;
 }
 
-.theme-light .focus-row-check:hover {
-  border-color: #4caf50;
-  background: #e8f5e9;
+.theme-light button.focus-row-check.unchecked:hover {
+  border-color: var(--ui-orange, #ff9800);
+  background: var(--ui-orange-soft, #fff3d6);
 }
 
 .theme-light .focus-row-check.inflight {
@@ -3629,6 +3644,21 @@ button.focus-week-clock:hover::after {
 .theme-light .focus-row-check.checked {
   border-color: #4caf50;
   background: #e8f5e9;
+}
+
+.theme-light button.focus-row-check.inflight:hover {
+  border-color: var(--ui-green, #4caf50);
+  background: var(--ui-green-soft, #e8f5e9);
+}
+
+.theme-light button.focus-row-check.checked:hover {
+  border-color: #757575;
+  background: var(--ui-gray-soft, #f0f2f4);
+}
+
+.theme-light button.focus-row-check.cancelled:hover {
+  border-color: #aaa;
+  background: transparent;
 }
 
 .theme-light .focus-row-title {
