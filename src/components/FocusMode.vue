@@ -1590,6 +1590,10 @@ const setQuickAddDueDate = (value) => {
   quickAddDueValue.value = value;
   quickAddDateMenuOpen.value = false;
   quickAddCustomPickerOpen.value = false;
+  if (quickAddText.value.trim()) {
+    quickAdd();
+    return;
+  }
   focusQuickAddInput();
 };
 

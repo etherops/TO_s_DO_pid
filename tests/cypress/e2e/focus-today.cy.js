@@ -959,11 +959,11 @@ describe('Focus Mode (execution carousel)', () => {
     enterFocusMode();
 
     cy.get('.focus-quick-add-btn').click();
+    cy.get('.focus-quick-add-input').type('Plan next week');
     cy.get('.focus-quick-add-date-btn').should('contain', 'Today').click();
     cy.get('.focus-quick-add-date-menu').should('be.visible');
     cy.get('.focus-quick-add-date-option').contains('Next week').click();
-    cy.get('.focus-quick-add-date-btn').should('contain', 'Week');
-    cy.get('.focus-quick-add-input').type('Plan next week{enter}');
+    cy.get('.focus-quick-add-popover').should('not.exist');
 
     cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Plan next week')
       .find('.focus-due-edit').should('have.class', 'due-week-period');

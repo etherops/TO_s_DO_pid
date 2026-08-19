@@ -6,6 +6,7 @@
 ## 2026-08-19
 
 * [x] improve - preview each next status with checkbox highlight colors in Focus mode
+* [x] bugfix - save a titled Focus quick-add when its due date is selected
 
 ## 2026-08-18
 
