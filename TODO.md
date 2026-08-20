@@ -3,6 +3,10 @@
 * [ ] small - prepare the example todo file for open-source publishing
 * [ ] improve - expand the README with clearer instructions for using todo files
 
+## 2026-08-20
+
+* [x] improve - keep note reading outside pane-hover timing with a wide tooltip and normal cursor
+
 ## 2026-08-19
 
 * [x] improve - preview each next status with checkbox highlight colors in Focus mode

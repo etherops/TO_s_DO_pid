@@ -102,14 +102,16 @@
               </div>
               <div v-else class="focus-row-main">
                 <button class="focus-row-title" :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
-                        :title="`Edit name: ${entry.task.text}`"
+                        :title="`Edit name: ${cardTitle(entry)}`"
                         @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                   {{ entry.sectionName }}
                 </span>
               </div>
-              <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-dot"
-                    :title="entryNote(entry)">📋</span>
+              <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-indicator"
+                    :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                    @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
+                    @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
               <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
                               :low="isLowPriorityEntry(entry)"
                               @toggle="toggleEntryPriority(entry)" />
@@ -163,13 +165,16 @@
                   <div v-else class="focus-row-main">
                     <button class="focus-row-title execution-row-title"
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
-                          :title="`Edit name: ${entry.task.text}`"
+                          :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                     <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                       {{ entry.sectionName }}
                     </span>
-                    <span v-if="entryNote(entry)" class="focus-row-note">{{ entryNote(entry) }}</span>
                   </div>
+                  <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-indicator"
+                        :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                        @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
+                        @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
                   <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
                                   :low="isLowPriorityEntry(entry)"
                                   @toggle="toggleEntryPriority(entry)" />
@@ -236,14 +241,16 @@
                 </div>
                 <div v-else class="focus-row-main">
                   <button class="focus-row-title" :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
-                          :title="`Edit name: ${entry.task.text}`"
+                          :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                   <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                     {{ entry.sectionName }}
                   </span>
                 </div>
-                <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-dot"
-                      :title="entryNote(entry)">📋</span>
+                <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-indicator"
+                      :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                      @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
+                      @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
                 <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
                                 :low="isLowPriorityEntry(entry)"
                                 @toggle="toggleEntryPriority(entry)" />
@@ -273,7 +280,11 @@
             <div class="focus-day-header"><span class="day-name">{{ day.label }}</span><span class="day-count">{{ day.entries.length }}</span></div>
             <div v-for="entry in day.entries.slice(0, 4)" :key="entry.task.id" class="focus-adjacent-task-row">
               <span class="focus-row-check" :class="checkClasses(entry)" aria-hidden="true"></span>
-              <span>{{ cardTitle(entry) }}</span>
+              <span class="focus-adjacent-task-title">{{ cardTitle(entry) }}</span>
+              <span v-if="entryNote(entry)" class="focus-note-indicator"
+                    :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                    @mouseenter.stop="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
+                    @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
             </div>
           </div>
         </div>
@@ -351,7 +362,7 @@
                   </span>
                   <button v-else class="focus-row-title execution-row-title"
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
-                          :title="`Edit name: ${entry.task.text}`"
+                          :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                   <span class="focus-week-section-icon" tabindex="0"
                         :aria-label="`${entry.columnName} · ${entry.sectionName}`"
@@ -361,8 +372,10 @@
                         @blur="hideSectionTooltip">
                     {{ sectionInitial(entry) }}
                   </span>
-                  <span v-if="entryNote(entry)" class="focus-note-dot"
-                        :title="entryNote(entry)">📋</span>
+                  <span v-if="entryNote(entry)" class="focus-note-indicator"
+                        :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                        @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
+                        @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
                   <button class="focus-week-priority-badge"
                           :class="{ active: isLowPriorityEntry(entry) }"
                           :title="isLowPriorityEntry(entry) ? 'Make normal priority' : 'Make low priority'"
@@ -397,7 +410,11 @@
             <div class="focus-day-header"><span class="day-name">{{ day.label }}</span><span class="day-count">{{ day.entries.length }}</span></div>
             <div v-for="entry in day.entries.slice(0, 4)" :key="entry.task.id" class="focus-adjacent-task-row">
               <span class="focus-row-check" :class="checkClasses(entry)" aria-hidden="true"></span>
-              <span>{{ cardTitle(entry) }}</span>
+              <span class="focus-adjacent-task-title">{{ cardTitle(entry) }}</span>
+              <span v-if="entryNote(entry)" class="focus-note-indicator"
+                    :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                    @mouseenter.stop="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
+                    @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
             </div>
           </div>
         </div>
@@ -441,6 +458,13 @@
       <div v-if="sectionTooltip" class="focus-section-tooltip" :class="`theme-${theme}`"
            :style="sectionTooltip.style" role="tooltip">
         {{ sectionTooltip.text }}
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="noteTooltip" class="focus-note-tooltip" :class="`theme-${theme}`"
+           :style="noteTooltip.style" role="tooltip">
+        {{ noteTooltip.text }}
       </div>
     </Teleport>
 
@@ -511,6 +535,7 @@ const customDatePickerOpen = ref(false);
 const customDateKind = ref('day');
 const customDateInput = ref(null);
 const sectionTooltip = ref(null);
+const noteTooltip = ref(null);
 const expandedWeekDayIndex = ref(null);
 const weekDayDockStyles = ref([]);
 const selectedWeekOffset = ref(0);
@@ -1411,6 +1436,29 @@ onUnmounted(() => {
 const cardTitle = (entry) => entry.task.displayText || entry.task.text;
 
 const entryNote = (entry) => extractNoteFromText(entry.task.text);
+const showNoteTooltip = (entry, event) => {
+  cancelMainPaneMagnifyTimer();
+  const rect = event.currentTarget.getBoundingClientRect();
+  const tooltipHalfWidth = Math.min(240, Math.max(0, (window.innerWidth - 24) / 2));
+  noteTooltip.value = {
+    text: entryNote(entry),
+    style: {
+      top: `${rect.bottom + 7}px`,
+      left: `${Math.min(Math.max(rect.left + rect.width / 2, tooltipHalfWidth), window.innerWidth - tooltipHalfWidth)}px`
+    }
+  };
+};
+const hideNoteTooltip = () => {
+  noteTooltip.value = null;
+};
+const finishNoteHover = (event) => {
+  hideNoteTooltip();
+  const panel = event.currentTarget.closest('.focus-panel');
+  const nextTarget = event.relatedTarget;
+  if (!panel || !(nextTarget instanceof Node) || !panel.contains(nextTarget)) return;
+  if (panel.classList.contains('panel-upnext')) magnifyMainPane(0);
+  else if (panel.classList.contains('panel-in-progress-queued')) magnifyMainPane(2);
+};
 const sectionInitial = (entry) => entry.sectionName?.trim().charAt(0).toUpperCase() || '?';
 const showSectionTooltip = (entry, event) => {
   const rect = event.currentTarget.getBoundingClientRect();
@@ -2157,7 +2205,8 @@ const toggleQuickAdd = async () => {
   font-weight: 600;
 }
 
-.focus-adjacent-task-row > span:last-child {
+.focus-adjacent-task-title {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2331,11 +2380,6 @@ const toggleQuickAdd = async () => {
   font-weight: 800;
   line-height: 1;
   cursor: help;
-}
-
-.focus-week-day-column .focus-note-dot {
-  flex: 0 0 auto;
-  font-size: 9px;
 }
 
 .focus-week-clock {
@@ -2640,8 +2684,7 @@ button.focus-week-clock:hover::after {
   min-width: 15px;
 }
 
-.focus-panel .focus-task-row.low-priority-row .focus-section-badge,
-.focus-panel .focus-task-row.low-priority-row .focus-row-note {
+.focus-panel .focus-task-row.low-priority-row .focus-section-badge {
   font-size: 8px;
 }
 
@@ -2916,24 +2959,30 @@ button.focus-row-check.cancelled:hover {
   white-space: nowrap;
 }
 
-.focus-row-note {
-  flex: 0 1 36%;
-  font-size: 11px;
-  line-height: 1.35;
-  color: #9fb3c8;
-  background: #171b21;
-  border-left: 2px solid #3b82c4;
-  border-radius: 3px;
-  padding: 1px 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.focus-note-indicator {
+  flex: 0 0 11px;
+  width: 11px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 1px solid #7f8a98;
+  border-radius: 2px;
+  background:
+    linear-gradient(#7f8a98, #7f8a98) 2px 3px / 5px 1px no-repeat,
+    linear-gradient(#7f8a98, #7f8a98) 2px 6px / 6px 1px no-repeat,
+    linear-gradient(#7f8a98, #7f8a98) 2px 9px / 4px 1px no-repeat;
+  opacity: 0.82;
+  cursor: default;
 }
 
-.focus-note-dot {
-  font-size: 12px;
-  opacity: 0.7;
-  cursor: default;
+.focus-week-day-column .focus-note-indicator,
+.focus-adjacent-task-row .focus-note-indicator {
+  flex-basis: 9px;
+  width: 9px;
+  height: 10px;
+  background:
+    linear-gradient(#7f8a98, #7f8a98) 2px 2px / 4px 1px no-repeat,
+    linear-gradient(#7f8a98, #7f8a98) 2px 5px / 4px 1px no-repeat,
+    linear-gradient(#7f8a98, #7f8a98) 2px 8px / 3px 1px no-repeat;
 }
 
 .focus-badge {
@@ -3002,7 +3051,8 @@ button.focus-row-check.cancelled:hover {
   box-shadow: 0 18px 55px rgba(0, 0, 0, 0.55);
 }
 
-.focus-section-tooltip {
+.focus-section-tooltip,
+.focus-note-tooltip {
   position: fixed;
   z-index: 3100;
   max-width: 190px;
@@ -3021,7 +3071,17 @@ button.focus-row-check.cancelled:hover {
   white-space: nowrap;
 }
 
-.focus-section-tooltip.theme-light {
+.focus-note-tooltip {
+  width: max-content;
+  max-width: min(480px, calc(100vw - 24px));
+  transform: translate(-50%, 0);
+  font-weight: 600;
+  pointer-events: none;
+  white-space: pre-wrap;
+}
+
+.focus-section-tooltip.theme-light,
+.focus-note-tooltip.theme-light {
   color: #333;
   background: #fff;
   border-color: #ccc;
@@ -3701,12 +3761,6 @@ button.focus-row-check.cancelled:hover {
 .theme-light .focus-task-row.overdue-row {
   background: #ffebee;
   border-color: rgba(244, 67, 54, 0.4);
-}
-
-.theme-light .focus-row-note {
-  color: #555;
-  background: #f5f5f5;
-  border-left-color: #2196f3;
 }
 
 .theme-light .focus-badge.overdue {

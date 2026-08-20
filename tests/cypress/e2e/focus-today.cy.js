@@ -37,7 +37,7 @@ describe('Focus Mode (execution carousel)', () => {
 
 # WIP
 ### CURRENT
-* [~] Inflight wip task
+* [~] Inflight wip task (Waiting for Alice)
 * [ ] Queued wip task ${dueTag(today)}
 * [x] Done wip task ${formatCompletionDate(new Date(2000, 0, 1))}
 
@@ -75,6 +75,23 @@ describe('Focus Mode (execution carousel)', () => {
       .should('contain', 'In Progress / Waiting')
       .should('contain', 'Inflight wip task')
       .find('.focus-section-badge').should('contain', 'CURRENT');
+    cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
+      .should('not.contain', 'Waiting for Alice')
+      .and('not.have.attr', 'title')
+      .find('.focus-row-title').should('have.attr', 'title', 'Edit name: Inflight wip task');
+    cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
+      .find('.focus-note-indicator').should('exist')
+      .and('have.attr', 'aria-label', 'Task note: Waiting for Alice')
+      .and('not.have.attr', 'title').then(($indicator) => {
+        const indicatorBottom = $indicator[0].getBoundingClientRect().bottom;
+        cy.wrap($indicator).trigger('mouseenter');
+        cy.get('.focus-note-tooltip').should('be.visible').and('have.text', 'Waiting for Alice')
+          .then(($tooltip) => {
+            expect($tooltip[0].getBoundingClientRect().top).to.be.greaterThan(indicatorBottom);
+            expect(parseFloat(getComputedStyle($tooltip[0]).maxWidth)).to.be.at.least(400);
+          });
+      });
+    cy.get('.focus-note-dot, .focus-row-note').should('not.exist');
     cy.get('.focus-panel.panel-now').should('have.class', 'is-focused')
       .should('contain', 'Now')
       .should('contain', 'Queued wip task');
@@ -820,6 +837,19 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-now').should('have.class', 'is-focused');
     cy.get('.panel-upnext .panel-header').click({ force: true });
     cy.get('.panel-upnext').should('have.class', 'is-magnified').and('have.class', 'is-focused');
+    cy.get('.panel-in-progress-queued').should('not.have.class', 'is-magnified');
+  });
+
+  it('should exclude note-tooltip hover time from side-pane magnification', () => {
+    enterFocusMode();
+    cy.clock();
+
+    cy.get('.panel-in-progress-queued').trigger('mouseenter');
+    cy.tick(2500);
+    cy.get('.panel-in-progress-queued .focus-note-indicator').first().trigger('mouseenter');
+    cy.tick(3000);
+
+    cy.get('.focus-note-tooltip').should('be.visible').and('have.text', 'Waiting for Alice');
     cy.get('.panel-in-progress-queued').should('not.have.class', 'is-magnified');
   });
 
