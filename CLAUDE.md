@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **ALWAYS ASSUME THE DEV SERVER IS RUNNING** — Never attempt to start the development server. The user runs it separately in another terminal. Frontend is Vite on port **8081**; backend is Express on port **3001**.
 
+## Project Tracker
+
+`TODO.md` is the canonical project tracker and is itself an app-native todo file. Do not create a second
+developer task list. Put active development work in `# WIP` / `### In Progress`, then move completed work
+to a week-named section under `# ARCHIVE` with its lifecycle completion date.
+
 ## Common Development Commands
 
 ```bash
@@ -64,7 +70,7 @@ A Vue 3 Kanban board whose "database" is one or more plain markdown files. Every
 
 Express + `ws`, single file, ~440 lines. Endpoints:
 
-- `GET  /api/files` — lists `.todo.md` files from the server directory, directories in `stupid.yaml`, and individual files in `stupid.yaml`.
+- `GET  /api/files` — lists `.todo.md` and `TODO.md` files from the server directory, directories in `stupid.yaml`, and individual files in `stupid.yaml`.
 - `GET  /api/todos?path=<filePath>` — read a todo file.
 - `POST /api/todos` — body `{ content, path }`. Writes the file and snapshots a backup (first write of the day only).
 - `GET  /api/history?path=<filePath>` — lists backup versions with `{ date, filename, size, mtime }`, newest first.

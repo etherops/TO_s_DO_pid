@@ -45,13 +45,13 @@ You can configure multiple directories and individual todo files using a stupidl
 
 1. Copy `stupid.yaml.example` to `stupid.yaml`
 2. Edit `stupid.yaml` and add:
-   - Directories to scan for `.todo.md` files
-   - Individual `.todo.md` file paths
+   - Directories to scan for `.todo.md` or `TODO.md` files
+   - Individual `.todo.md` or `TODO.md` file paths
 3. Restart the server
 
 Example configuration:
 ```yaml
-# Directories to scan for .todo.md files
+# Directories to scan for .todo.md and TODO.md files
 directories:
   - /Users/username/Documents/todos
   - /Users/username/Projects/todos

@@ -222,6 +222,8 @@ const cleanupUnwatchedFiles = () => {
   });
 };
 
+const isTodoFileName = (fileName) => fileName.endsWith('.todo.md') || fileName.endsWith('TODO.md');
+
 // Helper function to scan a directory for todo files
 const getTaskCounts = (filePath) => {
   const counts = { total: 0, open: 0, active: 0, done: 0, skipped: 0 };
@@ -247,7 +249,7 @@ const scanDirectory = (dir, isBuiltIn = false) => {
     
     logger.info('Scanning directory:', dir);
     return fs.readdirSync(dir)
-      .filter(file => file.endsWith('.todo.md'))
+      .filter(isTodoFileName)
       .map(file => ({
         name: file,
         path: path.join(dir, file),
@@ -270,7 +272,7 @@ const addFile = (filePath) => {
       return null;
     }
     
-    if (!filePath.endsWith('.todo.md') && !filePath.endsWith('TODO.md')) {
+    if (!isTodoFileName(filePath)) {
       logger.warn('File does not have .todo.md or TODO.md extension:', filePath);
       return null;
     }
@@ -289,7 +291,7 @@ const addFile = (filePath) => {
   }
 };
 
-// Get all .todo.md files from server directory, configured directories, and individual files
+// Get all .todo.md and TODO.md files from server directory, configured directories, and individual files
 app.get('/api/files', (req, res) => {
   try {
     logger.info('Listing todo.md files from all configured sources');

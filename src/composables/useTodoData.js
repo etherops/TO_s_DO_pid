@@ -74,6 +74,9 @@ export function useTodoData() {
                 // Find the file by path
                 const foundFile = availableFiles.value.find(f => f.path === savedFilePath);
                 selectedFile.value = foundFile || availableFiles.value[0] || { name: '', path: '', isBuiltIn: true };
+                if (!foundFile && selectedFile.value.path) {
+                    localStorage.setItem('selectedTodoFilePath', selectedFile.value.path);
+                }
             } else {
                 selectedFile.value = availableFiles.value[0] || { name: '', path: '', isBuiltIn: true };
             }
