@@ -14,6 +14,24 @@ import { extractCompletionDateValue, isCompletedToday } from './completionDateHe
 
 export const UP_NEXT_GROUP_ORDER = ['month', 'week', 'day', 'unscheduled'];
 
+const isLowPriorityEntry = (entry) => entry.task.isLowPriority || entry.task.listMarker === '-';
+
+export const groupInProgressQueuedEntries = (entries) => {
+  const lowPriority = entries.filter(isLowPriorityEntry);
+  const normalPriority = entries.filter(entry => !isLowPriorityEntry(entry));
+  const thisWeek = normalPriority.filter(entry => entry.dueGroup === 'this-week');
+  const remaining = normalPriority.filter(entry => entry.dueGroup !== 'this-week');
+  const inProgress = remaining.filter(entry => entry.group !== 'waiting');
+  const waiting = remaining.filter(entry => entry.group === 'waiting');
+
+  return [
+    { key: 'this-week', label: 'This Week', entries: thisWeek },
+    { key: 'in-progress-parked', label: 'In Progress / Parked', entries: inProgress },
+    { key: 'waiting-blocked', label: 'Waiting / Blocked', entries: waiting },
+    { key: 'low-priority', label: 'Low Priority', entries: lowPriority }
+  ].filter(group => group.entries.length);
+};
+
 const FOCUS_STACKS = ['WIP', 'SELECTED'];
 
 const isIceColumn = (columnName) => columnName.toUpperCase().includes('ICE');
@@ -79,6 +97,9 @@ const isDueNextMonthOrLater = (period, today = new Date()) => {
   return new Date(owner.year, owner.monthIndex, 1) >= nextMonth;
 };
 
+const isDueAfterCurrentWeek = (period, today = new Date()) =>
+  period?.kind !== 'month' && period?.start > endOfCurrentWeek(today);
+
 const eachFocusTask = (todoData, visit) => {
   (todoData?.columnOrder || []).forEach(columnName => {
     const column = todoData.columnStacks?.[columnName];
@@ -136,22 +157,24 @@ export const deriveFocusModel = (todoData) => {
     const period = extractDuePeriod(task.text);
     const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text);
 
-    // A whole-current-week commitment has no honest weekday slot. Give it one
-    // authoritative home at the top of NOW, regardless of whether it has
-    // started, instead of duplicating it across the side panel and week strip.
+    // A whole-current-week commitment has no honest weekday slot. Active work
+    // belongs at the top of IN PROGRESS / WAITING; unstarted work stays in NOW.
     if (isCurrentWholeWeek(period)) {
-      now.push({
+      const wholeWeekEntry = {
         ...routedEntry,
         dueGroup: 'this-week',
         dueRank: DUE_RANK.thisWeek,
         dueTime: period.start.getTime()
-      });
+      };
+      if (task.statusChar === '~') inProgressQueued.push({ ...wholeWeekEntry, group: 'this-week' });
+      else now.push(wholeWeekEntry);
       return;
     }
 
-    // Far-future work is planning context even when its status is already in
-    // progress. Week periods use their majority-month owner for this boundary.
-    if (task.statusChar === '~' && period && isDueNextMonthOrLater(period)) {
+    // Anything beyond the current week is planning context even when already
+    // in progress. Month-level commitments stay active through their owner month.
+    if (task.statusChar === '~' && period
+        && (isDueAfterCurrentWeek(period) || isDueNextMonthOrLater(period))) {
       upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
       return;
     }

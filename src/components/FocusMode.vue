@@ -76,7 +76,12 @@
             @click="magnifyMainPaneOnClick(0, $event)"
         >
           <header class="panel-header">
-            <span class="panel-kicker upnext-kicker">‹ Up Next</span>
+            <span class="panel-kicker focus-panel-rule-trigger upnext-kicker" tabindex="0"
+                  aria-describedby="focus-panel-rules-tooltip"
+                  @mouseenter="showPanelRulesTooltip('upNext', $event)"
+                  @mouseleave="finishPanelRulesHover"
+                  @focus="showPanelRulesTooltip('upNext', $event)"
+                  @blur="hidePanelRulesTooltip">‹ Up Next</span>
             <span class="panel-count">{{ upNextDisplayCount }}</span>
           </header>
           <div class="panel-body">
@@ -137,7 +142,12 @@
             @click="magnifyMainPaneOnClick(2, $event)"
         >
           <header class="panel-header">
-            <span class="panel-kicker in-progress-queued-kicker">In Progress / Waiting</span>
+            <span class="panel-kicker focus-panel-rule-trigger in-progress-queued-kicker" tabindex="0"
+                  aria-describedby="focus-panel-rules-tooltip"
+                  @mouseenter="showPanelRulesTooltip('inProgressWaiting', $event)"
+                  @mouseleave="finishPanelRulesHover"
+                  @focus="showPanelRulesTooltip('inProgressWaiting', $event)"
+                  @blur="hidePanelRulesTooltip">In Progress / Waiting</span>
             <span class="panel-count">{{ inProgressQueued.length }}</span>
           </header>
           <div class="panel-body">
@@ -147,10 +157,11 @@
                   <span class="day-name">{{ group.label }}</span>
                   <span class="day-count">{{ group.entries.length }}</span>
                 </div>
-                <div v-for="entry in group.entries" :key="entry.task.id" class="focus-task-row execution-row"
+                  <div v-for="entry in group.entries" :key="entry.task.id" class="focus-task-row execution-row"
                      :class="[rowClasses(entry), {
                        'inflight-row': entry.task.statusChar === '~',
-                       'overdue-row': entry.dueGroup === 'overdue'
+                       'overdue-row': entry.dueGroup === 'overdue',
+                       'this-week-row': group.key === 'this-week'
                      }]"
                      :data-task-id="entry.task.id">
                   <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
@@ -212,7 +223,12 @@
             @pointerdown.capture="handleMainPaneInteraction($event)"
         >
           <header class="panel-header">
-            <span class="panel-kicker now-kicker">Now</span>
+            <span class="panel-kicker focus-panel-rule-trigger now-kicker" tabindex="0"
+                  aria-describedby="focus-panel-rules-tooltip"
+                  @mouseenter="showPanelRulesTooltip('now', $event)"
+                  @mouseleave="finishPanelRulesHover"
+                  @focus="showPanelRulesTooltip('now', $event)"
+                  @blur="hidePanelRulesTooltip">Now</span>
             <span class="panel-count">{{ immediateNow.length }}</span>
           </header>
           <div class="panel-body">
@@ -468,6 +484,18 @@
       </div>
     </Teleport>
 
+    <Teleport to="body">
+      <div v-if="panelRulesTooltip" id="focus-panel-rules-tooltip"
+           class="focus-panel-rules-tooltip" :class="`theme-${theme}`"
+           :style="panelRulesTooltip.style" role="tooltip">
+        <div class="focus-panel-rules-title">{{ panelRulesTooltip.title }}</div>
+        <div class="focus-panel-rules-scope">From tasks in SELECTED and WIP:</div>
+        <ul>
+          <li v-for="rule in panelRulesTooltip.rules" :key="rule">{{ rule }}</li>
+        </ul>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -475,6 +503,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import {
   deriveFocusModel,
+  groupInProgressQueuedEntries,
   findQuickAddTarget,
   findActiveWipSection,
   endOfCurrentWeek
@@ -536,6 +565,7 @@ const customDateKind = ref('day');
 const customDateInput = ref(null);
 const sectionTooltip = ref(null);
 const noteTooltip = ref(null);
+const panelRulesTooltip = ref(null);
 const expandedWeekDayIndex = ref(null);
 const weekDayDockStyles = ref([]);
 const selectedWeekOffset = ref(0);
@@ -904,17 +934,7 @@ const groupByDueDay = (entries) => {
 
 const dayHeaderClass = (key) => `day-${key === 'this-week' ? 'this-week' : key === 'today' ? 'today' : key === 'undated' ? 'general' : 'upcoming'}`;
 
-const inProgressQueuedGroups = computed(() => {
-  const lowPriority = inProgressQueued.value.filter(isLowPriorityEntry);
-  const normalPriority = inProgressQueued.value.filter(entry => !isLowPriorityEntry(entry));
-  const inProgress = normalPriority.filter(entry => entry.group !== 'waiting');
-  const waiting = normalPriority.filter(entry => entry.group === 'waiting');
-  return [
-    { key: 'in-progress-parked', label: 'In Progress / Parked', entries: inProgress },
-    { key: 'waiting-blocked', label: 'Waiting / Blocked', entries: waiting },
-    { key: 'low-priority', label: 'Low Priority', entries: lowPriority }
-  ].filter(group => group.entries.length);
-});
+const inProgressQueuedGroups = computed(() => groupInProgressQueuedEntries(inProgressQueued.value));
 const isScheduledThisWeek = (entry) => {
   if (!String(entry.dueGroup).startsWith('day-')) return false;
   const dueDate = extractDateFromText(entry.task.text);
@@ -1451,13 +1471,64 @@ const showNoteTooltip = (entry, event) => {
 const hideNoteTooltip = () => {
   noteTooltip.value = null;
 };
-const finishNoteHover = (event) => {
-  hideNoteTooltip();
+const resumeMainPaneMagnificationAfterTooltip = (event) => {
   const panel = event.currentTarget.closest('.focus-panel');
   const nextTarget = event.relatedTarget;
   if (!panel || !(nextTarget instanceof Node) || !panel.contains(nextTarget)) return;
   if (panel.classList.contains('panel-upnext')) magnifyMainPane(0);
   else if (panel.classList.contains('panel-in-progress-queued')) magnifyMainPane(2);
+};
+const finishNoteHover = (event) => {
+  hideNoteTooltip();
+  resumeMainPaneMagnificationAfterTooltip(event);
+};
+
+const PANEL_MEMBERSHIP_RULES = {
+  upNext: {
+    title: 'Up Next includes',
+    rules: [
+      'Work due after this week, regardless of status.',
+      'Unstarted, unscheduled work.'
+    ]
+  },
+  now: {
+    title: 'Now includes',
+    rules: [
+      'Unstarted work due this week as a whole.',
+      'Unfinished work due today or overdue.',
+      'Work completed or marked Will not do today.'
+    ]
+  },
+  inProgressWaiting: {
+    title: 'In Progress / Waiting includes',
+    rules: [
+      'In-progress work due this week as a whole.',
+      'In-progress work assigned to this month as a whole, or unscheduled.',
+      'WIP-source tasks are In Progress / Parked; SELECTED-source tasks are Waiting / Blocked.'
+    ]
+  }
+};
+
+const showPanelRulesTooltip = (panelKey, event) => {
+  const content = PANEL_MEMBERSHIP_RULES[panelKey];
+  if (!content) return;
+  cancelMainPaneMagnifyTimer();
+  const rect = event.currentTarget.getBoundingClientRect();
+  const tooltipHalfWidth = Math.min(230, Math.max(0, (window.innerWidth - 24) / 2));
+  panelRulesTooltip.value = {
+    ...content,
+    style: {
+      top: `${rect.bottom + 8}px`,
+      left: `${Math.min(Math.max(rect.left + rect.width / 2, tooltipHalfWidth), window.innerWidth - tooltipHalfWidth)}px`
+    }
+  };
+};
+const hidePanelRulesTooltip = () => {
+  panelRulesTooltip.value = null;
+};
+const finishPanelRulesHover = (event) => {
+  hidePanelRulesTooltip();
+  resumeMainPaneMagnificationAfterTooltip(event);
 };
 const sectionInitial = (entry) => entry.sectionName?.trim().charAt(0).toUpperCase() || '?';
 const showSectionTooltip = (entry, event) => {
@@ -2554,6 +2625,15 @@ button.focus-week-clock:hover::after {
   text-transform: uppercase;
 }
 
+.focus-panel-rule-trigger {
+  border-radius: 3px;
+  outline: none;
+}
+
+.focus-panel-rule-trigger:focus-visible {
+  box-shadow: 0 0 0 2px currentColor;
+}
+
 .upnext-kicker {
   color: #8a93a3;
 }
@@ -3052,7 +3132,8 @@ button.focus-row-check.cancelled:hover {
 }
 
 .focus-section-tooltip,
-.focus-note-tooltip {
+.focus-note-tooltip,
+.focus-panel-rules-tooltip {
   position: fixed;
   z-index: 3100;
   max-width: 190px;
@@ -3080,12 +3161,58 @@ button.focus-row-check.cancelled:hover {
   white-space: pre-wrap;
 }
 
+.focus-panel-rules-tooltip {
+  width: max-content;
+  max-width: min(460px, calc(100vw - 24px));
+  box-sizing: border-box;
+  transform: translate(-50%, 0);
+  padding: 10px 12px 11px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  pointer-events: none;
+  white-space: normal;
+}
+
+.focus-panel-rules-title {
+  margin-bottom: 5px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.focus-panel-rules-scope {
+  margin-bottom: 4px;
+  color: #aab3c0;
+  font-weight: 650;
+}
+
+.focus-panel-rules-tooltip ul {
+  margin: 0;
+  padding-left: 17px;
+}
+
+.focus-panel-rules-tooltip li + li {
+  margin-top: 3px;
+}
+
 .focus-section-tooltip.theme-light,
-.focus-note-tooltip.theme-light {
+.focus-note-tooltip.theme-light,
+.focus-panel-rules-tooltip.theme-light {
   color: #333;
   background: #fff;
   border-color: #ccc;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+.focus-panel-rules-tooltip.theme-light .focus-panel-rules-title {
+  color: #222;
+}
+
+.focus-panel-rules-tooltip.theme-light .focus-panel-rules-scope {
+  color: #697383;
 }
 
 .focus-date-menu-title {

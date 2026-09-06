@@ -3,6 +3,7 @@ import { parseTodoMdFile } from '../../../src/utils/TodoMdParser';
 import { formatCompletionDate } from '../../../src/utils/completionDateHelpers';
 import {
   deriveFocusModel,
+  groupInProgressQueuedEntries,
   findQuickAddTarget,
   findActiveWipSection,
   endOfCurrentWeek,
@@ -146,7 +147,7 @@ describe('focusModeHelpers', () => {
       expect(taskTexts(currentWeek.upNext)).toContain('Selected inflight due Friday');
     });
 
-    it('keeps month work in UP NEXT and routes the current whole week to NOW', () => {
+    it('keeps month work in UP NEXT and splits current whole-week work by status', () => {
       const periods = deriveFocusModel(parseTodoMdFile(`# SELECTED
 ## Ready
 * [ ] Whole August ! Aug 2026
@@ -154,15 +155,17 @@ describe('focusModeHelpers', () => {
 * [~] Active current week ! Aug Week #2 2026
 `));
       expect(taskTexts(periods.upNext)).toEqual(['Whole August']);
-      expect(taskTexts(periods.now)).toEqual(['Whole current week', 'Active current week']);
-      expect(periods.inProgressQueued).toEqual([]);
+      expect(taskTexts(periods.now)).toEqual(['Whole current week']);
+      expect(taskTexts(periods.inProgressQueued)).toEqual(['Active current week']);
       expect(periods.now[0].dueGroup).toBe('this-week');
+      expect(periods.inProgressQueued[0]).toMatchObject({ dueGroup: 'this-week', group: 'this-week' });
     });
 
-    it('keeps in-progress work due next month or later in UP NEXT', () => {
+    it('keeps in-progress work after the current week in UP NEXT', () => {
       const periods = deriveFocusModel(parseTodoMdFile(`# WIP
 ### Current
 * [~] Current-month day ! Aug 20 2026
+* [~] Current-month week ! Aug Week #3 2026
 * [~] Current whole month ! Aug 2026
 * [~] Next-month day ! Sep 8 2026
 * [~] Next-month week ! Sep Week #1 2026
@@ -171,13 +174,14 @@ describe('focusModeHelpers', () => {
 `));
 
       expect(taskTexts(periods.inProgressQueued)).toEqual([
-        'Current whole month',
-        'Current-month day'
+        'Current whole month'
       ]);
       expect(taskTexts(periods.upNext)).toEqual([
         'Next whole month',
         'Later month',
+        'Current-month week',
         'Next-month week',
+        'Current-month day',
         'Next-month day'
       ]);
       expect(periods.upNext.every(entry => entry.task.statusChar === '~')).toBe(true);
@@ -242,6 +246,23 @@ describe('focusModeHelpers', () => {
 `));
       expect(priorityModel.inProgressQueued[0].task.isLowPriority).toBe(true);
       expect(priorityModel.upNext[0].task.isLowPriority).toBe(true);
+    });
+
+    it('puts all right-panel low-priority work in one final group', () => {
+      const entries = [
+        { task: { displayText: 'Normal week' }, dueGroup: 'this-week', group: 'this-week' },
+        { task: { displayText: 'Low week', isLowPriority: true }, dueGroup: 'this-week', group: 'this-week' },
+        { task: { displayText: 'Normal active' }, dueGroup: 'undated', group: 'inProgress' },
+        { task: { displayText: 'Low blocked', listMarker: '-' }, dueGroup: 'undated', group: 'waiting' }
+      ];
+
+      const groups = groupInProgressQueuedEntries(entries);
+      expect(groups.map(group => group.label)).toEqual([
+        'This Week',
+        'In Progress / Parked',
+        'Low Priority'
+      ]);
+      expect(taskTexts(groups.at(-1).entries)).toEqual(['Low week', 'Low blocked']);
     });
 
     it('keeps same-day queued work in UP NEXT file order so sections stay together', () => {

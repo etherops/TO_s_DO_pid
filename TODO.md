@@ -34,9 +34,11 @@
 
 # WIP
 ### In Progress
+* [~] improve: Focus scheduling boundaries - Keep active current-week work on the right, later weeks in Up Next, and low-priority work in bottom groups
 
 # ARCHIVE
 ### Aug Week #3 2026
+* [x] improve - explain Focus panel membership rules from each panel title | Aug 21 2026
 * [x] improve - merge the legacy project tracker into canonical TODO.md and keep it app-discoverable | Aug 20 2026
 * [x] improve - show Focus task notes from a compact indicator in an immediate wide tooltip | Aug 20 2026
 * [x] bugfix - keep note-tooltip hover time from magnifying side panes | Aug 20 2026
