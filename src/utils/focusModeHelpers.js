@@ -16,6 +16,24 @@ export const UP_NEXT_GROUP_ORDER = ['month', 'week', 'day', 'unscheduled'];
 
 const isLowPriorityEntry = (entry) => entry.task.isLowPriority || entry.task.listMarker === '-';
 
+export const orderEntriesBySourcePosition = (entries) => {
+  const sectionGroups = new Map();
+  entries.forEach(entry => {
+    const key = entry.section;
+    if (!sectionGroups.has(key)) sectionGroups.set(key, []);
+    sectionGroups.get(key).push(entry);
+  });
+
+  return [...sectionGroups.values()].flatMap(sectionEntries => {
+    const sectionItems = sectionEntries[0]?.section?.items || [];
+    const sourceIndex = new Map(sectionItems.map((item, index) => [item.id, index]));
+    return [...sectionEntries].sort((a, b) =>
+      (sourceIndex.get(a.task.id) ?? Number.MAX_SAFE_INTEGER)
+      - (sourceIndex.get(b.task.id) ?? Number.MAX_SAFE_INTEGER)
+    );
+  });
+};
+
 export const groupInProgressQueuedEntries = (entries) => {
   const lowPriority = entries.filter(isLowPriorityEntry);
   const normalPriority = entries.filter(entry => !isLowPriorityEntry(entry));
@@ -25,11 +43,43 @@ export const groupInProgressQueuedEntries = (entries) => {
   const waiting = remaining.filter(entry => entry.group === 'waiting');
 
   return [
-    { key: 'this-week', label: 'This Week', entries: thisWeek },
-    { key: 'in-progress-parked', label: 'In Progress / Parked', entries: inProgress },
-    { key: 'waiting-blocked', label: 'Waiting / Blocked', entries: waiting },
-    { key: 'low-priority', label: 'Low Priority', entries: lowPriority }
+    { key: 'this-week', label: 'This Week', entries: orderEntriesBySourcePosition(thisWeek) },
+    { key: 'in-progress-parked', label: 'In Progress / Parked', entries: orderEntriesBySourcePosition(inProgress) },
+    { key: 'waiting-blocked', label: 'Waiting / Blocked', entries: orderEntriesBySourcePosition(waiting) },
+    { key: 'low-priority', label: 'Low Priority', entries: orderEntriesBySourcePosition(lowPriority) }
   ].filter(group => group.entries.length);
+};
+
+export const reorderTaskSubsetInSection = (
+  sectionItems,
+  eligibleTaskIds,
+  sourceTaskId,
+  targetTaskId,
+  placeAfter = false
+) => {
+  if (!Array.isArray(sectionItems) || sourceTaskId === targetTaskId) return false;
+
+  const eligibleIds = new Set(eligibleTaskIds);
+  if (!eligibleIds.has(sourceTaskId) || !eligibleIds.has(targetTaskId)) return false;
+
+  const slots = sectionItems
+    .map((item, index) => eligibleIds.has(item.id) ? index : -1)
+    .filter(index => index !== -1);
+  const orderedItems = slots.map(index => sectionItems[index]);
+  const sourceIndex = orderedItems.findIndex(item => item.id === sourceTaskId);
+  if (sourceIndex === -1) return false;
+
+  const [sourceItem] = orderedItems.splice(sourceIndex, 1);
+  const targetIndex = orderedItems.findIndex(item => item.id === targetTaskId);
+  if (targetIndex === -1) return false;
+  orderedItems.splice(targetIndex + (placeAfter ? 1 : 0), 0, sourceItem);
+
+  const changed = slots.some((slot, index) => sectionItems[slot] !== orderedItems[index]);
+  if (!changed) return false;
+  slots.forEach((slot, index) => {
+    sectionItems[slot] = orderedItems[index];
+  });
+  return true;
 };
 
 const FOCUS_STACKS = ['WIP', 'SELECTED'];

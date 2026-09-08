@@ -53,7 +53,8 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 ## Task interactions
 
 - Focus Mode's + Add creates an unstarted task due today, so it appears immediately in NOW. Its storage section is inferred dynamically: use the WIP section with the most `~` tasks, falling back to the first WIP section and then the first SELECTED section; no section title is hard-coded.
-- Task names are edited independently from due dates.
+- Task names are edited independently from due dates. Only the rendered title text is an edit target; unused card
+  surface remains available for dragging and sorting.
 - Task titles and due-date controls remain directly editable in the left and right side panels; using them does not move that panel into the spotlight. Clicking the surrounding panel still brings it to center.
 - The due-date clock opens an anchored menu with Today, Tomorrow, each remaining day this week, This week, Next week, whole-month shortcuts, one unified custom picker, and Clear. “Next week” assigns the entire next Sunday–Saturday week, not an exact Monday. The custom picker switches between Day, Week, and Month precision without presenting three competing controls. Choosing a value saves immediately.
 - Status uses the four board states: queued, in progress, completed, and will not do.
@@ -73,7 +74,9 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 
 ## Ordering
 
-Existing day/group boundaries take precedence. Within a group, tasks use the main board's status order—completed, cancelled, in progress, then unstarted—and then cluster by source section.
+Existing day/group boundaries take precedence. Within a group, tasks cluster by source section and follow their order in that Markdown section.
+
+Cards sharing the same Focus group and source Markdown section can be drag-sorted. A successful drop rewrites only those cards' relative task slots in the source section; raw text and tasks outside the sortable subset remain anchored. Cross-group and cross-section drops are rejected so Focus sorting cannot change task meaning or silently move work between planning structures.
 
 ## Theme
 

@@ -95,7 +95,13 @@
                 <span class="day-count">{{ group.entries.length }}</span>
               </div>
               <div v-for="entry in group.entries" :key="entry.task.id" class="focus-task-row"
-                   :class="rowClasses(entry)" :data-task-id="entry.task.id">
+                   :class="[rowClasses(entry), focusSortClass(entry)]" :data-task-id="entry.task.id"
+                   :draggable="isFocusEntrySortable(entry, group.entries)"
+                   :aria-grabbed="focusSortDrag?.sourceTaskId === entry.task.id"
+                   @dragstart="startFocusSort(entry, group.entries, 'upNext', group.key, $event)"
+                   @dragover="hoverFocusSortTarget(entry, 'upNext', group.key, $event)"
+                   @drop="finishFocusSort(entry, 'upNext', group.key, $event)"
+                   @dragend="clearFocusSort">
               <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                       :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                       @click.stop="cycleEntryStatus(entry, 'upNext', $event)"></button>
@@ -106,7 +112,8 @@
                 <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
               </div>
               <div v-else class="focus-row-main">
-                <button class="focus-row-title" :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
+                <button class="focus-row-title" draggable="false"
+                        :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                         :title="`Edit name: ${cardTitle(entry)}`"
                         @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
@@ -162,8 +169,14 @@
                        'inflight-row': entry.task.statusChar === '~',
                        'overdue-row': entry.dueGroup === 'overdue',
                        'this-week-row': group.key === 'this-week'
-                     }]"
-                     :data-task-id="entry.task.id">
+                     }, focusSortClass(entry)]"
+                     :data-task-id="entry.task.id"
+                     :draggable="isFocusEntrySortable(entry, group.entries)"
+                     :aria-grabbed="focusSortDrag?.sourceTaskId === entry.task.id"
+                     @dragstart="startFocusSort(entry, group.entries, 'inProgressQueued', group.key, $event)"
+                     @dragover="hoverFocusSortTarget(entry, 'inProgressQueued', group.key, $event)"
+                     @drop="finishFocusSort(entry, 'inProgressQueued', group.key, $event)"
+                     @dragend="clearFocusSort">
                   <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                           :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                           @click.stop="cycleEntryStatus(entry, 'inProgressQueued', $event)"></button>
@@ -174,7 +187,7 @@
                     <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                   </div>
                   <div v-else class="focus-row-main">
-                    <button class="focus-row-title execution-row-title"
+                    <button class="focus-row-title execution-row-title" draggable="false"
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
@@ -244,8 +257,14 @@
                    :class="[rowClasses(entry), {
                      'overdue-row': entry.dueGroup === 'overdue',
                      'this-week-row': entry.dueGroup === 'this-week'
-                   }]"
-                   :data-task-id="entry.task.id">
+                   }, focusSortClass(entry)]"
+                   :data-task-id="entry.task.id"
+                   :draggable="isFocusEntrySortable(entry, day.entries)"
+                   :aria-grabbed="focusSortDrag?.sourceTaskId === entry.task.id"
+                   @dragstart="startFocusSort(entry, day.entries, 'now', day.key, $event)"
+                   @dragover="hoverFocusSortTarget(entry, 'now', day.key, $event)"
+                   @drop="finishFocusSort(entry, 'now', day.key, $event)"
+                   @dragend="clearFocusSort">
                 <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                         @click.stop="cycleEntryStatus(entry, 'now', $event)"></button>
@@ -256,7 +275,8 @@
                   <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                 </div>
                 <div v-else class="focus-row-main">
-                  <button class="focus-row-title" :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
+                  <button class="focus-row-title" draggable="false"
+                          :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
                   <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
@@ -504,6 +524,8 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import {
   deriveFocusModel,
   groupInProgressQueuedEntries,
+  orderEntriesBySourcePosition,
+  reorderTaskSubsetInSection,
   findQuickAddTarget,
   findActiveWipSection,
   endOfCurrentWeek
@@ -566,6 +588,8 @@ const customDateInput = ref(null);
 const sectionTooltip = ref(null);
 const noteTooltip = ref(null);
 const panelRulesTooltip = ref(null);
+const focusSortDrag = ref(null);
+const focusSortTarget = ref(null);
 const expandedWeekDayIndex = ref(null);
 const weekDayDockStyles = ref([]);
 const selectedWeekOffset = ref(0);
@@ -782,6 +806,80 @@ const inProgressQueued = panelCards('inProgressQueued');
 const now = panelCards('now');
 const done = panelCards('done');
 const isLowPriorityEntry = (entry) => entry.task.isLowPriority || entry.task.listMarker === '-';
+const sortablePeers = (entry, entries) => entries.filter(candidate =>
+  candidate.section === entry.section
+  && candidate.columnName === entry.columnName
+);
+const isFocusEntrySortable = (entry, entries) => !isEditingEntry(entry)
+  && !transitions.value.has(entry.task.id)
+  && !pendingStatuses.value.has(entry.task.id)
+  && sortablePeers(entry, entries).length > 1;
+const focusSortClass = (entry) => ({
+  'focus-sort-dragging': focusSortDrag.value?.sourceTaskId === entry.task.id,
+  'focus-sort-target-before': focusSortTarget.value?.taskId === entry.task.id && !focusSortTarget.value.placeAfter,
+  'focus-sort-target-after': focusSortTarget.value?.taskId === entry.task.id && focusSortTarget.value.placeAfter
+});
+const startFocusSort = (entry, entries, bucketName, groupKey, event) => {
+  if (!isFocusEntrySortable(entry, entries)) {
+    event.preventDefault();
+    return;
+  }
+
+  const eligibleTaskIds = sortablePeers(entry, entries).map(candidate => candidate.task.id);
+  focusSortDrag.value = {
+    sourceTaskId: entry.task.id,
+    section: entry.section,
+    bucketName,
+    groupKey,
+    eligibleTaskIds
+  };
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', entry.task.id);
+  }
+};
+const canDropFocusSort = (entry, bucketName, groupKey) => {
+  const drag = focusSortDrag.value;
+  return Boolean(drag
+    && drag.bucketName === bucketName
+    && drag.groupKey === groupKey
+    && drag.section === entry.section
+    && drag.eligibleTaskIds.includes(entry.task.id));
+};
+const hoverFocusSortTarget = (entry, bucketName, groupKey, event) => {
+  if (!canDropFocusSort(entry, bucketName, groupKey)) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  const rect = event.currentTarget.getBoundingClientRect();
+  focusSortTarget.value = {
+    taskId: entry.task.id,
+    placeAfter: event.clientY > rect.top + rect.height / 2
+  };
+};
+const finishFocusSort = (entry, bucketName, groupKey, event) => {
+  if (!canDropFocusSort(entry, bucketName, groupKey)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const drag = focusSortDrag.value;
+  const rect = event.currentTarget.getBoundingClientRect();
+  const placeAfter = focusSortTarget.value?.taskId === entry.task.id
+    ? focusSortTarget.value.placeAfter
+    : event.clientY > rect.top + rect.height / 2;
+  const changed = reorderTaskSubsetInSection(
+    drag.section.items,
+    drag.eligibleTaskIds,
+    drag.sourceTaskId,
+    entry.task.id,
+    placeAfter
+  );
+  focusSortDrag.value = null;
+  focusSortTarget.value = null;
+  if (changed) emit('update');
+};
+const clearFocusSort = () => {
+  focusSortDrag.value = null;
+  focusSortTarget.value = null;
+};
 const upNextDisplayGroups = computed(() => {
   const monthGroups = new Map();
   const weekGroups = new Map();
@@ -851,7 +949,10 @@ const upNextDisplayGroups = computed(() => {
   );
   if (unscheduled.length) groups.push({ key: 'unscheduled', label: 'Unscheduled', entries: unscheduled });
   if (lowPriority.length) groups.push({ key: 'low-priority', label: 'Low Priority', entries: lowPriority });
-  return groups;
+  return groups.map(group => ({
+    ...group,
+    entries: orderEntriesBySourcePosition(group.entries)
+  }));
 });
 const upNextDisplayCount = computed(() =>
   upNextDisplayGroups.value.reduce((total, group) => total + group.entries.length, 0)
@@ -947,7 +1048,10 @@ const nowDays = computed(() => {
   const lowPriority = immediateNow.value.filter(entry => isLowPriorityEntry(entry) && entry.dueGroup !== 'this-week');
   const groups = groupByDueDay(immediateNow.value.filter(entry => !isLowPriorityEntry(entry) || entry.dueGroup === 'this-week'));
   if (lowPriority.length) groups.push({ key: 'low-priority', label: 'Low Priority', entries: lowPriority });
-  return groups;
+  return groups.map(group => ({
+    ...group,
+    entries: orderEntriesBySourcePosition(group.entries)
+  }));
 });
 
 const startOfThisWeek = () => {
@@ -2721,6 +2825,38 @@ button.focus-week-clock:hover::after {
   transition: all 0.15s ease;
 }
 
+.focus-task-row[draggable="true"] {
+  cursor: grab;
+  user-select: none;
+}
+
+.focus-task-row.focus-sort-dragging {
+  opacity: 0.42;
+  cursor: grabbing;
+}
+
+.focus-task-row.focus-sort-target-before::before,
+.focus-task-row.focus-sort-target-after::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  right: 3px;
+  left: 3px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--ui-blue, #4090df);
+  box-shadow: 0 0 0 1px rgba(64, 144, 223, 0.18);
+  pointer-events: none;
+}
+
+.focus-task-row.focus-sort-target-before::before {
+  top: -3px;
+}
+
+.focus-task-row.focus-sort-target-after::after {
+  bottom: -3px;
+}
+
 .is-focused .focus-task-row:hover {
   background: #242b36;
   border-color: #333c49;
@@ -2891,7 +3027,9 @@ button.focus-row-check.cancelled:hover {
 }
 
 .focus-row-title {
-  flex: 1;
+  flex: 0 1 auto;
+  width: fit-content;
+  max-width: 100%;
   min-width: 0;
   padding: 0;
   border: 0;

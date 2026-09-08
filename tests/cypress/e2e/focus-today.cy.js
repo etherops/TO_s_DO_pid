@@ -78,7 +78,14 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
       .should('not.contain', 'Waiting for Alice')
       .and('not.have.attr', 'title')
-      .find('.focus-row-title').should('have.attr', 'title', 'Edit name: Inflight wip task');
+      .find('.focus-row-title')
+      .should('have.attr', 'title', 'Edit name: Inflight wip task')
+      .and('have.attr', 'draggable', 'false')
+      .then(($title) => {
+        const titleWidth = $title[0].getBoundingClientRect().width;
+        const mainWidth = $title[0].closest('.focus-row-main').getBoundingClientRect().width;
+        expect(titleWidth, 'title edit hit area').to.be.lessThan(mainWidth);
+      });
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
       .find('.focus-note-indicator').should('exist')
       .and('have.attr', 'aria-label', 'Task note: Waiting for Alice')
@@ -867,6 +874,54 @@ describe('Focus Mode (execution carousel)', () => {
       .and('contain', 'In-progress work due this week as a whole')
       .and('contain', 'In Progress / Parked')
       .and('contain', 'Waiting / Blocked');
+  });
+
+  it('should persist card sorting within one Focus group and source section', () => {
+    const sortableContent = `# SELECTED
+## First section
+* [ ] Alpha task
+* [ ] Beta task
+## Other section
+* [ ] Gamma task
+`;
+
+    cy.writeTestFileContent(sortableContent).then((fileInfo) => {
+      cy.wait(500);
+      cy.reload();
+      cy.contains('TO_s_DO_pid').should('be.visible');
+      cy.switchToFile(fileInfo.fileName);
+    });
+    enterFocusMode();
+
+    cy.window().then((win) => {
+      const dataTransfer = new win.DataTransfer();
+      cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Beta task')
+        .trigger('dragstart', { dataTransfer });
+      cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Alpha task').then(($target) => {
+        const clientY = $target[0].getBoundingClientRect().top + 1;
+        cy.wrap($target)
+          .trigger('dragover', { dataTransfer, clientY })
+          .trigger('drop', { dataTransfer, clientY });
+      });
+    });
+
+    cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Beta task');
+    cy.get('.panel-upnext .focus-task-row').eq(1).should('contain', 'Alpha task');
+    cy.wait(500);
+    cy.reload();
+    cy.get('.focus-mode').should('be.visible');
+    cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Beta task');
+    cy.get('.panel-upnext .focus-task-row').eq(1).should('contain', 'Alpha task');
+
+    cy.window().then((win) => {
+      const dataTransfer = new win.DataTransfer();
+      cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Beta task')
+        .trigger('dragstart', { dataTransfer });
+      cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Gamma task')
+        .trigger('dragover', { dataTransfer }).trigger('drop', { dataTransfer });
+    });
+    cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Beta task');
+    cy.get('.panel-upnext .focus-task-row').eq(2).should('contain', 'Gamma task');
   });
 
   it('should keep the top panes fixed and magnify a side pane from its background', () => {

@@ -37,6 +37,9 @@
 * [~] improve: Focus scheduling boundaries - Keep active current-week work on the right, later weeks in Up Next, and low-priority work in bottom groups
 
 # ARCHIVE
+### Sep Week #2 2026
+* [x] feature: Focus card sorting - Reorder cards within the same Focus group and source section while preserving Markdown structure | Sep 8 2026
+
 ### Aug Week #3 2026
 * [x] improve - explain Focus panel membership rules from each panel title | Aug 21 2026
 * [x] improve - merge the legacy project tracker into canonical TODO.md and keep it app-discoverable | Aug 20 2026

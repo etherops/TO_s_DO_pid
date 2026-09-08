@@ -4,6 +4,8 @@ import { formatCompletionDate } from '../../../src/utils/completionDateHelpers';
 import {
   deriveFocusModel,
   groupInProgressQueuedEntries,
+  orderEntriesBySourcePosition,
+  reorderTaskSubsetInSection,
   findQuickAddTarget,
   findActiveWipSection,
   endOfCurrentWeek,
@@ -332,6 +334,36 @@ describe('focusModeHelpers', () => {
 ## BACKLOG
 * [ ] A task
 `))).toBeNull();
+    });
+  });
+
+  describe('reorderTaskSubsetInSection', () => {
+    it('uses Markdown order inside each source-section cluster', () => {
+      const section = { items: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] };
+      const entries = [
+        { task: section.items[2], section },
+        { task: section.items[0], section },
+        { task: section.items[1], section }
+      ];
+      expect(orderEntriesBySourcePosition(entries).map(entry => entry.task.id)).toEqual(['a', 'b', 'c']);
+    });
+
+    it('reorders only eligible task slots and preserves intervening source items', () => {
+      const taskA = { id: 'a', type: 'task' };
+      const raw = { id: 'raw', type: 'raw-text' };
+      const hiddenTask = { id: 'hidden', type: 'task' };
+      const taskB = { id: 'b', type: 'task' };
+      const taskC = { id: 'c', type: 'task' };
+      const items = [taskA, raw, hiddenTask, taskB, taskC];
+
+      expect(reorderTaskSubsetInSection(items, ['a', 'b', 'c'], 'c', 'a')).toBe(true);
+      expect(items).toEqual([taskC, raw, hiddenTask, taskA, taskB]);
+    });
+
+    it('rejects drops outside the eligible subset', () => {
+      const items = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+      expect(reorderTaskSubsetInSection(items, ['a', 'b'], 'a', 'c')).toBe(false);
+      expect(items.map(item => item.id)).toEqual(['a', 'b', 'c']);
     });
   });
 });
