@@ -4,8 +4,7 @@ describe('Completion Date Feature', () => {
   it('should add completion date after timeout when task marked as completed', () => {
     // Mark "Follow up with client" task as completed
     findTask('WORK - Follow up with client').within(() => {
-      cy.get('.custom-checkbox').click(); // -> in-progress
-      cy.get('.custom-checkbox').click(); // -> completed
+      cy.get('.custom-checkbox').click(); // unchecked -> completed
       
       // Should show pending completion animation
       cy.get('.custom-checkbox').should('have.class', 'pending-completion');
@@ -35,8 +34,7 @@ describe('Completion Date Feature', () => {
   it('should show completion badge for completed tasks', () => {
     // Mark "Mountain trip planning" task as completed and wait
     findTask('PROJECT - Mountain trip planning').within(() => {
-      cy.get('.custom-checkbox').click(); // -> in-progress
-      cy.get('.custom-checkbox').click(); // -> completed
+      cy.get('.custom-checkbox').click(); // unchecked -> completed
     });
     
     cy.wait(2000); // Wait for completion date to be added
@@ -55,8 +53,7 @@ describe('Completion Date Feature', () => {
   it('should allow clearing completion date in edit mode', () => {
     // Mark HOME task as completed and wait
     findTask('HOME - Garden maintenance').within(() => {
-      cy.get('.custom-checkbox').click(); // -> in-progress
-      cy.get('.custom-checkbox').click(); // -> completed
+      cy.get('.custom-checkbox').click(); // unchecked -> completed
     });
     
     cy.wait(2000);
@@ -87,11 +84,11 @@ describe('Completion Date Feature', () => {
   it('should prevent completion date timeout if user continues clicking', () => {
     // Mark as completed
     findTask('HOME - Lawn care').within(() => {
-      cy.get('.custom-checkbox').click(); // -> in-progress
-      cy.get('.custom-checkbox').click(); // -> completed
+      cy.get('.custom-checkbox').click(); // unchecked -> completed
       
-      // Immediately click again before timeout to cancelled
-      cy.get('.custom-checkbox').click(); // completed -> cancelled
+      // Continue through in progress and cancelled before the timeout.
+      cy.get('.custom-checkbox').click(); // completed -> in-progress
+      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
       
       // Immediately click again before timeout to unchecked
       cy.get('.custom-checkbox').click(); // cancelled -> unchecked
@@ -109,8 +106,7 @@ describe('Completion Date Feature', () => {
   it('should add completion date for cancelled tasks', () => {
     // Mark SOCIAL task as cancelled (it starts as in-progress [~])
     findTask('SOCIAL - Event coordination for friends').within(() => {
-      cy.get('.custom-checkbox').click(); // in-progress -> completed
-      cy.get('.custom-checkbox').click(); // completed -> cancelled
+      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
     });
     
     cy.wait(2000); // Wait for completion date to be added
@@ -131,8 +127,7 @@ describe('Completion Date Feature', () => {
   it('should preserve completion dates when editing task text', () => {
     // Mark HEALTH task as completed and wait
     findTask('HEALTH - Research classes').within(() => {
-      cy.get('.custom-checkbox').click(); // unchecked -> in-progress  
-      cy.get('.custom-checkbox').click(); // in-progress -> completed
+      cy.get('.custom-checkbox').click(); // unchecked -> completed
     });
     
     cy.wait(2000);
@@ -157,17 +152,15 @@ describe('Completion Date Feature', () => {
   it('should handle multiple rapid status changes correctly', () => {
     // Rapidly cycle through statuses with HEALTH appointment task
     findTask('HEALTH - Schedule appointment').within(() => {
-      cy.get('.custom-checkbox').click(); // unchecked -> in-progress
+      cy.get('.custom-checkbox').click(); // unchecked -> completed
       cy.wait(100);
-      cy.get('.custom-checkbox').click(); // in-progress -> completed  
+      cy.get('.custom-checkbox').click(); // completed -> in-progress
       cy.wait(100);
-      cy.get('.custom-checkbox').click(); // completed -> cancelled
+      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
       cy.wait(100);
       cy.get('.custom-checkbox').click(); // cancelled -> unchecked
       cy.wait(100);
-      cy.get('.custom-checkbox').click(); // unchecked -> in-progress
-      cy.wait(100);
-      cy.get('.custom-checkbox').click(); // in-progress -> completed
+      cy.get('.custom-checkbox').click(); // unchecked -> completed
     });
     
     // Wait for final completion timeout

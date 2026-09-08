@@ -38,6 +38,8 @@
 
 # ARCHIVE
 ### Sep Week #2 2026
+* [x] improve: Status toggle order - Cycle not started, done, in progress, and will not do everywhere | Sep 8 2026
+* [x] feature: Focus task context menu - Add advanced card actions beginning with confirmed deletion | Sep 8 2026
 * [x] feature: Focus card sorting - Reorder cards within the same Focus group and source section while preserving Markdown structure | Sep 8 2026
 
 ### Aug Week #3 2026

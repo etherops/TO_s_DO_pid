@@ -89,10 +89,10 @@ describe('View Modes (Triage & Plan)', () => {
       findTask('Test checkbox task').parent().within(() => {
         // First verify it's unchecked
         cy.get('.custom-checkbox').should('have.class', 'unchecked');
-        // Click to mark as in-progress
+        // Click to mark as completed
         cy.get('.custom-checkbox').click();
-        // Verify it's now in-progress
-        cy.get('.custom-checkbox').should('have.class', 'in-progress');
+        // Verify it's now completed
+        cy.get('.custom-checkbox').should('have.class', 'checked');
       });
     });
 

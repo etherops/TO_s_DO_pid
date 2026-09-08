@@ -10,6 +10,23 @@ describe('Task Status Toggle', () => {
             cy.get('.custom-checkbox').should('have.class', 'unchecked')
         })
 
+        // Click to change to completed
+        findTask(taskText).within(() => {
+            cy.get('.custom-checkbox').click()
+        })
+
+        // Verify changed to completed
+        findTask(taskText).within(() => {
+            cy.get('.custom-checkbox').should('have.class', 'checked')
+        })
+
+        // Refresh and verify persisted
+        refreshAndWait()
+
+        findTask(taskText).within(() => {
+            cy.get('.custom-checkbox').should('have.class', 'checked')
+        })
+
         // Click to change to in-progress
         findTask(taskText).within(() => {
             cy.get('.custom-checkbox').click()
@@ -25,23 +42,6 @@ describe('Task Status Toggle', () => {
 
         findTask(taskText).within(() => {
             cy.get('.custom-checkbox').should('have.class', 'in-progress')
-        })
-
-        // Click to change to completed
-        findTask(taskText).within(() => {
-            cy.get('.custom-checkbox').click()
-        })
-
-        // Verify changed to checked
-        findTask(taskText).within(() => {
-            cy.get('.custom-checkbox').should('have.class', 'checked')
-        })
-
-        // Refresh and verify persisted
-        refreshAndWait()
-
-        findTask(taskText).within(() => {
-            cy.get('.custom-checkbox').should('have.class', 'checked')
         })
 
         // Click to change to cancelled

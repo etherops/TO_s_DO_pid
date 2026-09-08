@@ -132,6 +132,46 @@ describe('Focus Mode (execution carousel)', () => {
     });
   });
 
+  it('should delete a task from the Focus right-click menu after confirmation', () => {
+    enterFocusMode();
+
+    cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task').rightclick();
+    cy.get('.focus-task-context-menu').should('be.visible')
+      .and('contain', 'Selected ready task')
+      .and('contain', 'Delete task');
+
+    cy.get('.focus-task-context-delete').click();
+    cy.get('.focus-task-context-confirm').should('contain', 'Delete this task permanently?');
+    cy.get('.focus-task-context-cancel').click();
+    cy.get('.focus-task-context-delete').should('be.visible');
+    cy.get('.panel-upnext').should('contain', 'Selected ready task');
+
+    cy.get('.focus-task-context-delete').click();
+    cy.get('.focus-task-context-confirm-delete').click();
+    cy.get('.focus-task-context-menu').should('not.exist');
+    cy.get('.focus-mode').should('not.contain', 'Selected ready task');
+
+    cy.wait(600);
+    cy.reload();
+    cy.get('.focus-mode').should('be.visible').and('not.contain', 'Selected ready task');
+  });
+
+  it('should show and change the source Triage/Plan column from the Focus right-click menu', () => {
+    enterFocusMode();
+
+    cy.get('.panel-in-progress-queued .focus-task-row')
+      .contains('.focus-task-row', 'Parked selected task').rightclick();
+    cy.get('.focus-task-context-current-column').should('have.text', 'SELECTED').click();
+    cy.get('.focus-task-context-column-choice').contains('WIP').click();
+    cy.get('.focus-task-context-section-choice').contains('CURRENT').click();
+
+    cy.get('.focus-task-context-menu').should('not.exist');
+    cy.get('.panel-in-progress-queued').should('contain', 'Parked selected task');
+    cy.get('.focus-exit-btn').click();
+    cy.get('.wip-column').should('contain', 'Parked selected task');
+    cy.get('.selected-column').should('not.contain', 'Parked selected task');
+  });
+
   it('should bucket into up next, in progress / waiting, NOW, and the weekly strip', () => {
     enterFocusMode();
 
@@ -414,14 +454,14 @@ describe('Focus Mode (execution carousel)', () => {
 
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
       .should('exist')
-      .find('.focus-row-check').should('have.class', 'inflight');
+      .find('.focus-row-check').should('have.class', 'checked');
     cy.get('.focus-task-row.transitioning').should('not.exist');
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
       .find('.focus-row-check').click();
 
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
       .should('exist')
-      .find('.focus-row-check').should('have.class', 'checked');
+      .find('.focus-row-check').should('have.class', 'inflight');
     cy.get('.focus-task-row.transitioning').should('not.exist');
 
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
@@ -449,7 +489,7 @@ describe('Focus Mode (execution carousel)', () => {
     // The icon changes, but the card remains exactly where it was while pending.
     cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Overdue selected task');
     cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Queued wip task')
-      .find('.focus-row-check').should('have.class', 'inflight').and('have.class', 'pending');
+      .find('.focus-row-check').should('have.class', 'checked').and('have.class', 'pending');
     cy.tick(1499);
     cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Overdue selected task');
     cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Queued wip task');
@@ -907,6 +947,7 @@ describe('Focus Mode (execution carousel)', () => {
 
     cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Beta task');
     cy.get('.panel-upnext .focus-task-row').eq(1).should('contain', 'Alpha task');
+
     cy.wait(500);
     cy.reload();
     cy.get('.focus-mode').should('be.visible');

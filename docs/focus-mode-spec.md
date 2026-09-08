@@ -55,9 +55,14 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 - Focus Mode's + Add creates an unstarted task due today, so it appears immediately in NOW. Its storage section is inferred dynamically: use the WIP section with the most `~` tasks, falling back to the first WIP section and then the first SELECTED section; no section title is hard-coded.
 - Task names are edited independently from due dates. Only the rendered title text is an edit target; unused card
   surface remains available for dragging and sorting.
+- Right-clicking any visible task card opens a Focus action menu without changing the spotlighted panel. Delete is a
+  confirmed action in that menu and removes the task from its original Markdown section. The menu also shows the
+  task's exact Triage/Plan column and can move it to a chosen section in any other Triage/Plan column without changing
+  its status or schedule.
 - Task titles and due-date controls remain directly editable in the left and right side panels; using them does not move that panel into the spotlight. Clicking the surrounding panel still brings it to center.
 - The due-date clock opens an anchored menu with Today, Tomorrow, each remaining day this week, This week, Next week, whole-month shortcuts, one unified custom picker, and Clear. “Next week” assigns the entire next Sunday–Saturday week, not an exact Monday. The custom picker switches between Day, Week, and Month precision without presenting three competing controls. Choosing a value saves immediately.
-- Status uses the four board states: queued, in progress, completed, and will not do.
+- Status uses the four board states and the same click cycle as the board: queued → completed → in progress →
+  will not do → queued. Hover previews the next state's highlight without replacing the current symbol.
 - For completed or cancelled work, the completion stamp is authoritative for Focus placement. An old due date does not keep a task in NOW or place it under the wrong weekday.
 - Marking an unscheduled or current-month-level Up Next task in progress moves it to IN PROGRESS / WAITING after the status debounce. Work due after this week remains in UP NEXT; due-today and overdue work remains in NOW.
 - Status appearance updates immediately, but sorting and re-bucketing wait 1.5 seconds so repeated toggles do not move the control under the pointer.

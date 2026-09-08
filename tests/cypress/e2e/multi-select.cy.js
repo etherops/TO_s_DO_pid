@@ -140,26 +140,25 @@ describe('Multi-Select Task Operations', () => {
     it('should update checkbox for single task when clicked', () => {
         const task1 = 'WORK - Follow up with client'
         
-        // Click checkbox to mark as in-progress
+        // Click checkbox to mark as completed
         getTask(task1).find('.custom-checkbox').click()
         
         // Wait for status update
         cy.wait(500)
         
-        // Task should have updated status to in-progress
-        getTask(task1).find('.custom-checkbox').should('have.class', 'in-progress')
+        // Task should have updated status to completed
+        getTask(task1).find('.custom-checkbox').should('have.class', 'checked')
         
-        // Click again to mark as completed
+        // Click again to mark as in-progress
         getTask(task1).find('.custom-checkbox').click()
         
         // Wait for completion animation
         cy.wait(1500)
         
-        // Should be completed
-        getTask(task1).find('.custom-checkbox').should('have.class', 'checked')
+        // Should be in progress
+        getTask(task1).find('.custom-checkbox').should('have.class', 'in-progress')
         
-        // Verify it's marked as completed (might stay in same column or move to archive)
-        getTask(task1).find('.custom-checkbox').should('have.class', 'checked')
+        getTask(task1).find('.custom-checkbox').should('have.class', 'in-progress')
     })
 
     it('should handle selection after drag and drop', () => {

@@ -293,6 +293,7 @@ import {
   reconcileLifecycleDateForStatus,
   setCompletionDate
 } from '../utils/completionDateHelpers';
+import { nextTaskStatus } from '../utils/statusHelpers';
 
 const props = defineProps({
   task: {
@@ -446,17 +447,9 @@ const toggleTaskStatus = () => {
     isPendingCompletion.value = false;
   }
 
-  // Cycle through states: unchecked -> in-progress -> checked -> cancelled -> unchecked
+  // Cycle through states: unchecked -> checked -> in-progress -> cancelled -> unchecked
   const oldStatus = props.task.statusChar;
-  if (props.task.statusChar === ' ') {
-    props.task.statusChar = '~';
-  } else if (props.task.statusChar === '~') {
-    props.task.statusChar = 'x';
-  } else if (props.task.statusChar === 'x') {
-    props.task.statusChar = '-';
-  } else {
-    props.task.statusChar = ' ';
-  }
+  props.task.statusChar = nextTaskStatus(props.task.statusChar);
 
   // Convert the one lifecycle date only after the same debounce used for
   // sorting, so rapid status cycling does not repeatedly rewrite it.

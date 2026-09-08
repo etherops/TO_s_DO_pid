@@ -101,7 +101,8 @@
                    @dragstart="startFocusSort(entry, group.entries, 'upNext', group.key, $event)"
                    @dragover="hoverFocusSortTarget(entry, 'upNext', group.key, $event)"
                    @drop="finishFocusSort(entry, 'upNext', group.key, $event)"
-                   @dragend="clearFocusSort">
+                   @dragend="clearFocusSort"
+                   @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
               <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                       :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                       @click.stop="cycleEntryStatus(entry, 'upNext', $event)"></button>
@@ -176,7 +177,8 @@
                      @dragstart="startFocusSort(entry, group.entries, 'inProgressQueued', group.key, $event)"
                      @dragover="hoverFocusSortTarget(entry, 'inProgressQueued', group.key, $event)"
                      @drop="finishFocusSort(entry, 'inProgressQueued', group.key, $event)"
-                     @dragend="clearFocusSort">
+                     @dragend="clearFocusSort"
+                     @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
                   <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                           :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                           @click.stop="cycleEntryStatus(entry, 'inProgressQueued', $event)"></button>
@@ -264,7 +266,8 @@
                    @dragstart="startFocusSort(entry, day.entries, 'now', day.key, $event)"
                    @dragover="hoverFocusSortTarget(entry, 'now', day.key, $event)"
                    @drop="finishFocusSort(entry, 'now', day.key, $event)"
-                   @dragend="clearFocusSort">
+                   @dragend="clearFocusSort"
+                   @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
                 <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                         @click.stop="cycleEntryStatus(entry, 'now', $event)"></button>
@@ -314,7 +317,8 @@
         <div class="focus-adjacent-week-days">
           <div v-for="day in previousWeekDays" :key="day.key" class="focus-adjacent-week-day">
             <div class="focus-day-header"><span class="day-name">{{ day.label }}</span><span class="day-count">{{ day.entries.length }}</span></div>
-            <div v-for="entry in day.entries.slice(0, 4)" :key="entry.task.id" class="focus-adjacent-task-row">
+            <div v-for="entry in day.entries.slice(0, 4)" :key="entry.task.id" class="focus-adjacent-task-row"
+                 @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
               <span class="focus-row-check" :class="checkClasses(entry)" aria-hidden="true"></span>
               <span class="focus-adjacent-task-title">{{ cardTitle(entry) }}</span>
               <span v-if="entryNote(entry)" class="focus-note-indicator"
@@ -377,7 +381,8 @@
                   <template v-else>
                   <div v-if="!day.entries.length" class="focus-week-day-empty">—</div>
                 <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row execution-row"
-                     :class="rowClasses(entry)" :data-task-id="entry.task.id">
+                     :class="rowClasses(entry)" :data-task-id="entry.task.id"
+                     @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
                 <span v-if="day.isToday" class="focus-row-check" :class="checkClasses(entry)"
                       aria-hidden="true"></span>
                 <button v-else-if="!isEditingEntry(entry) && entry.sourceBucket" class="focus-row-check" :class="checkClasses(entry)"
@@ -444,7 +449,8 @@
         <div class="focus-adjacent-week-days">
           <div v-for="day in nextWeekDays" :key="day.key" class="focus-adjacent-week-day">
             <div class="focus-day-header"><span class="day-name">{{ day.label }}</span><span class="day-count">{{ day.entries.length }}</span></div>
-            <div v-for="entry in day.entries.slice(0, 4)" :key="entry.task.id" class="focus-adjacent-task-row">
+            <div v-for="entry in day.entries.slice(0, 4)" :key="entry.task.id" class="focus-adjacent-task-row"
+                 @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
               <span class="focus-row-check" :class="checkClasses(entry)" aria-hidden="true"></span>
               <span class="focus-adjacent-task-title">{{ cardTitle(entry) }}</span>
               <span v-if="entryNote(entry)" class="focus-note-indicator"
@@ -516,6 +522,74 @@
       </div>
     </Teleport>
 
+    <Teleport to="body">
+      <div v-if="taskContextMenu" ref="taskContextMenuRef" class="focus-task-context-menu"
+           :class="`theme-${theme}`" :style="taskContextMenuStyle" role="menu" tabindex="-1"
+           :aria-label="`Actions for ${cardTitle(taskContextMenu.entry)}`"
+           @click.stop @contextmenu.prevent.stop @keydown.esc.stop="closeTaskContextMenu">
+        <div class="focus-task-context-title" :title="cardTitle(taskContextMenu.entry)">
+          {{ cardTitle(taskContextMenu.entry) }}
+        </div>
+        <template v-if="taskContextMenu.view === 'actions'">
+          <div class="focus-task-context-label">Triage / Plan column</div>
+          <button type="button" class="focus-task-context-action focus-task-context-column" role="menuitem"
+                  @click="showContextColumns">
+            <span class="focus-task-context-column-mark" aria-hidden="true"></span>
+            <span class="focus-task-context-current-column">{{ taskContextMenu.entry.columnName }}</span>
+            <span class="focus-task-context-chevron" aria-hidden="true">›</span>
+          </button>
+          <div class="focus-task-context-divider"></div>
+          <button type="button"
+                class="focus-task-context-action focus-task-context-delete" role="menuitem"
+                @click="confirmContextTaskDelete">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm13-15h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+            </svg>
+            <span>Delete task</span>
+          </button>
+        </template>
+        <template v-else-if="taskContextMenu.view === 'columns'">
+          <button type="button" class="focus-task-context-back" @click="showContextActions">
+            <span aria-hidden="true">‹</span> Choose column
+          </button>
+          <button v-for="columnChoice in focusColumnChoices" :key="columnChoice.columnName" type="button"
+                  class="focus-task-context-action focus-task-context-column-choice" role="menuitem"
+                  :class="{ current: columnChoice.columnName === taskContextMenu.entry.columnName }"
+                  :disabled="!columnChoice.destinations.length"
+                  @click="showContextSections(columnChoice.columnName)">
+            <span>{{ columnChoice.columnName }}</span>
+            <span v-if="columnChoice.columnName === taskContextMenu.entry.columnName"
+                  class="focus-task-context-current-label">Current</span>
+            <span class="focus-task-context-chevron" aria-hidden="true">›</span>
+          </button>
+        </template>
+        <template v-else-if="taskContextMenu.view === 'sections'">
+          <button type="button" class="focus-task-context-back" @click="showContextColumns">
+            <span aria-hidden="true">‹</span> {{ taskContextMenu.targetColumnName }} section
+          </button>
+          <button v-for="destination in contextSectionChoices" :key="destination.key" type="button"
+                  class="focus-task-context-action focus-task-context-section-choice" role="menuitem"
+                  :class="{ current: destination.section === taskContextMenu.entry.section }"
+                  @click="moveContextTaskTo(destination)">
+            <span class="focus-task-context-destination">
+              <span>{{ destination.sectionName }}</span>
+            </span>
+            <span v-if="destination.section === taskContextMenu.entry.section"
+                  class="focus-task-context-current-label">Current</span>
+          </button>
+        </template>
+        <div v-else class="focus-task-context-confirm">
+          <div class="focus-task-context-confirm-copy">Delete this task permanently?</div>
+          <div class="focus-task-context-confirm-actions">
+            <button type="button" class="focus-task-context-cancel"
+                    @click="cancelContextTaskDelete">Cancel</button>
+            <button type="button" class="focus-task-context-confirm-delete"
+                    @click="deleteContextTask">Delete</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -554,6 +628,7 @@ import {
   setCompletionDate
 } from '../utils/completionDateHelpers';
 import { getStatusPriority, sortTaskToCorrectPosition } from '../utils/sortHelpers';
+import { nextTaskStatus } from '../utils/statusHelpers';
 
 const props = defineProps({
   todoData: {
@@ -588,6 +663,8 @@ const customDateInput = ref(null);
 const sectionTooltip = ref(null);
 const noteTooltip = ref(null);
 const panelRulesTooltip = ref(null);
+const taskContextMenu = ref(null);
+const taskContextMenuRef = ref(null);
 const focusSortDrag = ref(null);
 const focusSortTarget = ref(null);
 const expandedWeekDayIndex = ref(null);
@@ -597,6 +674,29 @@ const weekSlideDirection = ref('next');
 const hasNavigatedWeek = ref(false);
 const currentDate = ref(new Date());
 let currentDateTimer = null;
+
+const focusColumnChoices = computed(() => (props.todoData?.columnOrder || []).flatMap(columnName => {
+  const column = props.todoData.columnStacks?.[columnName];
+  if (!column || column.type === 'raw-text') return [];
+  const destinations = (column.sections || []).flatMap((section, sectionIndex) => {
+    if (section.type === 'raw-text') return [];
+    return [{
+      key: `${columnName}-${sectionIndex}`,
+      columnName,
+      sectionName: section.name,
+      sectionIndex,
+      section
+    }];
+  });
+  return [{ columnName, stackName: column.name, destinations }];
+}));
+
+const contextSectionChoices = computed(() => {
+  if (!taskContextMenu.value?.targetColumnName) return [];
+  return focusColumnChoices.value.find(choice =>
+    choice.columnName === taskContextMenu.value.targetColumnName
+  )?.destinations || [];
+});
 
 const ordinalSuffix = (day) => {
   if (day >= 11 && day <= 13) return 'th';
@@ -1386,11 +1486,10 @@ const checkClasses = (entry) => ({
 });
 
 const STATUS_LABELS = { ' ': 'Queued', '~': 'In progress', x: 'Completed', '-': 'Cancelled' };
-const NEXT_STATUS = { ' ': '~', '~': 'x', x: '-', '-': ' ' };
 
 const statusTitle = (entry) => {
   const current = STATUS_LABELS[entry.task.statusChar] || STATUS_LABELS[' '];
-  const next = STATUS_LABELS[NEXT_STATUS[entry.task.statusChar] || '~'];
+  const next = STATUS_LABELS[nextTaskStatus(entry.task.statusChar)];
   return `${current} — click for ${next}`;
 };
 
@@ -1523,6 +1622,10 @@ const panelStyle = (panelIndex) => {
 };
 
 const handleKeydown = (event) => {
+  if (event.key === 'Escape' && taskContextMenu.value) {
+    closeTaskContextMenu();
+    return;
+  }
   if (event.key === 'Escape' && dateMenuTaskId.value !== null) {
     dateMenuTaskId.value = null;
     return;
@@ -1539,10 +1642,127 @@ const closeDateMenu = () => {
   customDatePickerOpen.value = false;
 };
 
+const TASK_CONTEXT_MENU_WIDTH = 240;
+const TASK_CONTEXT_MENU_VIEWPORT_GAP = 10;
+const taskContextMenuHeight = computed(() => {
+  if (!taskContextMenu.value) return 0;
+  if (taskContextMenu.value.view === 'columns') {
+    return Math.min(400, 62 + focusColumnChoices.value.length * 34);
+  }
+  if (taskContextMenu.value.view === 'sections') {
+    return Math.min(400, 62 + contextSectionChoices.value.length * 38);
+  }
+  return taskContextMenu.value.view === 'confirmDelete' ? 132 : 142;
+});
+const taskContextMenuStyle = computed(() => {
+  if (!taskContextMenu.value) return {};
+  const maxLeft = window.innerWidth - TASK_CONTEXT_MENU_WIDTH - TASK_CONTEXT_MENU_VIEWPORT_GAP;
+  const maxTop = window.innerHeight - taskContextMenuHeight.value - TASK_CONTEXT_MENU_VIEWPORT_GAP;
+  return {
+    left: `${Math.max(TASK_CONTEXT_MENU_VIEWPORT_GAP, Math.min(taskContextMenu.value.x, maxLeft))}px`,
+    top: `${Math.max(TASK_CONTEXT_MENU_VIEWPORT_GAP, Math.min(taskContextMenu.value.y, maxTop))}px`
+  };
+});
+
+const closeTaskContextMenu = () => {
+  taskContextMenu.value = null;
+};
+
+const openTaskContextMenu = async (entry, event) => {
+  closeDateMenu();
+  hideSectionTooltip();
+  hideNoteTooltip();
+  hidePanelRulesTooltip();
+  cancelMainPaneMagnifyTimer();
+  clearFocusSort();
+  taskContextMenu.value = {
+    entry,
+    x: event.clientX,
+    y: event.clientY,
+    view: 'actions',
+    targetColumnName: null
+  };
+  await nextTick();
+  taskContextMenuRef.value?.focus();
+};
+
+const confirmContextTaskDelete = () => {
+  if (!taskContextMenu.value) return;
+  taskContextMenu.value = { ...taskContextMenu.value, view: 'confirmDelete' };
+};
+
+const cancelContextTaskDelete = () => {
+  if (!taskContextMenu.value) return;
+  taskContextMenu.value = { ...taskContextMenu.value, view: 'actions' };
+};
+
+const showContextActions = () => {
+  if (!taskContextMenu.value) return;
+  taskContextMenu.value = { ...taskContextMenu.value, view: 'actions', targetColumnName: null };
+};
+
+const showContextColumns = () => {
+  if (!taskContextMenu.value) return;
+  taskContextMenu.value = { ...taskContextMenu.value, view: 'columns', targetColumnName: null };
+};
+
+const showContextSections = (columnName) => {
+  if (!taskContextMenu.value) return;
+  taskContextMenu.value = {
+    ...taskContextMenu.value,
+    view: 'sections',
+    targetColumnName: columnName
+  };
+};
+
+const clearTaskInteractionState = (taskId) => {
+  const pendingTimer = statusTimers.get(taskId);
+  if (pendingTimer) clearTimeout(pendingTimer);
+  statusTimers.delete(taskId);
+  pendingStatuses.value.delete(taskId);
+  transitions.value.delete(taskId);
+  arrivals.value.delete(taskId);
+};
+
+const moveContextTaskTo = (destination) => {
+  const entry = taskContextMenu.value?.entry;
+  if (!entry || !destination?.section) return;
+  if (destination.section === entry.section) {
+    closeTaskContextMenu();
+    return;
+  }
+
+  const taskIndex = entry.section.items.findIndex(item => item.id === entry.task.id);
+  if (taskIndex === -1) return;
+  clearTaskInteractionState(entry.task.id);
+  entry.section.items.splice(taskIndex, 1);
+  if (!Array.isArray(destination.section.items)) destination.section.items = [];
+  destination.section.items.push(entry.task);
+  sortTaskToCorrectPosition(destination.section.items, entry.task, () => {});
+  closeTaskContextMenu();
+  emit('update');
+};
+
+const deleteContextTask = () => {
+  const entry = taskContextMenu.value?.entry;
+  if (!entry) return;
+
+  const taskId = entry.task.id;
+  clearTaskInteractionState(taskId);
+
+  const taskIndex = entry.section.items.findIndex(item => item.id === taskId);
+  closeTaskContextMenu();
+  if (taskIndex === -1) return;
+  entry.section.items.splice(taskIndex, 1);
+  emit('update');
+};
+
 onMounted(() => {
   currentDateTimer = window.setInterval(() => { currentDate.value = new Date(); }, 60000);
   window.addEventListener('keydown', handleKeydown);
   document.addEventListener('click', closeDateMenu);
+  document.addEventListener('click', closeTaskContextMenu);
+  document.addEventListener('scroll', closeTaskContextMenu, true);
 });
 
 onUnmounted(() => {
@@ -1550,6 +1770,8 @@ onUnmounted(() => {
   clearTimeout(mainPaneMagnifyTimer);
   window.removeEventListener('keydown', handleKeydown);
   document.removeEventListener('click', closeDateMenu);
+  document.removeEventListener('click', closeTaskContextMenu);
+  document.removeEventListener('scroll', closeTaskContextMenu, true);
   timers.forEach(clearTimeout);
   timers.clear();
   statusTimers.forEach(clearTimeout);
@@ -2057,7 +2279,7 @@ const cycleEntryStatus = (entry, sourceBucket, event = null) => {
   const existingTimer = statusTimers.get(taskId);
   if (existingTimer) clearTimeout(existingTimer);
 
-  entry.task.statusChar = NEXT_STATUS[entry.task.statusChar] || '~';
+  entry.task.statusChar = nextTaskStatus(entry.task.statusChar);
   entry.task.displayText = getStrippedDisplayText(entry.task.text);
   emit('update');
 
@@ -2939,8 +3161,8 @@ button.focus-week-clock:hover::after {
 }
 
 button.focus-row-check.unchecked:hover {
-  border-color: #ff9800;
-  background: rgba(255, 152, 0, 0.12);
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.2);
 }
 
 .focus-row-check.pending {
@@ -3003,13 +3225,13 @@ button.focus-row-check.unchecked:hover {
 }
 
 button.focus-row-check.inflight:hover {
-  border-color: #4caf50;
-  background: rgba(76, 175, 80, 0.2);
+  border-color: #757575;
+  background: rgba(117, 117, 117, 0.16);
 }
 
 button.focus-row-check.checked:hover {
-  border-color: #757575;
-  background: rgba(117, 117, 117, 0.16);
+  border-color: #ff9800;
+  background: rgba(255, 152, 0, 0.12);
 }
 
 button.focus-row-check.cancelled:hover {
@@ -3267,6 +3489,243 @@ button.focus-row-check.cancelled:hover {
   border-radius: 10px;
   background: #171b21;
   box-shadow: 0 18px 55px rgba(0, 0, 0, 0.55);
+}
+
+.focus-task-context-menu {
+  position: fixed;
+  z-index: 3200;
+  width: min(240px, calc(100vw - 20px));
+  max-height: min(400px, calc(100vh - 20px));
+  box-sizing: border-box;
+  padding: 7px;
+  color: #e8eaed;
+  background: #171b21;
+  border: 1px solid #3a4352;
+  border-radius: 9px;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.55);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  outline: none;
+  overflow-y: auto;
+}
+
+.focus-task-context-title {
+  margin: 0 3px 6px;
+  padding: 2px 3px 7px;
+  overflow: hidden;
+  color: #9ba5b3;
+  border-bottom: 1px solid #303846;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-task-context-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  color: #e8eaed;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.focus-task-context-action svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
+.focus-task-context-label {
+  padding: 1px 8px 3px;
+  color: #758091;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.focus-task-context-column {
+  color: #dfe3e8;
+}
+
+.focus-task-context-column:hover,
+.focus-task-context-column:focus-visible {
+  color: #fff;
+  background: rgba(83, 155, 229, 0.14);
+  outline: none;
+}
+
+.focus-task-context-column-mark {
+  width: 13px;
+  height: 11px;
+  flex: 0 0 auto;
+  border: 1px solid #758091;
+  border-radius: 2px;
+  box-shadow: inset 3px 0 0 rgba(83, 155, 229, 0.8);
+}
+
+.focus-task-context-current-column {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-task-context-chevron {
+  margin-left: auto;
+  color: #758091;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.focus-task-context-divider {
+  height: 1px;
+  margin: 5px 3px;
+  background: #303846;
+}
+
+.focus-task-context-back {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 4px 7px 7px;
+  color: #aab3c0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #303846;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.focus-task-context-back:hover,
+.focus-task-context-back:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.focus-task-context-column-choice,
+.focus-task-context-section-choice {
+  min-height: 31px;
+}
+
+.focus-task-context-column-choice.current,
+.focus-task-context-section-choice.current {
+  color: #7bb8f3;
+  background: rgba(83, 155, 229, 0.1);
+}
+
+.focus-task-context-column-choice:hover,
+.focus-task-context-column-choice:focus-visible,
+.focus-task-context-section-choice:hover,
+.focus-task-context-section-choice:focus-visible {
+  color: #fff;
+  background: rgba(83, 155, 229, 0.18);
+  outline: none;
+}
+
+.focus-task-context-column-choice:disabled {
+  color: #5f6875;
+  background: transparent;
+  cursor: default;
+}
+
+.focus-task-context-current-label {
+  margin-left: auto;
+  color: #7bb8f3;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.focus-task-context-column-choice .focus-task-context-current-label + .focus-task-context-chevron {
+  margin-left: 2px;
+}
+
+.focus-task-context-destination {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-task-context-delete {
+  color: #ff7b75;
+}
+
+.focus-task-context-delete:hover,
+.focus-task-context-delete:focus-visible {
+  color: #ff9a95;
+  background: rgba(244, 67, 54, 0.14);
+  outline: none;
+}
+
+.focus-task-context-confirm {
+  padding: 2px 3px 3px;
+}
+
+.focus-task-context-confirm-copy {
+  padding: 2px 3px 9px;
+  color: #dfe3e8;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.focus-task-context-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.focus-task-context-confirm-actions button {
+  padding: 5px 9px;
+  border: 1px solid #3a4352;
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.focus-task-context-cancel {
+  color: #c4cad3;
+  background: #232933;
+}
+
+.focus-task-context-confirm-actions .focus-task-context-confirm-delete {
+  color: #fff;
+  background: #c83e38;
+  border-color: #e05851;
+}
+
+.focus-task-context-cancel:hover,
+.focus-task-context-cancel:focus-visible {
+  background: #2d3541;
+  outline: none;
+}
+
+.focus-task-context-confirm-delete:hover,
+.focus-task-context-confirm-delete:focus-visible {
+  background: #dc4c45;
+  outline: none;
 }
 
 .focus-section-tooltip,
@@ -3961,8 +4420,8 @@ button.focus-row-check.cancelled:hover {
 }
 
 .theme-light button.focus-row-check.unchecked:hover {
-  border-color: var(--ui-orange, #ff9800);
-  background: var(--ui-orange-soft, #fff3d6);
+  border-color: var(--ui-green, #4caf50);
+  background: var(--ui-green-soft, #e8f5e9);
 }
 
 .theme-light .focus-row-check.inflight {
@@ -3976,13 +4435,13 @@ button.focus-row-check.cancelled:hover {
 }
 
 .theme-light button.focus-row-check.inflight:hover {
-  border-color: var(--ui-green, #4caf50);
-  background: var(--ui-green-soft, #e8f5e9);
+  border-color: #757575;
+  background: var(--ui-gray-soft, #f0f2f4);
 }
 
 .theme-light button.focus-row-check.checked:hover {
-  border-color: #757575;
-  background: var(--ui-gray-soft, #f0f2f4);
+  border-color: var(--ui-orange, #ff9800);
+  background: var(--ui-orange-soft, #fff3d6);
 }
 
 .theme-light button.focus-row-check.cancelled:hover {
@@ -4099,6 +4558,80 @@ button.focus-row-check.cancelled:hover {
   border-color: #ccc;
   background: #fff;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
+}
+
+.focus-task-context-menu.theme-light {
+  color: #2d3440;
+  background: #fff;
+  border-color: #cfd5dc;
+  box-shadow: 0 10px 28px rgba(30, 38, 48, 0.2);
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-title {
+  color: #737d8a;
+  border-bottom-color: #dfe3e8;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-label,
+.focus-task-context-menu.theme-light .focus-task-context-chevron {
+  color: #7a8490;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-column {
+  color: #2d3440;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-column:hover,
+.focus-task-context-menu.theme-light .focus-task-context-column:focus-visible,
+.focus-task-context-menu.theme-light .focus-task-context-column-choice:hover,
+.focus-task-context-menu.theme-light .focus-task-context-column-choice:focus-visible,
+.focus-task-context-menu.theme-light .focus-task-context-section-choice:hover,
+.focus-task-context-menu.theme-light .focus-task-context-section-choice:focus-visible {
+  color: #1f5f9a;
+  background: #eaf4ff;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-back {
+  border-color: #dfe3e8;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-divider {
+  background: #dfe3e8;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-back {
+  color: #68727f;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-back:hover,
+.focus-task-context-menu.theme-light .focus-task-context-back:focus-visible {
+  color: #1f5f9a;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-column-choice.current,
+.focus-task-context-menu.theme-light .focus-task-context-section-choice.current {
+  color: #1f6fb7;
+  background: #eef7ff;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-delete {
+  color: #c7352f;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-delete:hover,
+.focus-task-context-menu.theme-light .focus-task-context-delete:focus-visible {
+  color: #b92b25;
+  background: #fff0ef;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-confirm-copy {
+  color: #2d3440;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-cancel {
+  color: #4f5966;
+  background: #f3f5f7;
+  border-color: #cfd5dc;
 }
 
 .focus-date-menu.theme-light .focus-date-menu-title {
