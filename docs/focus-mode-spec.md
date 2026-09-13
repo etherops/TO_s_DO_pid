@@ -7,7 +7,7 @@ Focus Mode is the execution-oriented view of the current week. It is intentional
 Focus Mode derives its tasks from SELECTED and WIP.
 
 - A task is on deck when it is in WIP or due no later than the Saturday ending the current Sunday–Saturday week.
-- NOW contains unstarted whole-current-week commitments in a purple THIS WEEK group above TODAY, overdue and due-today nonterminal work, plus work completed or cancelled today.
+- NOW contains unstarted whole-current-week commitments in a purple THIS WEEK group above TODAY, overdue and due-today nonterminal work, plus work completed or cancelled today. Low-priority whole-week commitments appear in a compact subgroup at the bottom of THIS WEEK.
 - UP NEXT contains exact dates or whole-week work after the current week regardless of active status, whole-month work that is unstarted or owned by a later month, and undated non-`~` work under UNSCHEDULED. Dated work is grouped into canonical month-owned week labels such as Aug Week #3. Current-week dates are omitted here because Week at a glance already represents them; unstarted whole-current-week assignments instead have one authoritative home in NOW.
 - UP NEXT's dated groups form a chronological month timeline: each whole-month group is followed by the weeks owned by that month, then the next whole-month group and its weeks. UNSCHEDULED and LOW PRIORITY remain last.
 - IN PROGRESS / WAITING contains only `~` tasks assigned to the whole current week, assigned to the current month as a whole, or without a date. Normal-priority whole-current-week work appears first under THIS WEEK; low-priority work from every routing group appears together under LOW PRIORITY at the bottom. Other WIP-source tasks appear under IN PROGRESS / PARKED and SELECTED-source tasks under WAITING / BLOCKED. Starting work due after the current week leaves it in UP NEXT after debounce. Whole months use their calendar month for that boundary.
@@ -58,7 +58,8 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 - Right-clicking any visible task card opens a Focus action menu without changing the spotlighted panel. Delete is a
   confirmed action in that menu and removes the task from its original Markdown section. The menu also shows the
   task's exact Triage/Plan column and can move it to a chosen section in any other Triage/Plan column without changing
-  its status or schedule.
+  its status or schedule. Column choices follow the board's left-to-right stack order, retaining file order within
+  each stack.
 - Task titles and due-date controls remain directly editable in the left and right side panels; using them does not move that panel into the spotlight. Clicking the surrounding panel still brings it to center.
 - The due-date clock opens an anchored menu with Today, Tomorrow, each remaining day this week, This week, Next week, whole-month shortcuts, one unified custom picker, and Clear. “Next week” assigns the entire next Sunday–Saturday week, not an exact Monday. The custom picker switches between Day, Week, and Month precision without presenting three competing controls. Choosing a value saves immediately.
 - Status uses the four board states and the same click cycle as the board: queued → completed → in progress →
@@ -72,7 +73,7 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 
 - Markdown tasks beginning with `- [status]` are low priority; `* [status]` is normal priority. The checkbox status and list-marker priority are independent.
 - The parser and renderer preserve the marker through every edit and save.
-- Low-priority tasks use a compact treatment throughout the app. UP NEXT, NOW, and IN PROGRESS / WAITING pull them into a compact LOW PRIORITY group at the bottom of each panel.
+- Low-priority tasks use a compact treatment throughout the app. UP NEXT and IN PROGRESS / WAITING pull them into a compact LOW PRIORITY group at the bottom of each panel. NOW keeps low-priority whole-week work together at the bottom of THIS WEEK; other low-priority work remains in its final LOW PRIORITY group.
 - Week at a glance preserves its day columns instead of adding nested groups; each low-priority row carries a small inline LOW badge.
 - Priority controls update the Markdown list marker immediately: clicking LOW restores normal priority, while the subtle down-arrow marks a normal task low priority. The board's full editor exposes the same toggle.
 - Priority never overrides NOW urgency rules or the date-based Week at a glance placement.

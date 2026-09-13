@@ -37,6 +37,10 @@
 * [~] improve: Focus scheduling boundaries - Keep active current-week work on the right, later weeks in Up Next, and low-priority work in bottom groups
 
 # ARCHIVE
+### Sep Week #3 2026
+* [x] bugfix: Focus column chooser order - Match the Plan/Triage left-to-right stack order while preserving file order within each stack | Sep 13 2026
+* [x] tweak: Focus weekly low-priority grouping - Put low-priority whole-week tasks in a subgroup at the bottom of NOW's This Week group | Sep 13 2026
+
 ### Sep Week #2 2026
 * [x] improve: Status toggle order - Cycle not started, done, in progress, and will not do everywhere | Sep 8 2026
 * [x] feature: Focus task context menu - Add advanced card actions beginning with confirmed deletion | Sep 8 2026

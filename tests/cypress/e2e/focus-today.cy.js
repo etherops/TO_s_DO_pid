@@ -446,6 +446,46 @@ describe('Focus Mode (execution carousel)', () => {
       .should('not.have.class', 'low-priority-row');
   });
 
+  it('should place low-priority whole-week work at the bottom of This Week in NOW', () => {
+    const weeklyPriorityContent = `# SELECTED
+### Weekly plans
+* [ ] Normal weekly task ${weekDueTag(today)}
+- [ ] Low weekly task one ${weekDueTag(today)}
+- [ ] Low weekly task two ${weekDueTag(today)}
+* [ ] Today task ${dueTag(today)}
+`;
+
+    cy.writeTestFileContent(weeklyPriorityContent).then((fileInfo) => {
+      cy.wait(500);
+      cy.reload();
+      cy.contains('TO_s_DO_pid').should('be.visible');
+      cy.switchToFile(fileInfo.fileName);
+    });
+    enterFocusMode();
+
+    cy.get('.panel-now .focus-day-header').should('have.length', 3);
+    cy.get('.panel-now .focus-day-header').eq(0)
+      .should('have.class', 'day-this-week').and('contain', 'This Week').and('contain', '3');
+    cy.get('.panel-now .focus-day-header').eq(1)
+      .should('have.class', 'day-this-week-low-priority').and('contain', 'Low Priority').and('contain', '2');
+    cy.get('.panel-now .focus-day-header').eq(2)
+      .should('have.class', 'day-today').and('contain', 'Today').and('contain', '1');
+    cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Normal weekly task')
+      .and('have.class', 'this-week-row').and('not.have.class', 'low-priority-row');
+    cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Low weekly task one')
+      .and('have.class', 'this-week-row').and('have.class', 'low-priority-row');
+    cy.get('.panel-now .focus-task-row').eq(2).should('contain', 'Low weekly task two')
+      .and('have.class', 'this-week-row').and('have.class', 'low-priority-row');
+    cy.get('.panel-now .focus-task-row').eq(3).should('contain', 'Today task');
+
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Normal weekly task')
+      .find('.focus-priority-toggle').click();
+    cy.get('.panel-now .focus-day-header').eq(0).should('contain', '3');
+    cy.get('.panel-now .focus-day-header').eq(1).should('contain', '3');
+    cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Normal weekly task')
+      .and('have.class', 'low-priority-row');
+  });
+
   it('should cycle all four statuses and keep completed-due-today work in NOW', () => {
     enterFocusMode();
 

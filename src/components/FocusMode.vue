@@ -253,7 +253,7 @@
             <template v-for="day in nowDays" :key="day.key">
               <div class="focus-day-header" :class="dayHeaderClass(day.key)">
                 <span class="day-name">{{ day.label }}</span>
-                <span class="day-count">{{ day.entries.length }}</span>
+                <span class="day-count">{{ day.count ?? day.entries.length }}</span>
               </div>
               <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row"
                    :class="[rowClasses(entry), {
@@ -675,7 +675,8 @@ const hasNavigatedWeek = ref(false);
 const currentDate = ref(new Date());
 let currentDateTimer = null;
 
-const focusColumnChoices = computed(() => (props.todoData?.columnOrder || []).flatMap(columnName => {
+const BOARD_STACK_ORDER = { TODO: 0, PROJECTS: 1, SELECTED: 2, WIP: 3, DONE: 4 };
+const focusColumnChoices = computed(() => (props.todoData?.columnOrder || []).flatMap((columnName, sourceIndex) => {
   const column = props.todoData.columnStacks?.[columnName];
   if (!column || column.type === 'raw-text') return [];
   const destinations = (column.sections || []).flatMap((section, sectionIndex) => {
@@ -688,8 +689,12 @@ const focusColumnChoices = computed(() => (props.todoData?.columnOrder || []).fl
       section
     }];
   });
-  return [{ columnName, stackName: column.name, destinations }];
-}));
+  return [{ columnName, stackName: column.name, sourceIndex, destinations }];
+}).sort((a, b) =>
+  (BOARD_STACK_ORDER[a.stackName] ?? Number.MAX_SAFE_INTEGER)
+    - (BOARD_STACK_ORDER[b.stackName] ?? Number.MAX_SAFE_INTEGER)
+    || a.sourceIndex - b.sourceIndex
+));
 
 const contextSectionChoices = computed(() => {
   if (!taskContextMenu.value?.targetColumnName) return [];
@@ -1133,7 +1138,13 @@ const groupByDueDay = (entries) => {
   return days;
 };
 
-const dayHeaderClass = (key) => `day-${key === 'this-week' ? 'this-week' : key === 'today' ? 'today' : key === 'undated' ? 'general' : 'upcoming'}`;
+const dayHeaderClass = (key) => {
+  if (key === 'this-week-low-priority') return 'day-this-week-low-priority';
+  if (key === 'this-week') return 'day-this-week';
+  if (key === 'today') return 'day-today';
+  if (key === 'undated') return 'day-general';
+  return 'day-upcoming';
+};
 
 const inProgressQueuedGroups = computed(() => groupInProgressQueuedEntries(inProgressQueued.value));
 const isScheduledThisWeek = (entry) => {
@@ -1145,9 +1156,29 @@ const immediateNow = computed(() => now.value.filter(entry =>
   !isScheduledThisWeek(entry)
 ));
 const nowDays = computed(() => {
-  const lowPriority = immediateNow.value.filter(entry => isLowPriorityEntry(entry) && entry.dueGroup !== 'this-week');
-  const groups = groupByDueDay(immediateNow.value.filter(entry => !isLowPriorityEntry(entry) || entry.dueGroup === 'this-week'));
-  if (lowPriority.length) groups.push({ key: 'low-priority', label: 'Low Priority', entries: lowPriority });
+  const thisWeekLowPriority = immediateNow.value.filter(entry =>
+    isLowPriorityEntry(entry) && entry.dueGroup === 'this-week'
+  );
+  const otherLowPriority = immediateNow.value.filter(entry =>
+    isLowPriorityEntry(entry) && entry.dueGroup !== 'this-week'
+  );
+  const groups = groupByDueDay(immediateNow.value.filter(entry => !isLowPriorityEntry(entry)));
+
+  if (thisWeekLowPriority.length) {
+    let thisWeekIndex = groups.findIndex(group => group.key === 'this-week');
+    if (thisWeekIndex === -1) {
+      groups.unshift({ key: 'this-week', label: 'This week', entries: [] });
+      thisWeekIndex = 0;
+    }
+    groups[thisWeekIndex].count = groups[thisWeekIndex].entries.length + thisWeekLowPriority.length;
+    groups.splice(thisWeekIndex + 1, 0, {
+      key: 'this-week-low-priority', label: 'Low Priority', entries: thisWeekLowPriority
+    });
+  }
+
+  if (otherLowPriority.length) {
+    groups.push({ key: 'low-priority', label: 'Low Priority', entries: otherLowPriority });
+  }
   return groups.map(group => ({
     ...group,
     entries: orderEntriesBySourcePosition(group.entries)
@@ -3370,6 +3401,13 @@ button.focus-row-check.cancelled:hover {
 }
 
 .focus-day-header.day-low-priority {
+  color: #8993a0;
+  border-bottom-color: rgba(137, 147, 160, 0.35);
+}
+
+.focus-day-header.day-this-week-low-priority {
+  margin-left: 10px;
+  padding-top: 7px;
   color: #8993a0;
   border-bottom-color: rgba(137, 147, 160, 0.35);
 }
