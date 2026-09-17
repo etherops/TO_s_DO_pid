@@ -53,6 +53,62 @@ describe('FocusMode NOW weekly priority groups', () => {
   });
 });
 
+describe('FocusMode overdue rollover', () => {
+  it('moves all overdue unfinished Focus tasks to today in one update', async () => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const previousWeek = startOfSundayWeek(today);
+    previousWeek.setDate(previousWeek.getDate() - 7);
+    const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const yesterdayDue = `! ${serializeDuePeriodValue(dateInputValue(yesterday))}`;
+    const todoData = parseTodoMdFile(`# TODO
+## Later
+* [ ] Other-column overdue ${yesterdayDue}
+# SELECTED
+## Ready
+* [ ] Old day (keep this note) ${yesterdayDue}
+* [ ] Due today ${todayDue}
+* [ ] Current week ${weekDue}
+* [x] Already completed | ${serializeDuePeriodValue(dateInputValue(yesterday))}
+# WIP
+## Active
+- [~] Old week ! ${serializeDuePeriodValue(`week:${dateInputValue(previousWeek)}`)}
+* [ ] Old month ! ${serializeDuePeriodValue(`month:${dateInputValue(previousMonth).slice(0, 7)}`)}
+`);
+    const wrapper = mount(FocusMode, { props: { todoData, theme: 'light' } });
+    const findTask = (name) => todoData.columnOrder
+      .flatMap(columnName => todoData.columnStacks[columnName].sections)
+      .flatMap(section => section.items)
+      .find(task => task.text?.startsWith(name));
+
+    expect(wrapper.get('.focus-overdue-btn').text()).toContain('3');
+    await wrapper.get('.focus-overdue-btn').trigger('click');
+
+    expect(findTask('Old day').text).toBe(`Old day (keep this note) ${todayDue}`);
+    expect(findTask('Old week').text).toBe(`Old week ${todayDue}`);
+    expect(findTask('Old month').text).toBe(`Old month ${todayDue}`);
+    expect(findTask('Old week').listMarker).toBe('-');
+    expect(findTask('Other-column overdue').text).toBe(`Other-column overdue ${yesterdayDue}`);
+    expect(findTask('Due today').text).toBe(`Due today ${todayDue}`);
+    expect(findTask('Current week').text).toBe(`Current week ${weekDue}`);
+    expect(findTask('Already completed').text).toContain(' | ');
+    expect(wrapper.emitted('update')).toHaveLength(1);
+    expect(wrapper.find('.focus-overdue-btn').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('hides the action when no unfinished Focus task is overdue', () => {
+    const wrapper = mountWeeklyTasks([
+      `* [ ] Due today ${todayDue}`,
+      `* [ ] Current week ${weekDue}`
+    ]);
+
+    expect(wrapper.find('.focus-overdue-btn').exists()).toBe(false);
+    wrapper.unmount();
+  });
+});
+
 describe('FocusMode task column chooser', () => {
   it('follows the board stack order, then file order within each stack', async () => {
     const todoData = parseTodoMdFile(`# TODO

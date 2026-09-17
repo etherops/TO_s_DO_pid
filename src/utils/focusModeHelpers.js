@@ -3,7 +3,7 @@
 // Focus mode pulls only from SELECTED and WIP columns - the staged, committed
 // work. What lands on deck for the week is either staged into WIP or carries a
 // due date falling on or before the Saturday that closes this week. Four
-// buckets: IN PROGRESS / WAITING (work already underway), NOW
+// buckets: IN PROGRESS / PARKED (work already underway), NOW
 // (overdue and due-today work), UP NEXT (scheduled future work and undated
 // queued work), and DONE. Work completed or cancelled today stays in NOW;
 // its completion date is authoritative because terminal tasks no longer retain
@@ -39,13 +39,13 @@ export const groupInProgressQueuedEntries = (entries) => {
   const normalPriority = entries.filter(entry => !isLowPriorityEntry(entry));
   const thisWeek = normalPriority.filter(entry => entry.dueGroup === 'this-week');
   const remaining = normalPriority.filter(entry => entry.dueGroup !== 'this-week');
-  const inProgress = remaining.filter(entry => entry.group !== 'waiting');
-  const waiting = remaining.filter(entry => entry.group === 'waiting');
+  const active = remaining.filter(entry => entry.group !== 'waiting');
+  const parked = remaining.filter(entry => entry.group === 'waiting');
 
   return [
     { key: 'this-week', label: 'This Week', entries: orderEntriesBySourcePosition(thisWeek) },
-    { key: 'in-progress-parked', label: 'In Progress / Parked', entries: orderEntriesBySourcePosition(inProgress) },
-    { key: 'waiting-blocked', label: 'Waiting / Blocked', entries: orderEntriesBySourcePosition(waiting) },
+    { key: 'this-month-active', label: 'This Month - Active', entries: orderEntriesBySourcePosition(active) },
+    { key: 'this-month-parked', label: 'This Month - Parked', entries: orderEntriesBySourcePosition(parked) },
     { key: 'low-priority', label: 'Low Priority', entries: orderEntriesBySourcePosition(lowPriority) }
   ].filter(group => group.entries.length);
 };
@@ -168,7 +168,7 @@ const eachFocusTask = (todoData, visit) => {
 /**
  * Build the focus model from SELECTED and WIP columns.
  * On deck = staged into WIP, or due on or before the end of this week from
- * anywhere. IN PROGRESS / WAITING holds non-urgent in-progress work. NOW holds
+ * anywhere. IN PROGRESS / PARKED holds non-urgent in-progress work. NOW holds
  * overdue and due-today work and terminal work completed today. UP NEXT keeps
  * future or unstarted work and DONE keeps earlier terminal work.
  * @param {Object} todoData - { columnOrder, columnStacks }
@@ -208,7 +208,7 @@ export const deriveFocusModel = (todoData) => {
     const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text);
 
     // A whole-current-week commitment has no honest weekday slot. Active work
-    // belongs at the top of IN PROGRESS / WAITING; unstarted work stays in NOW.
+    // belongs at the top of IN PROGRESS / PARKED; unstarted work stays in NOW.
     if (isCurrentWholeWeek(period)) {
       const wholeWeekEntry = {
         ...routedEntry,

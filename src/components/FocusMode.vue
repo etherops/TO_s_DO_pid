@@ -139,7 +139,7 @@
           </div>
         </section>
 
-        <!-- IN PROGRESS / WAITING: active and waiting/blocked work -->
+        <!-- IN PROGRESS / PARKED: active and parked work -->
         <section
             class="focus-panel panel-in-progress-queued"
             :class="{ 'is-focused': isMainPaneSpotlight(2), 'is-magnified': isMainPaneMagnified(2) }"
@@ -155,7 +155,7 @@
                   @mouseenter="showPanelRulesTooltip('inProgressWaiting', $event)"
                   @mouseleave="finishPanelRulesHover"
                   @focus="showPanelRulesTooltip('inProgressWaiting', $event)"
-                  @blur="hidePanelRulesTooltip">In Progress / Waiting</span>
+                  @blur="hidePanelRulesTooltip">In Progress / Parked</span>
             <span class="panel-count">{{ inProgressQueued.length }}</span>
           </header>
           <div class="panel-body">
@@ -244,7 +244,14 @@
                   @mouseleave="finishPanelRulesHover"
                   @focus="showPanelRulesTooltip('now', $event)"
                   @blur="hidePanelRulesTooltip">Now</span>
-            <span class="panel-count">{{ immediateNow.length }}</span>
+            <div class="focus-now-header-actions">
+              <button v-if="overdueEntries.length" type="button" class="focus-overdue-btn"
+                      :title="`Move ${overdueEntries.length} overdue task${overdueEntries.length === 1 ? '' : 's'} to today`"
+                      @click.stop="moveOverdueToToday">
+                Overdue → Today <span class="focus-overdue-count">{{ overdueEntries.length }}</span>
+              </button>
+              <span class="panel-count">{{ immediateNow.length }}</span>
+            </div>
           </header>
           <div class="panel-body">
             <div v-if="!immediateNow.length" class="panel-empty">
@@ -612,6 +619,7 @@ import {
   getDuePeriodLabel,
   isoWeekInputFromSunday,
   isToday,
+  setDuePeriod,
   sundayValueFromIsoWeekInput,
   weekIdentity
 } from '../utils/dateHelpers';
@@ -1527,6 +1535,27 @@ const statusTitle = (entry) => {
 const totalCount = computed(() =>
   inProgressQueued.value.length + now.value.length + upNext.value.length + done.value.length
 );
+const overdueEntries = computed(() => {
+  const today = new Date(currentDate.value);
+  today.setHours(0, 0, 0, 0);
+  return [...model.value.now, ...model.value.inProgressQueued, ...model.value.upNext]
+    .filter(entry => {
+      if (entry.task.statusChar !== ' ' && entry.task.statusChar !== '~') return false;
+      const period = extractDuePeriod(entry.task.text);
+      return period && period.end < today;
+    });
+});
+const moveOverdueToToday = () => {
+  currentDate.value = new Date();
+  const entries = overdueEntries.value;
+  if (!entries.length) return;
+  const todayValue = formatDateInputValue(currentDate.value);
+  entries.forEach(entry => {
+    entry.task.text = setDuePeriod(entry.task.text, todayValue);
+    entry.task.displayText = getStrippedDisplayText(entry.task.text);
+  });
+  emit('update');
+};
 const completedCount = computed(() =>
   [...inProgressQueued.value, ...now.value, ...upNext.value, ...done.value]
       .filter(entry => entry.task.statusChar === 'x').length
@@ -1857,11 +1886,11 @@ const PANEL_MEMBERSHIP_RULES = {
     ]
   },
   inProgressWaiting: {
-    title: 'In Progress / Waiting includes',
+    title: 'In Progress / Parked includes',
     rules: [
       'In-progress work due this week as a whole.',
-      'In-progress work assigned to this month as a whole, or unscheduled.',
-      'WIP-source tasks are In Progress / Parked; SELECTED-source tasks are Waiting / Blocked.'
+      'This-month or unscheduled WIP-source work under Active.',
+      'This-month or unscheduled SELECTED-source work under Parked.'
     ]
   }
 };
@@ -2216,7 +2245,7 @@ const resortInSection = (entry) => {
   sortTaskToCorrectPosition(entry.section.items, entry.task, () => {});
 };
 
-// Starting or reopening work puts it in IN PROGRESS / WAITING, and active work
+// Starting or reopening work puts it in IN PROGRESS / PARKED, and active work
 // lives in WIP: tasks elsewhere get pulled into the active WIP section.
 const moveToActiveWip = (entry) => {
   if (entry.stackName === 'WIP') return entry.section;
@@ -3014,6 +3043,49 @@ button.focus-week-clock:hover::after {
   background: #232a35;
   border-radius: 10px;
   padding: 2px 9px;
+}
+
+.focus-now-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 19px;
+}
+
+.focus-overdue-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-sizing: border-box;
+  height: 19px;
+  padding: 0 7px;
+  border: 1px solid #5c4934;
+  border-radius: 6px;
+  background: #2b241d;
+  color: #ffb347;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.focus-overdue-btn:hover {
+  background: #3c3023;
+  border-color: #bc8647;
+}
+
+.focus-overdue-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: #6c4b27;
+  color: #fff0dc;
 }
 
 .panel-body {
@@ -4405,6 +4477,22 @@ button.focus-row-check.cancelled:hover {
 .theme-light .panel-count {
   background: #eeeeee;
   color: #777;
+}
+
+.theme-light .focus-overdue-btn {
+  border-color: #efcc9b;
+  background: #fff7eb;
+  color: #a25c08;
+}
+
+.theme-light .focus-overdue-btn:hover {
+  border-color: #d99a52;
+  background: #fff0d8;
+}
+
+.theme-light .focus-overdue-count {
+  background: #ffe2b4;
+  color: #92520b;
 }
 
 .theme-light .panel-body {

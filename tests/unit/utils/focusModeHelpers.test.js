@@ -261,10 +261,32 @@ describe('focusModeHelpers', () => {
       const groups = groupInProgressQueuedEntries(entries);
       expect(groups.map(group => group.label)).toEqual([
         'This Week',
-        'In Progress / Parked',
+        'This Month - Active',
         'Low Priority'
       ]);
       expect(taskTexts(groups.at(-1).entries)).toEqual(['Low week', 'Low blocked']);
+    });
+
+    it('groups normal right-panel work by weekly, active, and parked roles', () => {
+      const entries = [
+        { task: { displayText: 'Whole week', text: 'Whole week ! Aug Week #2 2026' }, dueGroup: 'this-week' },
+        { task: { displayText: 'Active month', text: 'Active month ! Aug 2026' }, dueGroup: 'month', group: 'inProgress' },
+        { task: { displayText: 'Active no date', text: 'Active no date' }, dueGroup: 'undated', group: 'inProgress' },
+        { task: { displayText: 'Parked month', text: 'Parked month ! Aug 2026' }, dueGroup: 'month', group: 'waiting' },
+        { task: { displayText: 'Parked no date', text: 'Parked no date' }, dueGroup: 'undated', group: 'waiting' }
+      ];
+
+      const groups = groupInProgressQueuedEntries(entries);
+      expect(groups.map(group => group.label)).toEqual([
+        'This Week',
+        'This Month - Active',
+        'This Month - Parked'
+      ]);
+      expect(groups.map(group => taskTexts(group.entries))).toEqual([
+        ['Whole week'],
+        ['Active month', 'Active no date'],
+        ['Parked month', 'Parked no date']
+      ]);
     });
 
     it('keeps same-day queued work in UP NEXT file order so sections stay together', () => {

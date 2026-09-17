@@ -34,7 +34,8 @@
 
 # WIP
 ### In Progress
-* [~] improve: Focus scheduling boundaries - Keep active current-week work on the right, later weeks in Up Next, and low-priority work in bottom groups
+* [~] improve: Focus scheduling boundaries - Keep active current-week work on the right, later weeks in Up Next, low-priority work in bottom groups, and distinguish this-month active and parked work
+* [~] feature: Focus overdue rollover - Move overdue unfinished Focus tasks to today without shifting the NOW header
 
 # ARCHIVE
 ### Sep Week #3 2026

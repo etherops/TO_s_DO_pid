@@ -72,7 +72,7 @@ describe('Focus Mode (execution carousel)', () => {
 
     // NOW owns the single center spotlight; the queue has moved to the right.
     cy.get('.focus-panel.panel-in-progress-queued').should('not.have.class', 'is-focused')
-      .should('contain', 'In Progress / Waiting')
+      .should('contain', 'In Progress / Parked')
       .should('contain', 'Inflight wip task')
       .find('.focus-section-badge').should('contain', 'CURRENT');
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
@@ -172,7 +172,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.selected-column').should('not.contain', 'Parked selected task');
   });
 
-  it('should bucket into up next, in progress / waiting, NOW, and the weekly strip', () => {
+  it('should bucket into up next, in progress / parked, NOW, and the weekly strip', () => {
     enterFocusMode();
 
     // The right panel contains only undated ~ work, preserving its two legacy groups.
@@ -950,7 +950,7 @@ describe('Focus Mode (execution carousel)', () => {
 
     cy.get('.panel-in-progress-queued .focus-panel-rule-trigger').trigger('mouseenter');
     cy.get('.focus-panel-rules-tooltip').should('be.visible')
-      .and('contain', 'In Progress / Waiting includes')
+      .and('contain', 'In Progress / Parked includes')
       .and('contain', 'In-progress work due this week as a whole')
       .and('contain', 'In Progress / Parked')
       .and('contain', 'Waiting / Blocked');
@@ -1066,7 +1066,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.focus-week-return').should('not.exist');
   });
 
-  it('should move a started Up Next task into In Progress / Waiting after debounce', () => {
+  it('should move a started Up Next task into In Progress / Parked after debounce', () => {
     enterFocusMode();
 
     cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Selected ready task')
