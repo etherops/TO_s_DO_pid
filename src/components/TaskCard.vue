@@ -347,6 +347,7 @@ const isPendingSort = ref(false);
 const sortTimeout = ref(null);
 const isPendingCompletion = ref(false);
 const completionTimeout = ref(null);
+const statusCycleStart = ref(null);
 const isTerminalTask = computed(() => props.task.statusChar === 'x' || props.task.statusChar === '-');
 const completionDateMenuOpen = ref(false);
 const completionCustomDateOpen = ref(false);
@@ -435,6 +436,8 @@ const toggleTaskStatus = () => {
     return;
   }
 
+  if (statusCycleStart.value === null) statusCycleStart.value = props.task.statusChar;
+
   // Clear any existing timeouts
   if (sortTimeout.value) {
     clearTimeout(sortTimeout.value);
@@ -449,12 +452,13 @@ const toggleTaskStatus = () => {
 
   // Cycle through states: unchecked -> checked -> in-progress -> cancelled -> unchecked
   const oldStatus = props.task.statusChar;
-  props.task.statusChar = nextTaskStatus(props.task.statusChar);
+  props.task.statusChar = nextTaskStatus(props.task.statusChar, statusCycleStart.value);
 
   // Convert the one lifecycle date only after the same debounce used for
   // sorting, so rapid status cycling does not repeatedly rewrite it.
   isPendingCompletion.value = true;
   completionTimeout.value = setTimeout(() => {
+    statusCycleStart.value = null;
     isPendingCompletion.value = false;
     props.task.text = reconcileLifecycleDateForStatus(props.task.text, props.task.statusChar);
     props.task.displayText = getStrippedDisplayText(props.task.text);

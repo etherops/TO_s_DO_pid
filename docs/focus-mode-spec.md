@@ -64,7 +64,10 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 - Task titles and due-date controls remain directly editable in the left and right side panels; using them does not move that panel into the spotlight. Clicking the surrounding panel still brings it to center.
 - The due-date clock opens an anchored menu with Today, Tomorrow, each remaining day this week, This week, Next week, whole-month shortcuts, one unified custom picker, and Clear. “Next week” assigns the entire next Sunday–Saturday week, not an exact Monday. The custom picker switches between Day, Week, and Month precision without presenting three competing controls. Choosing a value saves immediately.
 - Status uses the four board states and the same click cycle as the board: queued → completed → in progress →
-  will not do → queued. Hover previews the next state's highlight without replacing the current symbol.
+  will not do → queued. If clicking begins on a settled in-progress task, that sequence instead uses
+  in progress → completed → will not do → queued → in progress. The starting state stays fixed during rapid
+  clicks and resets after the 1.5-second debounce. Hover previews the next state's highlight without replacing
+  the current symbol.
 - For completed or cancelled work, the completion stamp is authoritative for Focus placement. An old due date does not keep a task in NOW or place it under the wrong weekday.
 - Marking an unscheduled or current-month-level Up Next task in progress moves it to IN PROGRESS / PARKED after the status debounce. Work due after this week remains in UP NEXT; due-today and overdue work remains in NOW.
 - Status appearance updates immediately, but sorting and re-bucketing wait 1.5 seconds so repeated toggles do not move the control under the pointer.

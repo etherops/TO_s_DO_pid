@@ -22,6 +22,9 @@ The shared board styling preserves state-specific presentation. Partial-collapse
 - `- [status]` is the low-priority equivalent of the same status.
 - A nonterminal task has one trailing due marker: `! Aug 13 2026`, `! Aug Week #2 2026`, or `! Aug 2026`.
 - A terminal task has one exact completion marker: `| Aug 13 2026`.
+- Status clicks normally cycle queued → completed → in progress → will-not-do → queued. A sequence starting
+  from settled in-progress instead cycles in progress → completed → will-not-do → queued → in progress.
+  Focus and the board retain that starting state during rapid clicks, resetting after 1.5 seconds without a click.
 
 ## Archive behavior (triage/plan board)
 

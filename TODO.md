@@ -19,6 +19,7 @@
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
 
 ## Bugs
+* [ ] bugfix: File selector overlay - Keep list options above board content so file switching and browser test setup remain clickable
 * [ ] bug: hover preview is showing for full title when the title isn't overflow=true (bug: purge "visualColumn", correctly name column/columnstack)
 * [ ] bug: visual - confrim delete needs higher z-index
 * [ ] BUG: notes should only put in progress in WIP col
@@ -34,6 +35,7 @@
 
 # WIP
 ### In Progress
+* [~] improve: Partial-start status cycle - Complete settled in-progress tasks on the first click and retain the chosen cycle until debounce settles
 * [~] improve: Focus scheduling boundaries - Keep active current-week work on the right, later weeks in Up Next, low-priority work in bottom groups, and distinguish this-month active and parked work
 * [~] feature: Focus overdue rollover - Move overdue unfinished Focus tasks to today without shifting the NOW header
 

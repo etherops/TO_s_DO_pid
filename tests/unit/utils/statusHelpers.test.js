@@ -6,8 +6,18 @@ describe('task status cycle', () => {
     expect(TASK_STATUS_CYCLE).toEqual({ ' ': 'x', x: '~', '~': '-', '-': ' ' });
     expect(nextTaskStatus(' ')).toBe('x');
     expect(nextTaskStatus('x')).toBe('~');
-    expect(nextTaskStatus('~')).toBe('-');
+    expect(nextTaskStatus('~', ' ')).toBe('-');
     expect(nextTaskStatus('-')).toBe(' ');
+  });
+
+  it('uses the partial-start cycle throughout a rapid-click sequence', () => {
+    let status = '~';
+    for (const expected of ['x', '-', ' ', '~', 'x']) {
+      status = nextTaskStatus(status, '~');
+      expect(status).toBe(expected);
+    }
+    expect(nextTaskStatus('~')).toBe('x');
+    expect(nextTaskStatus('x')).toBe('~');
   });
 
   it('treats an unknown status as not started', () => {

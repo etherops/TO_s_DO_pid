@@ -1516,6 +1516,8 @@ const toggleEntryPriority = (entry) => {
 };
 
 const checkClasses = (entry) => ({
+  [`preview-${({ ' ': 'empty', x: 'done', '~': 'partial', '-': 'cancelled' })[nextTaskStatus(
+    entry.task.statusChar, pendingStatuses.value.get(entry.task.id)?.initialStatus ?? entry.task.statusChar)]}`]: true,
   unchecked: entry.task.statusChar === ' ',
   inflight: entry.task.statusChar === '~',
   'in-progress': entry.task.statusChar === '~',
@@ -1528,7 +1530,8 @@ const STATUS_LABELS = { ' ': 'Queued', '~': 'In progress', x: 'Completed', '-': 
 
 const statusTitle = (entry) => {
   const current = STATUS_LABELS[entry.task.statusChar] || STATUS_LABELS[' '];
-  const next = STATUS_LABELS[nextTaskStatus(entry.task.statusChar)];
+  const next = STATUS_LABELS[nextTaskStatus(entry.task.statusChar,
+    pendingStatuses.value.get(entry.task.id)?.initialStatus ?? entry.task.statusChar)];
   return `${current} — click for ${next}`;
 };
 
@@ -2339,7 +2342,7 @@ const cycleEntryStatus = (entry, sourceBucket, event = null) => {
   const existingTimer = statusTimers.get(taskId);
   if (existingTimer) clearTimeout(existingTimer);
 
-  entry.task.statusChar = nextTaskStatus(entry.task.statusChar);
+  entry.task.statusChar = nextTaskStatus(entry.task.statusChar, pending.initialStatus);
   entry.task.displayText = getStrippedDisplayText(entry.task.text);
   emit('update');
 
@@ -3263,7 +3266,7 @@ button.focus-week-clock:hover::after {
   transition: all 0.15s ease;
 }
 
-button.focus-row-check.unchecked:hover {
+button.focus-row-check.preview-done:hover {
   border-color: #4caf50;
   background: rgba(76, 175, 80, 0.2);
 }
@@ -3327,17 +3330,17 @@ button.focus-row-check.unchecked:hover {
   transform: translateY(-50%);
 }
 
-button.focus-row-check.inflight:hover {
+button.focus-row-check.preview-cancelled:hover {
   border-color: #757575;
   background: rgba(117, 117, 117, 0.16);
 }
 
-button.focus-row-check.checked:hover {
+button.focus-row-check.preview-partial:hover {
   border-color: #ff9800;
   background: rgba(255, 152, 0, 0.12);
 }
 
-button.focus-row-check.cancelled:hover {
+button.focus-row-check.preview-empty:hover {
   border-color: #4a5568;
   background: transparent;
 }
@@ -4545,7 +4548,7 @@ button.focus-row-check.cancelled:hover {
   border-color: #aaa;
 }
 
-.theme-light button.focus-row-check.unchecked:hover {
+.theme-light button.focus-row-check.preview-done:hover {
   border-color: var(--ui-green, #4caf50);
   background: var(--ui-green-soft, #e8f5e9);
 }
@@ -4560,17 +4563,17 @@ button.focus-row-check.cancelled:hover {
   background: #e8f5e9;
 }
 
-.theme-light button.focus-row-check.inflight:hover {
+.theme-light button.focus-row-check.preview-cancelled:hover {
   border-color: #757575;
   background: var(--ui-gray-soft, #f0f2f4);
 }
 
-.theme-light button.focus-row-check.checked:hover {
+.theme-light button.focus-row-check.preview-partial:hover {
   border-color: var(--ui-orange, #ff9800);
   background: var(--ui-orange-soft, #fff3d6);
 }
 
-.theme-light button.focus-row-check.cancelled:hover {
+.theme-light button.focus-row-check.preview-empty:hover {
   border-color: #aaa;
   background: transparent;
 }
