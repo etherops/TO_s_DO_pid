@@ -20,7 +20,6 @@
 * [ ] Celebration easter egg (have it applaud when you click or something like that)
 
 ## Bugs
-* [ ] bugfix: File selector overlay - Keep list options above board content so file switching and browser test setup remain clickable
 * [ ] bug: hover preview is showing for full title when the title isn't overflow=true (bug: purge "visualColumn", correctly name column/columnstack)
 * [ ] bug: visual - confrim delete needs higher z-index
 * [ ] BUG: notes should only put in progress in WIP col
@@ -36,22 +35,23 @@
 
 # WIP
 ### In Progress
-* [~] bugfix: Subtask title spaces - Preserve untrimmed typing drafts so spaces are not erased on every keystroke
 * [~] bugfix: Release browser checks - Resolve archive-name assertion and obsolete completion-editor checks found during initiatives/subtasks release review before shipping
-* [~] bugfix: Weekly priority control - Center the standard priority arrow and remove the empty badge border in magnified day cards
-* [~] feature: Convert to subtask - Add a searchable initiative parent picker to Focus right-click actions and restrict new subtasks to initiatives while preserving existing children (consistent readable menu text across actions, columns, sections, and parent choices)
-* [~] feature: Subtask week schedule - Show dated subtasks on their assigned day in Week at a Glance with parent labels
-* [~] tweak: Focus weekly card fill - Use the normal neutral card background instead of blue for whole-week tasks
-* [~] improve: Subtask parent context - Give NOW one Subtasks group per main date section, show the full parent title when editing, and allow detaching into a standalone task in the same section
-* [~] improve: Focus drag handles - Place compact 3x3-dot handles outside the left card edge across all panels and week-at-a-glance, omit subtask filler markers, disable where no sorting peer exists, and restore blank-card click to edit
-* [~] feature: Nested subtasks - Support indented minus subtasks with a count badge and preservation of unsupported content (two-thirds subtasks beside one-third notes in task editors; hidden notes preserved, compact day/week/month date picker and qualified Focus routing with parent labels, manual sorting, always-empty trailing row, completion guard)
-* [~] feature: Initiatives - Use plus-marked high-priority tasks, a three-level priority toggle, and a Focus initiatives panel (sortable within source sections; content-sized up to 4.5 rows then scrolls, hidden when empty; debounce priority and status regrouping; date edits stay in place)
 * [~] improve: Partial-start status cycle - Complete settled in-progress tasks on the first click and retain the chosen cycle until debounce settles
-* [~] improve: Focus scheduling boundaries - Combine unstarted and active whole-current-week work in NOW, keep later weeks in Up Next and low-priority work in bottom groups, and distinguish this-month active and parked work
 * [~] feature: Focus overdue rollover - Move overdue unfinished Focus tasks to today without shifting the NOW header
 
 # ARCHIVE
 ### Sep Week #4 2026
+* [x] bugfix: File selector overlay - Keep list options above board content so file switching and browser test setup remain clickable | Sep 21 2026
+* [x] bugfix: Subtask title spaces - Preserve untrimmed typing drafts so spaces are not erased on every keystroke | Sep 21 2026
+* [x] bugfix: Weekly priority control - Center the standard priority arrow and remove the empty badge border in magnified day cards | Sep 21 2026
+* [x] feature: Convert to subtask - Add a searchable initiative parent picker to Focus right-click actions and restrict new subtasks to initiatives while preserving existing children (consistent readable menu text across actions, columns, sections, and parent choices) | Sep 21 2026
+* [x] feature: Subtask week schedule - Show dated subtasks on their assigned day in Week at a Glance with parent labels | Sep 21 2026
+* [x] tweak: Focus weekly card fill - Use the normal neutral card background instead of blue for whole-week tasks | Sep 21 2026
+* [x] improve: Subtask parent context - Give NOW one Subtasks group per main date section, show the full parent title when editing, and allow detaching into a standalone task in the same section | Sep 21 2026
+* [x] improve: Focus drag handles - Place compact 3x3-dot handles outside the left card edge across all panels and week-at-a-glance, omit subtask filler markers, disable where no sorting peer exists, and restore blank-card click to edit | Sep 21 2026
+* [x] feature: Nested subtasks - Support indented minus subtasks with a count badge and preservation of unsupported content (two-thirds subtasks beside one-third notes in task editors; hidden notes preserved, compact day/week/month date picker and qualified Focus routing with parent labels, manual sorting, always-empty trailing row, completion guard) | Sep 21 2026
+* [x] feature: Initiatives - Use plus-marked high-priority tasks, a three-level priority toggle, and a Focus initiatives panel (sortable within source sections; content-sized up to 4.5 rows then scrolls, hidden when empty; debounce priority and status regrouping; date edits stay in place) | Sep 21 2026
+* [x] improve: Focus scheduling boundaries - Combine unstarted and active whole-current-week work in NOW, keep later weeks in Up Next and low-priority work in bottom groups, and distinguish this-month active and parked work | Sep 21 2026
 * [x] feature: Focus note editing - Add, edit, and remove task notes in Focus; Enter saves and Shift+Enter adds a newline | Sep 21 2026
 * [x] feature: Focus week preview - Navigate Focus by day with a header date picker, read-only editing protection, and no future overdue clutter | Sep 21 2026
 
