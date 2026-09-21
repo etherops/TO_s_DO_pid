@@ -2,7 +2,7 @@
 <!-- Full-screen execution view with three magnifying work panels above an
      always-visible, week-by-week Sunday-Saturday carousel. -->
 <template>
-  <div ref="focusRoot" class="focus-mode" :class="[`theme-${theme}`, { 'focus-preview': isPreview }]">
+  <div ref="focusRoot" class="focus-mode" :class="[`theme-${theme}`, { 'focus-preview': isPreview, 'is-sorting': focusSortDrag }]">
     <header class="focus-header">
       <nav class="focus-heading focus-as-of" aria-label="Focus date preview">
         <div class="focus-date-navigation">
@@ -83,13 +83,80 @@
         <!-- UP NEXT panel: the SELECTED queue -->
         <section
             class="focus-panel panel-upnext"
-            :class="{ 'is-focused': isMainPaneSpotlight(0), 'is-magnified': isMainPaneMagnified(0) }"
+            :class="{ 'is-focused': isMainPaneSpotlight(0), 'is-magnified': isMainPaneMagnified(0), 'has-initiatives': initiatives.length }"
             :style="panelStyle(0)"
             @mouseenter="magnifyMainPane(0)"
             @mouseleave="resetMainPaneMagnification(0)"
             @pointerdown.capture="handleMainPaneInteraction($event)"
             @click="magnifyMainPaneOnClick(0, $event)"
         >
+          <aside v-if="initiatives.length" class="focus-initiatives" aria-label="Initiatives">
+            <header class="panel-header">
+              <span class="panel-kicker">Initiatives</span><span class="panel-count">{{ initiatives.length }}</span>
+            </header>
+            <div class="initiative-list">
+              <div v-for="entry in initiatives" :key="entry.task.id" class="initiative-row focus-task-row"
+                   :class="focusSortClass(entry)"
+                   @click.self="startNameEdit(entry)"
+                   :aria-grabbed="focusSortDrag?.sourceTaskId === entry.task.id"
+                   @dragover="hoverFocusSortTarget(entry, 'initiatives', 'initiatives', $event)"
+                   @drop="finishFocusSort(entry, 'initiatives', 'initiatives', $event)"
+                   @dragend="clearFocusSort"
+                   :data-task-id="entry.task.id" @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
+              <button v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-drag-handle" type="button" :draggable="isFocusEntrySortable(entry, initiatives)" :disabled="!(isFocusEntrySortable(entry, initiatives))"
+                      aria-label="Reorder task" title="Drag to reorder" @click.stop
+                      @dragstart.stop="startFocusSort(entry, initiatives, 'initiatives', 'initiatives', $event)" @dragend.stop="clearFocusSort">⠿</button>
+              <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
+                      :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
+                      @click.stop="cycleEntryStatus(entry, initiativeBucket(entry), $event)"></button>
+              <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
+                <input v-model="editTaskName" class="focus-edit-name"
+                       aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                <div v-if="!entry.parentTask" class="focus-note-column">
+                  <label class="focus-note-heading">Note</label>
+                  <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                            :class="{ 'note-empty': !editTaskNote.trim() }" :rows="editTaskNote.trim() ? 3 : 1" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                            @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                </div>
+                <SubtaskParentHeader v-if="entry.parentTask"
+                  :title="getStrippedDisplayText(entry.parentTask.text)" @detach="detachEntry(entry)" />
+                <SubtaskEditor v-if="!entry.parentTask && (entry.task.listMarker === '+' || editChildren.length)" :allow-add="entry.task.listMarker === '+'" v-model="editChildren" />
+                <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
+                <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
+              </div>
+              <div v-else class="focus-row-main" @click.self="startNameEdit(entry)">
+                <button :disabled="isPreview" class="focus-row-title" draggable="false"
+                        :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
+                        :title="`Edit name: ${cardTitle(entry)}`"
+                        @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
+                <span v-if="entry.parentTask" class="focus-subtask-parent"
+                      :title="`Subtask of ${getStrippedDisplayText(entry.parentTask.text)}`">↳ {{ getStrippedDisplayText(entry.parentTask.text) }}</span>
+                <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
+                  {{ entry.sectionName }}
+                </span>
+              </div>
+              <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-indicator"
+                    :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                    role="button" :aria-disabled="isPreview" @click.stop="startNoteEdit(entry)"
+                    @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
+                    @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
+                    @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
+              <SubtaskIndicator v-if="!isEditingEntry(entry)" :task="entry.task" :disabled="isPreview"
+                                @edit="startNameEdit(entry)" />
+              <PriorityToggle :disabled="isPreview" v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-priority-toggle"
+                              :low="displayedPriority(entry) === 'low'"
+                              :high="displayedPriority(entry) === 'high'"
+                              @toggle="toggleEntryPriority(entry)" />
+              <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+                      :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
+                      @click.stop="startDueDateEdit(entry, $event)">
+                <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
+                <span class="focus-due-clock" aria-hidden="true">◷</span>
+              </button>
+              </div>
+            </div>
+          </aside>
+          <div class="focus-upnext-content">
           <header class="panel-header">
             <span class="panel-kicker focus-panel-rule-trigger upnext-kicker" tabindex="0"
                   aria-describedby="focus-panel-rules-tooltip"
@@ -111,30 +178,40 @@
               </div>
               <div v-for="entry in group.entries" :key="entry.task.id" class="focus-task-row"
                    :class="[rowClasses(entry), focusSortClass(entry)]" :data-task-id="entry.task.id"
-                   :draggable="isFocusEntrySortable(entry, group.entries)"
+                   @click.self="startNameEdit(entry)"
                    :aria-grabbed="focusSortDrag?.sourceTaskId === entry.task.id"
-                   @dragstart="startFocusSort(entry, group.entries, 'upNext', group.key, $event)"
                    @dragover="hoverFocusSortTarget(entry, 'upNext', group.key, $event)"
                    @drop="finishFocusSort(entry, 'upNext', group.key, $event)"
                    @dragend="clearFocusSort"
                    @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
+              <button v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-drag-handle" type="button" :draggable="isFocusEntrySortable(entry, group.entries)" :disabled="!(isFocusEntrySortable(entry, group.entries))"
+                      aria-label="Reorder task" title="Drag to reorder" @click.stop
+                      @dragstart.stop="startFocusSort(entry, group.entries, 'upNext', group.key, $event)" @dragend.stop="clearFocusSort">⠿</button>
               <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                       :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                       @click.stop="cycleEntryStatus(entry, 'upNext', $event)"></button>
               <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                 <input v-model="editTaskName" class="focus-edit-name"
                        aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
-                <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
-                          rows="3" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
-                          @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                <div v-if="!entry.parentTask" class="focus-note-column">
+                  <label class="focus-note-heading">Note</label>
+                  <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                            :class="{ 'note-empty': !editTaskNote.trim() }" :rows="editTaskNote.trim() ? 3 : 1" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                            @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                </div>
+                <SubtaskParentHeader v-if="entry.parentTask"
+                  :title="getStrippedDisplayText(entry.parentTask.text)" @detach="detachEntry(entry)" />
+                <SubtaskEditor v-if="!entry.parentTask && (entry.task.listMarker === '+' || editChildren.length)" :allow-add="entry.task.listMarker === '+'" v-model="editChildren" />
                 <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                 <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
               </div>
-              <div v-else class="focus-row-main">
+              <div v-else class="focus-row-main" @click.self="startNameEdit(entry)">
                 <button :disabled="isPreview" class="focus-row-title" draggable="false"
                         :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                         :title="`Edit name: ${cardTitle(entry)}`"
                         @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
+                <span v-if="entry.parentTask" class="focus-subtask-parent"
+                      :title="`Subtask of ${getStrippedDisplayText(entry.parentTask.text)}`">↳ {{ getStrippedDisplayText(entry.parentTask.text) }}</span>
                 <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                   {{ entry.sectionName }}
                 </span>
@@ -145,8 +222,11 @@
                     @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                     @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                     @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
-              <PriorityToggle :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
-                              :low="isLowPriorityEntry(entry)"
+              <SubtaskIndicator v-if="!isEditingEntry(entry)" :task="entry.task" :disabled="isPreview"
+                                @edit="startNameEdit(entry)" />
+              <PriorityToggle :disabled="isPreview" v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-priority-toggle"
+                              :low="displayedPriority(entry) === 'low'"
+                              :high="displayedPriority(entry) === 'high'"
                               @toggle="toggleEntryPriority(entry)" />
               <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                       :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
@@ -156,6 +236,7 @@
               </button>
               </div>
             </template>
+          </div>
           </div>
         </section>
 
@@ -192,30 +273,40 @@
                        'this-week-row': group.key === 'this-week'
                      }, focusSortClass(entry)]"
                      :data-task-id="entry.task.id"
-                     :draggable="isFocusEntrySortable(entry, group.entries)"
+                   @click.self="startNameEdit(entry)"
                      :aria-grabbed="focusSortDrag?.sourceTaskId === entry.task.id"
-                     @dragstart="startFocusSort(entry, group.entries, 'inProgressQueued', group.key, $event)"
                      @dragover="hoverFocusSortTarget(entry, 'inProgressQueued', group.key, $event)"
                      @drop="finishFocusSort(entry, 'inProgressQueued', group.key, $event)"
                      @dragend="clearFocusSort"
                      @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
+              <button v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-drag-handle" type="button" :draggable="isFocusEntrySortable(entry, group.entries)" :disabled="!(isFocusEntrySortable(entry, group.entries))"
+                      aria-label="Reorder task" title="Drag to reorder" @click.stop
+                      @dragstart.stop="startFocusSort(entry, group.entries, 'inProgressQueued', group.key, $event)" @dragend.stop="clearFocusSort">⠿</button>
                   <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                           :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                           @click.stop="cycleEntryStatus(entry, 'inProgressQueued', $event)"></button>
                   <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                     <input v-model="editTaskName" class="focus-edit-name"
                            aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
-                    <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
-                              rows="3" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
-                              @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                    <div v-if="!entry.parentTask" class="focus-note-column">
+                      <label class="focus-note-heading">Note</label>
+                      <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                                :class="{ 'note-empty': !editTaskNote.trim() }" :rows="editTaskNote.trim() ? 3 : 1" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                                @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                    </div>
+                    <SubtaskParentHeader v-if="entry.parentTask"
+                      :title="getStrippedDisplayText(entry.parentTask.text)" @detach="detachEntry(entry)" />
+                    <SubtaskEditor v-if="!entry.parentTask && (entry.task.listMarker === '+' || editChildren.length)" :allow-add="entry.task.listMarker === '+'" v-model="editChildren" />
                     <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                     <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                   </div>
-                  <div v-else class="focus-row-main">
+                  <div v-else class="focus-row-main" @click.self="startNameEdit(entry)">
                     <button :disabled="isPreview" class="focus-row-title execution-row-title" draggable="false"
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
+                    <span v-if="entry.parentTask" class="focus-subtask-parent"
+                          :title="`Subtask of ${getStrippedDisplayText(entry.parentTask.text)}`">↳ {{ getStrippedDisplayText(entry.parentTask.text) }}</span>
                     <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                       {{ entry.sectionName }}
                     </span>
@@ -226,8 +317,11 @@
                         @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                         @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                         @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
-                  <PriorityToggle :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
-                                  :low="isLowPriorityEntry(entry)"
+                  <SubtaskIndicator v-if="!isEditingEntry(entry)" :task="entry.task" :disabled="isPreview"
+                                    @edit="startNameEdit(entry)" />
+                  <PriorityToggle :disabled="isPreview" v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-priority-toggle"
+                                  :low="displayedPriority(entry) === 'low'"
+                                  :high="displayedPriority(entry) === 'high'"
                                   @toggle="toggleEntryPriority(entry)" />
                   <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                           :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
@@ -293,30 +387,40 @@
                      'this-week-row': entry.dueGroup === 'this-week'
                    }, focusSortClass(entry)]"
                    :data-task-id="entry.task.id"
-                   :draggable="isFocusEntrySortable(entry, day.entries)"
+                   @click.self="startNameEdit(entry)"
                    :aria-grabbed="focusSortDrag?.sourceTaskId === entry.task.id"
-                   @dragstart="startFocusSort(entry, day.entries, 'now', day.key, $event)"
                    @dragover="hoverFocusSortTarget(entry, 'now', day.key, $event)"
                    @drop="finishFocusSort(entry, 'now', day.key, $event)"
                    @dragend="clearFocusSort"
                    @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
+              <button v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-drag-handle" type="button" :draggable="isFocusEntrySortable(entry, day.entries)" :disabled="!(isFocusEntrySortable(entry, day.entries))"
+                      aria-label="Reorder task" title="Drag to reorder" @click.stop
+                      @dragstart.stop="startFocusSort(entry, day.entries, 'now', day.key, $event)" @dragend.stop="clearFocusSort">⠿</button>
                 <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                         @click.stop="cycleEntryStatus(entry, 'now', $event)"></button>
                 <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
-                  <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
-                            rows="3" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
-                            @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                  <div v-if="!entry.parentTask" class="focus-note-column">
+                    <label class="focus-note-heading">Note</label>
+                    <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                              :class="{ 'note-empty': !editTaskNote.trim() }" :rows="editTaskNote.trim() ? 3 : 1" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                              @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                  </div>
+                  <SubtaskParentHeader v-if="entry.parentTask"
+                    :title="getStrippedDisplayText(entry.parentTask.text)" @detach="detachEntry(entry)" />
+                  <SubtaskEditor v-if="!entry.parentTask && (entry.task.listMarker === '+' || editChildren.length)" :allow-add="entry.task.listMarker === '+'" v-model="editChildren" />
                   <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                   <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                 </div>
-                <div v-else class="focus-row-main">
+                <div v-else class="focus-row-main" @click.self="startNameEdit(entry)">
                   <button :disabled="isPreview" class="focus-row-title" draggable="false"
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
+                  <span v-if="entry.parentTask" class="focus-subtask-parent"
+                        :title="`Subtask of ${getStrippedDisplayText(entry.parentTask.text)}`">↳ {{ getStrippedDisplayText(entry.parentTask.text) }}</span>
                   <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                     {{ entry.sectionName }}
                   </span>
@@ -327,8 +431,11 @@
                       @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                       @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                       @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
-                <PriorityToggle :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
-                                :low="isLowPriorityEntry(entry)"
+                <SubtaskIndicator v-if="!isEditingEntry(entry)" :task="entry.task" :disabled="isPreview"
+                                  @edit="startNameEdit(entry)" />
+                <PriorityToggle :disabled="isPreview" v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-priority-toggle"
+                                :low="displayedPriority(entry) === 'low'"
+                                :high="displayedPriority(entry) === 'high'"
                                 @toggle="toggleEntryPriority(entry)" />
                 <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                         :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
@@ -420,8 +527,18 @@
                   <template v-else>
                   <div v-if="!day.entries.length" class="focus-week-day-empty">—</div>
                 <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row execution-row"
-                     :class="rowClasses(entry)" :data-task-id="entry.task.id"
+                     @click.self="startNameEdit(entry)"
+                     :class="[rowClasses(entry), focusSortClass(entry)]" :data-task-id="entry.task.id"
+                     @dragover="hoverFocusSortTarget(entry, 'week', day.key, $event)"
+                     @drop="finishFocusSort(entry, 'week', day.key, $event)"
+                     @dragend="clearFocusSort"
                      @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
+                <button v-if="!entry.parentTask && !isEditingEntry(entry)" class="focus-drag-handle" type="button"
+                        :draggable="isFocusEntrySortable(entry, day.entries)"
+                        :disabled="!isFocusEntrySortable(entry, day.entries)"
+                        aria-label="Reorder task" title="Drag to reorder" @click.stop
+                        @dragstart.stop="startFocusSort(entry, day.entries, 'week', day.key, $event)"
+                        @dragend.stop="clearFocusSort">⠿</button>
                 <span v-if="day.isToday" class="focus-row-check" :class="checkClasses(entry)"
                       aria-hidden="true"></span>
                 <button :disabled="isPreview" v-else-if="!isEditingEntry(entry) && entry.sourceBucket" class="focus-row-check" :class="checkClasses(entry)"
@@ -432,13 +549,19 @@
                 <div v-if="!day.isToday && isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
-                  <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
-                            rows="3" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
-                            @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                  <div v-if="!entry.parentTask" class="focus-note-column">
+                    <label class="focus-note-heading">Note</label>
+                    <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                              :class="{ 'note-empty': !editTaskNote.trim() }" :rows="editTaskNote.trim() ? 3 : 1" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                              @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
+                  </div>
+                  <SubtaskParentHeader v-if="entry.parentTask"
+                    :title="getStrippedDisplayText(entry.parentTask.text)" @detach="detachEntry(entry)" />
+                  <SubtaskEditor v-if="!entry.parentTask && (entry.task.listMarker === '+' || editChildren.length)" :allow-add="entry.task.listMarker === '+'" v-model="editChildren" />
                   <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                   <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                 </div>
-                <div v-else class="focus-row-main">
+                <div v-else class="focus-row-main" @click.self="startNameEdit(entry)">
                   <span v-if="day.isToday" class="focus-row-title execution-row-title"
                         :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }">
                     {{ cardTitle(entry) }}
@@ -447,6 +570,10 @@
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
+                  <span v-if="entry.parentTask" class="focus-subtask-parent"
+                        :title="`Subtask of ${getStrippedDisplayText(entry.parentTask.text)}`">
+                    ↳ {{ getStrippedDisplayText(entry.parentTask.text) }}
+                  </span>
                   <span class="focus-week-section-icon" tabindex="0"
                         :aria-label="`${entry.columnName} · ${entry.sectionName}`"
                         @mouseenter="showSectionTooltip(entry, $event)"
@@ -461,13 +588,11 @@
                         @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                         @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                         @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
-                  <button :disabled="isPreview" class="focus-week-priority-badge"
-                          :class="{ active: isLowPriorityEntry(entry) }"
-                          :title="isLowPriorityEntry(entry) ? 'Make normal priority' : 'Make low priority'"
-                          :aria-label="isLowPriorityEntry(entry) ? 'Make normal priority' : 'Make low priority'"
-                          @click.stop="toggleEntryPriority(entry, entry.sourceBucket)">
-                    {{ isLowPriorityEntry(entry) ? 'LOW' : '↓' }}
-                  </button>
+                  <SubtaskIndicator v-if="!isEditingEntry(entry)" :task="entry.task" :disabled="isPreview"
+                                    @edit="startNameEdit(entry)" />
+                  <PriorityToggle v-if="!entry.parentTask" :disabled="isPreview" class="focus-week-priority-badge"
+                                  :low="displayedPriority(entry) === 'low'" :high="displayedPriority(entry) === 'high'"
+                                  @toggle="toggleEntryPriority(entry)" />
                 </div>
                   <button :disabled="isPreview" class="focus-week-clock" :title="dateButtonTitle(entry)" :aria-label="dateButtonTitle(entry)"
                           @pointerdown.stop.prevent="startDueDateEdit(entry, $event)"
@@ -585,6 +710,16 @@
             <span class="focus-task-context-chevron" aria-hidden="true">›</span>
           </button>
           <div class="focus-task-context-divider"></div>
+          <button type="button" class="focus-task-context-action focus-task-context-convert" role="menuitem"
+                  :disabled="Boolean(taskContextMenu.entry.task.children?.length)"
+                  :title="taskContextMenu.entry.task.children?.length ? 'Detach existing subtasks before converting this task' : 'Choose an initiative parent'"
+                  @click="openInitiativePicker">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 3v12h11l-4-4 1.4-1.4L20 16l-6.6 6.4L12 21l4-4H3V3z" />
+            </svg>
+            <span>Convert to subtask…</span>
+            <span class="focus-task-context-chevron" aria-hidden="true">›</span>
+          </button>
           <button type="button"
                 class="focus-task-context-action focus-task-context-delete" role="menuitem"
                 @click="confirmContextTaskDelete">
@@ -593,6 +728,18 @@
             </svg>
             <span>Delete task</span>
           </button>
+        </template>
+        <template v-else-if="taskContextMenu.view === 'initiatives'">
+          <button type="button" class="focus-task-context-back" @click="showContextActions">‹ Choose initiative</button>
+          <input v-model="initiativeSearch" class="initiative-search" aria-label="Search initiatives"
+                 placeholder="Search initiatives…" @keydown.stop />
+          <div class="initiative-parent-options">
+            <button v-for="parent in initiativeParentChoices" :key="parent.task.id" type="button"
+                    class="focus-task-context-action" @click="convertToSubtask(parent)">
+              {{ getStrippedDisplayText(parent.task.text) }}
+            </button>
+            <div v-if="!initiativeParentChoices.length" class="focus-task-context-label">No matching initiatives</div>
+          </div>
         </template>
         <template v-else-if="taskContextMenu.view === 'columns'">
           <button type="button" class="focus-task-context-back" @click="showContextActions">
@@ -668,6 +815,11 @@ import {
   updateTaskNameAndDueDate
 } from '../utils/taskTextHelpers';
 import PriorityToggle from './PriorityToggle.vue';
+import SubtaskEditor from './SubtaskEditor.vue';
+import SubtaskParentHeader from './SubtaskParentHeader.vue';
+import SubtaskIndicator from './SubtaskIndicator.vue';
+import { updateSubtaskTitle } from '../utils/subtaskHelpers';
+import { cycleTaskPriority, taskPriority } from '../utils/priorityHelpers';
 import {
   extractCompletionDateValue,
   getCompletionBadgeFromText,
@@ -675,7 +827,7 @@ import {
   setCompletionDate
 } from '../utils/completionDateHelpers';
 import { getStatusPriority, sortTaskToCorrectPosition } from '../utils/sortHelpers';
-import { nextTaskStatus } from '../utils/statusHelpers';
+import { nextTaskStatus, hasIncompleteSubtasks } from '../utils/statusHelpers';
 
 const props = defineProps({
   todoData: {
@@ -701,6 +853,7 @@ const quickAddDateKind = ref('day');
 const quickAddCustomDateInput = ref(null);
 const editingTaskId = ref(null);
 const editTaskName = ref('');
+const editChildren = ref([]);
 const editTaskNote = ref('');
 const dateMenuTaskId = ref(null);
 const dateMenuPosition = ref({ top: 0, left: 0 });
@@ -981,19 +1134,35 @@ const clusterBySection = (entries, { preservePendingState = true } = {}) => {
 
 const panelCards = (bucketName) => {
   const visible = visibleBucket(bucketName);
-  return computed(() => clusterBySection(visible.value));
+  return computed(() => clusterBySection(visible.value.filter(entry => !isInitiative(entry))));
 };
 
+const isInitiative = (entry) => entry.task.listMarker === '+' && [' ', '~'].includes(
+  pendingStatuses.value.get(entry.task.id)?.initialStatus
+    ?? transitions.value.get(entry.task.id)?.sortStatus
+    ?? entry.task.statusChar
+);
+const initiativeBucket = (entry) => Object.keys(BUCKET_INDEX).find(bucket =>
+  model.value[bucket].some(candidate => candidate.task.id === entry.task.id)
+) || 'upNext';
 const upNext = panelCards('upNext');
 const inProgressQueued = panelCards('inProgressQueued');
 const now = panelCards('now');
 const done = panelCards('done');
+const initiatives = computed(() => {
+  const entries = [
+    ...model.value.upNext, ...model.value.now, ...model.value.inProgressQueued,
+    ...[...pendingStatuses.value.values()].map(pending => pending.entry),
+    ...[...transitions.value.values()].map(transition => transition.entry)
+  ].filter(isInitiative);
+  return orderEntriesBySourcePosition([...new Map(entries.map(entry => [entry.task.id, entry])).values()]);
+});
 const isLowPriorityEntry = (entry) => entry.task.isLowPriority || entry.task.listMarker === '-';
 const sortablePeers = (entry, entries) => entries.filter(candidate =>
-  candidate.section === entry.section
+  !candidate.parentTask && candidate.section === entry.section
   && candidate.columnName === entry.columnName
 );
-const isFocusEntrySortable = (entry, entries) => !isPreview.value && !isEditingEntry(entry)
+const isFocusEntrySortable = (entry, entries) => !entry.parentTask && !isPreview.value && !isEditingEntry(entry)
   && !transitions.value.has(entry.task.id)
   && !pendingStatuses.value.has(entry.task.id)
   && sortablePeers(entry, entries).length > 1;
@@ -1009,6 +1178,7 @@ const startFocusSort = (entry, entries, bucketName, groupKey, event) => {
   }
 
   const eligibleTaskIds = sortablePeers(entry, entries).map(candidate => candidate.task.id);
+  cancelMainPaneMagnifyTimer();
   focusSortDrag.value = {
     sourceTaskId: entry.task.id,
     section: entry.section,
@@ -1019,6 +1189,8 @@ const startFocusSort = (entry, entries, bucketName, groupKey, event) => {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', entry.task.id);
+    const row = event.currentTarget.closest('.focus-task-row');
+    if (row && event.dataTransfer.setDragImage) event.dataTransfer.setDragImage(row, 12, 12);
   }
 };
 const canDropFocusSort = (entry, bucketName, groupKey) => {
@@ -1034,9 +1206,11 @@ const hoverFocusSortTarget = (entry, bucketName, groupKey, event) => {
   event.preventDefault();
   if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
   const rect = event.currentTarget.getBoundingClientRect();
+  const placeAfter = event.clientY > rect.top + rect.height / 2;
+  if (focusSortTarget.value?.taskId === entry.task.id && focusSortTarget.value.placeAfter === placeAfter) return;
   focusSortTarget.value = {
     taskId: entry.task.id,
-    placeAfter: event.clientY > rect.top + rect.height / 2
+    placeAfter
   };
 };
 const finishFocusSort = (entry, bucketName, groupKey, event) => {
@@ -1162,6 +1336,11 @@ const timelineEntries = computed(() => {
           section,
           sourceBucket: focusBuckets.get(task.id) || null
         });
+        (task.children || []).filter(child => child.type === 'subtask').forEach(child => {
+          entries.push({ task: child, parentTask: task, columnName, stackName: column.name,
+            sectionName: section.name, section,
+            sourceBucket: focusBuckets.get(child.id) || 'upNext' });
+        });
       });
     });
   });
@@ -1257,12 +1436,18 @@ const nowDays = computed(() => {
   if (otherLowPriority.length) {
     groups.push({ key: 'low-priority', label: 'Low Priority', entries: otherLowPriority });
   }
-  return groups.map(group => ({
-    ...group,
-    entries: orderEntriesBySourcePosition(group.entries)
-  }));
+  return groups.flatMap(group => {
+    const tasks = group.entries.filter(entry => !entry.parentTask);
+    const subtasks = group.entries.filter(entry => entry.parentTask);
+    const main = tasks.length || group.count
+      ? [{ ...group, count: group.count == null ? undefined
+        : group.count - (group.entries.length - tasks.length), entries: orderEntriesBySourcePosition(tasks) }]
+      : [];
+    return [...main, ...(subtasks.length ? [{
+      key: `${group.key}-subtasks`, label: `${group.label} · Subtasks`, entries: subtasks
+    }] : [])];
+  });
 });
-
 const startOfThisWeek = () => {
   const start = new Date(focusDate.value);
   start.setHours(0, 0, 0, 0);
@@ -1324,6 +1509,8 @@ const weeklySourceEntries = computed(() => {
   addEntries(inProgressQueued.value, 'inProgressQueued');
   addEntries(now.value, 'now');
   addEntries(done.value, 'done');
+  addEntries(timelineEntries.value.filter(entry => entry.parentTask
+    && ['SELECTED', 'WIP'].includes(entry.stackName)), 'upNext');
   return entries;
 });
 
@@ -1403,6 +1590,7 @@ const calendarWeekDays = (start) => {
   const days = emptyWeekDays(start);
 
   timelineEntries.value.forEach(entry => {
+    if (initiatives.value.some(initiative => initiative.task.id === entry.task.id)) return;
     const terminal = entry.task.statusChar === 'x' || entry.task.statusChar === '-';
     const completionDate = terminal ? extractCompletionDateValue(entry.task.text) : null;
     const period = terminal ? null : extractDuePeriod(entry.task.text);
@@ -1578,17 +1766,35 @@ const rowClasses = (entry) => {
   return [priorityClass, ...(arrivalDirection ? ['arriving', `arrive-${arrivalDirection}`] : [])].filter(Boolean);
 };
 
-const toggleEntryPriority = (entry) => {
-  if (isPreview.value) return;
-  const makeLow = !isLowPriorityEntry(entry);
-  entry.task.listMarker = makeLow ? '-' : '*';
-  entry.task.isLowPriority = makeLow;
+const pendingPriorities = ref(new Map());
+const priorityTimers = new Map();
+const displayedPriority = (entry) => taskPriority(pendingPriorities.value.get(entry.task.id) || entry.task);
+const settlePriority = (id) => {
+  const pending = pendingPriorities.value.get(id);
+  if (!pending) return;
+  clearTimeout(priorityTimers.get(id));
+  priorityTimers.delete(id);
+  pending.task.listMarker = pending.listMarker;
+  pending.task.isLowPriority = pending.isLowPriority;
+  pendingPriorities.value.delete(id);
   emit('update');
+};
+const toggleEntryPriority = (entry) => {
+  if (isPreview.value || entry.parentTask) return;
+  const id = entry.task.id;
+  const pending = pendingPriorities.value.get(id) || {
+    task: entry.task, listMarker: entry.task.listMarker, isLowPriority: entry.task.isLowPriority
+  };
+  cycleTaskPriority(pending);
+  pendingPriorities.value.set(id, pending);
+  clearTimeout(priorityTimers.get(id));
+  priorityTimers.set(id, setTimeout(() => settlePriority(id), 700));
 };
 
 const checkClasses = (entry) => ({
   [`preview-${({ ' ': 'empty', x: 'done', '~': 'partial', '-': 'cancelled' })[nextTaskStatus(
-    entry.task.statusChar, pendingStatuses.value.get(entry.task.id)?.initialStatus ?? entry.task.statusChar)]}`]: true,
+    entry.task.statusChar, pendingStatuses.value.get(entry.task.id)?.initialStatus ?? entry.task.statusChar)]}`]:
+      !hasIncompleteSubtasks(entry.task),
   unchecked: entry.task.statusChar === ' ',
   inflight: entry.task.statusChar === '~',
   'in-progress': entry.task.statusChar === '~',
@@ -1600,6 +1806,7 @@ const checkClasses = (entry) => ({
 const STATUS_LABELS = { ' ': 'Queued', '~': 'In progress', x: 'Completed', '-': 'Cancelled' };
 
 const statusTitle = (entry) => {
+  if (hasIncompleteSubtasks(entry.task)) return 'Complete all subtasks before completing this task';
   if (isPreview.value) return `${STATUS_LABELS[entry.task.statusChar]} — read-only preview`;
   const current = STATUS_LABELS[entry.task.statusChar] || STATUS_LABELS[' '];
   const next = STATUS_LABELS[nextTaskStatus(entry.task.statusChar,
@@ -1655,7 +1862,7 @@ const isMainPaneSpotlight = (panelIndex) =>
   panelIndex === (mainPaneDock.value.panelIndex ?? CENTER_PANEL);
 
 const magnifyMainPane = (panelIndex) => {
-  if (isFocused(panelIndex)) return;
+  if (isFocused(panelIndex) || focusSortDrag.value) return;
   clearTimeout(mainPaneMagnifyTimer);
   mainPaneMagnifyTimer = setTimeout(() => {
     mainPaneMagnifyTimer = null;
@@ -1670,6 +1877,7 @@ const cancelMainPaneMagnifyTimer = () => {
 
 const resetMainPaneMagnification = (panelIndex = null) => {
   cancelMainPaneMagnifyTimer();
+  if (focusSortDrag.value) return;
   if (panelIndex === null || mainPaneDock.value.panelIndex === panelIndex) {
     mainPaneDock.value = { panelIndex: null };
   }
@@ -1779,16 +1987,43 @@ const closeDateMenu = () => {
 };
 
 const TASK_CONTEXT_MENU_WIDTH = 240;
+const initiativeSearch = ref('');
+const initiativeParentChoices = computed(() => timelineEntries.value.filter(entry =>
+  !entry.parentTask && entry.task.listMarker === '+' && [' ', '~'].includes(entry.task.statusChar)
+  && entry.task.id !== taskContextMenu.value?.entry.task.id
+  && getStrippedDisplayText(entry.task.text).toLowerCase().includes(initiativeSearch.value.toLowerCase())
+));
+const openInitiativePicker = async () => {
+  initiativeSearch.value = '';
+  taskContextMenu.value.view = 'initiatives';
+  await nextTick();
+  taskContextMenuRef.value?.querySelector('input')?.focus();
+};
+const convertToSubtask = (parent) => {
+  const entry = taskContextMenu.value?.entry;
+  if (isPreview.value || !entry || entry.parentTask || entry.task.children?.length
+      || !initiativeParentChoices.value.includes(parent)) return;
+  const index = entry.section.items.indexOf(entry.task);
+  if (index < 0 || pendingStatuses.value.has(entry.task.id) || pendingPriorities.value.has(entry.task.id)) return;
+  const child = { ...entry.task, type: 'subtask', indent: '  ' };
+  delete child.listMarker;
+  delete child.isLowPriority;
+  parent.task.children = [...(parent.task.children || []), child];
+  entry.section.items.splice(index, 1);
+  closeTaskContextMenu();
+  emit('update');
+};
 const TASK_CONTEXT_MENU_VIEWPORT_GAP = 10;
 const taskContextMenuHeight = computed(() => {
   if (!taskContextMenu.value) return 0;
+  if (taskContextMenu.value.view === 'initiatives') return 350;
   if (taskContextMenu.value.view === 'columns') {
     return Math.min(400, 62 + focusColumnChoices.value.length * 34);
   }
   if (taskContextMenu.value.view === 'sections') {
     return Math.min(400, 62 + contextSectionChoices.value.length * 38);
   }
-  return taskContextMenu.value.view === 'confirmDelete' ? 132 : 142;
+  return taskContextMenu.value.view === 'confirmDelete' ? 132 : 180;
 });
 const taskContextMenuStyle = computed(() => {
   if (!taskContextMenu.value) return {};
@@ -1806,6 +2041,7 @@ const closeTaskContextMenu = () => {
 
 const openTaskContextMenu = async (entry, event) => {
   if (isPreview.value) return;
+  if (entry.parentTask) { await startNameEdit(entry); return; }
   closeDateMenu();
   hideSectionTooltip();
   hideNoteTooltip();
@@ -1903,6 +2139,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  [...pendingPriorities.value.keys()].forEach(settlePriority);
   clearInterval(currentDateTimer);
   clearTimeout(mainPaneMagnifyTimer);
   window.removeEventListener('keydown', handleKeydown);
@@ -1916,9 +2153,9 @@ onUnmounted(() => {
 });
 
 // ========================= Row content =========================
-const cardTitle = (entry) => entry.task.displayText || entry.task.text;
+const cardTitle = (entry) => entry.parentTask ? getStrippedDisplayText(entry.task.text) : entry.task.displayText || entry.task.text;
 
-const entryNote = (entry) => extractNoteFromText(entry.task.text);
+const entryNote = (entry) => entry.parentTask ? null : extractNoteFromText(entry.task.text);
 const showNoteTooltip = (entry, event) => {
   cancelMainPaneMagnifyTimer();
   const rect = event.currentTarget.getBoundingClientRect();
@@ -1957,7 +2194,7 @@ const PANEL_MEMBERSHIP_RULES = {
   now: {
     title: 'Now includes',
     rules: [
-      'Unstarted work due this week as a whole.',
+      'Unfinished work due this week as a whole.',
       'Unfinished work due today or overdue.',
       'Work completed or marked Will not do today.'
     ]
@@ -1965,7 +2202,6 @@ const PANEL_MEMBERSHIP_RULES = {
   inProgressWaiting: {
     title: 'In Progress / Parked includes',
     rules: [
-      'In-progress work due this week as a whole.',
       'This-month or unscheduled WIP-source work under Active.',
       'This-month or unscheduled SELECTED-source work under Parked.'
     ]
@@ -2029,6 +2265,7 @@ const startNameEdit = async (entry) => {
   if (transitions.value.has(entry.task.id)) return;
   closeDateMenu();
   editingTaskId.value = entry.task.id;
+  editChildren.value = (entry.task.children || []).map(child => ({ ...child }));
   editTaskName.value = getStrippedDisplayText(entry.task.text);
   editTaskNote.value = entryNote(entry) || '';
   await nextTick();
@@ -2071,6 +2308,28 @@ const cancelEntryEdit = () => {
   editTaskNote.value = '';
 };
 
+const detachEntry = (entry) => {
+  if (isPreview.value || !entry.parentTask || !editTaskName.value.trim()) return;
+  const statusTimer = statusTimers.get(entry.task.id);
+  if (statusTimer) clearTimeout(statusTimer);
+  statusTimers.delete(entry.task.id);
+  pendingStatuses.value.delete(entry.task.id);
+  const parent = entry.parentTask;
+  const parentIndex = entry.section.items.indexOf(parent);
+  const childIndex = parent.children.findIndex(child => child.id === entry.task.id);
+  if (parentIndex < 0 || childIndex < 0) return;
+  const text = reconcileLifecycleDateForStatus(
+    updateSubtaskTitle(entry.task.text, editTaskName.value.trim()), entry.task.statusChar);
+  const detached = {
+    id: entry.task.id, type: 'task', listMarker: '*', isLowPriority: false,
+    statusChar: entry.task.statusChar, text, displayText: getStrippedDisplayText(text)
+  };
+  parent.children.splice(childIndex, 1);
+  entry.section.items.splice(parentIndex + 1, 0, detached);
+  cancelEntryEdit();
+  emit('update');
+};
+
 const saveEntryEdits = (entry) => {
   if (isPreview.value) return;
   if (!editTaskName.value.trim()) {
@@ -2079,15 +2338,19 @@ const saveEntryEdits = (entry) => {
   }
 
   const currentDueDate = formatDuePeriodValue(extractDuePeriod(entry.task.text));
-  let updatedText = updateTaskNameAndDueDate(entry.task.text, editTaskName.value, currentDueDate);
-  updatedText = updateNoteInText(updatedText, editTaskNote.value);
+  let updatedText = entry.parentTask
+    ? updateSubtaskTitle(entry.task.text, editTaskName.value)
+    : updateNoteInText(updateTaskNameAndDueDate(entry.task.text, editTaskName.value, currentDueDate), editTaskNote.value);
   if (isTerminalEntry(entry)) {
     const completion = extractCompletionDateValue(entry.task.text);
     const completionValue = formatDateInputValue(completion);
     updatedText = setCompletionDate(updatedText, completionValue);
   }
+  const childrenChanged = JSON.stringify(entry.task.children || []) !== JSON.stringify(editChildren.value);
+  entry.task.children = editChildren.value
+    .filter(child => child.type !== 'subtask' || child.rawLine || child.text.trim());
   cancelEntryEdit();
-  if (updatedText === entry.task.text) return;
+  if (updatedText === entry.task.text && !childrenChanged) return;
 
   entry.task.text = updatedText;
   entry.task.displayText = getStrippedDisplayText(updatedText);
@@ -2269,6 +2532,7 @@ const setEntryDueDate = (entry, dateValue) => {
   const taskName = getStrippedDisplayText(entry.task.text);
   const updatedText = isTerminalEntry(entry)
     ? setCompletionDate(entry.task.text, dateValue)
+    : entry.parentTask ? setDuePeriod(entry.task.text, dateValue)
     : updateTaskNameAndDueDate(entry.task.text, taskName, dateValue);
   const sourceRect = dateMenuSourceRect.value;
   closeDateMenu();
@@ -2293,7 +2557,8 @@ const setEntryDueDate = (entry, dateValue) => {
     resortInSection(entry);
   };
 
-  if (sourceBucket && destinationBucket) {
+  // An initiative's visible home is independent of its date-derived bucket.
+  if (!isInitiative(entry) && sourceBucket && destinationBucket) {
     moveWithTransition(entry, sourceBucket, destinationBucket, applyDateChange, sourceRect);
   } else {
     applyDateChange();
@@ -2334,12 +2599,14 @@ const dueBadge = (entry) => {
 
 // ========================= Actions =========================
 const resortInSection = (entry) => {
+  if (entry.parentTask) return;
   sortTaskToCorrectPosition(entry.section.items, entry.task, () => {});
 };
 
 // Starting or reopening work puts it in IN PROGRESS / PARKED, and active work
 // lives in WIP: tasks elsewhere get pulled into the active WIP section.
 const moveToActiveWip = (entry) => {
+  if (entry.parentTask) return entry.section;
   if (entry.stackName === 'WIP') return entry.section;
 
   const target = findActiveWipSection(props.todoData);
@@ -2364,7 +2631,7 @@ const finishPendingStatus = (taskId) => {
 
   entry.task.text = reconcileLifecycleDateForStatus(entry.task.text, finalStatus);
   entry.task.displayText = getStrippedDisplayText(entry.task.text);
-  sortTaskToCorrectPosition(section.items, entry.task, () => {});
+  if (!entry.parentTask) sortTaskToCorrectPosition(section.items, entry.task, () => {});
 
   const updatedModel = deriveFocusModel(props.todoData);
   const destination = Object.keys(BUCKET_INDEX).find(bucketName =>
@@ -2416,6 +2683,8 @@ const cycleEntryStatus = (entry, sourceBucket, event = null) => {
   if (transitions.value.has(taskId)) return;
 
   let pending = pendingStatuses.value.get(taskId);
+  if (hasIncompleteSubtasks(entry.task) && nextTaskStatus(entry.task.statusChar,
+    pending?.initialStatus ?? entry.task.statusChar) === 'x') return;
   if (!pending) {
     const index = model.value[sourceBucket].findIndex(candidate => candidate.task.id === taskId);
     pending = {
@@ -2527,6 +2796,58 @@ const toggleQuickAdd = async () => {
 .focus-preview .focus-task-row button:disabled {
   cursor: default;
   pointer-events: none;
+}
+
+.focus-upnext-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.panel-upnext.has-initiatives,
+.theme-light .panel-upnext.has-initiatives {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+  gap: 12px;
+}
+.has-initiatives .focus-upnext-content, .focus-initiatives {
+  border: 1px solid #465266;
+  border-radius: 16px;
+  background: #1d232e;
+  box-shadow: 0 8px 24px #00000015;
+}
+.theme-light .has-initiatives .focus-upnext-content,
+.theme-light .focus-initiatives {
+  background: #fff;
+  border-color: #d8dfe8;
+}
+.focus-initiatives {
+  position: relative;
+  z-index: 90;
+  margin-top: -64px;
+  margin-bottom: -14px;
+  width: calc(100% + 12px);
+  align-self: center;
+  flex: none;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.has-initiatives .focus-upnext-content { width: 100%; align-self: center; flex: 1 1 0; }
+.focus-initiatives .panel-kicker { color: #9674bb; }
+.initiative-list {
+  --initiative-row-height: 28px;
+  flex: none;
+  height: auto;
+  max-height: calc(var(--initiative-row-height) * 4.5);
+  padding: 4px 10px 6px;
+  overflow-y: auto;
 }
 
 .focus-header {
@@ -2940,6 +3261,7 @@ const toggleQuickAdd = async () => {
 .focus-week-day-column .focus-task-row {
   gap: 3px;
   margin-top: 2px;
+  margin-left: 5px;
   padding: 1px 4px;
 }
 
@@ -2995,7 +3317,7 @@ const toggleQuickAdd = async () => {
 }
 
 .focus-task-row.this-week-row {
-  background: #1d202a;
+  background: #20262f;
   border-color: #514666;
 }
 
@@ -3061,7 +3383,7 @@ button.focus-week-clock:hover::after {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 7px 4px;
+  padding: 4px;
 }
 
 .focus-current-day-label {
@@ -3222,7 +3544,7 @@ button.focus-week-clock:hover::after {
 .panel-body {
   flex: 1;
   overflow-y: auto;
-  padding: 6px 8px 8px;
+  padding: 6px 8px 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -3281,9 +3603,9 @@ button.focus-week-clock:hover::after {
   transition: all 0.15s ease;
 }
 
-.focus-task-row[draggable="true"] {
-  cursor: grab;
-  user-select: none;
+.focus-mode.is-sorting .focus-task-row,
+.focus-mode.is-sorting .focus-panel {
+  transition: none;
 }
 
 .focus-task-row.focus-sort-dragging {
@@ -3362,24 +3684,29 @@ button.focus-week-clock:hover::after {
 
 .focus-week-priority-badge {
   flex: 0 0 auto;
-  padding: 1px 3px;
+  height: 18px;
+  min-width: 19px;
+  padding: 0 3px;
+  align-items: center;
+  justify-content: center;
   color: #8c96a3;
-  border: 1px solid #566171;
+  border: 1px solid transparent;
   border-radius: 3px;
-  font-size: 6px;
+  font-size: 10px;
   font-weight: 900;
   line-height: 1;
   letter-spacing: 0.3px;
   background: transparent;
   cursor: pointer;
 }
+.focus-week-priority-badge.active { font-size: 7px; border-color: #566171; }
 
 .focus-week-priority-badge:not(.active) {
   display: none;
 }
 
 .focus-week-day-column.is-expanded .focus-week-priority-badge {
-  display: inline-grid;
+  display: inline-flex;
 }
 
 .focus-row-check {
@@ -3482,6 +3809,20 @@ button.focus-row-check.preview-empty:hover {
   gap: 5px;
 }
 
+.focus-mode .focus-drag-handle { position: absolute; left: -9px; top: 50%; transform: translateY(-50%);
+  width: 8px; min-width: 0; height: 18px; cursor: grab; border: 0; padding: 0; margin: 0;
+  background: transparent; box-shadow: none; color: var(--ui-muted); font-size: 0; user-select: none; }
+.focus-mode .focus-drag-handle::before { content: ''; display: block; width: 6px; height: 6px;
+  margin: 0 auto;
+  background: radial-gradient(circle at 0.6px 0.6px, currentColor 0.6px, transparent 0.7px) 0 0 / 2.4px 2.4px; }
+.focus-mode .focus-drag-handle:disabled { opacity: 0.3; cursor: default; }
+.focus-drag-handle:active { cursor: grabbing; }
+.focus-drag-handle:focus-visible { outline: 2px solid var(--ui-blue); border-radius: 3px; }
+.initiative-search { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid var(--ui-border);
+  border-radius: 5px; background: transparent; color: inherit; font: inherit; }
+.initiative-parent-options { max-height: 240px; overflow-y: auto; }
+.initiative-parent-options button { white-space: normal; overflow-wrap: anywhere; }
+
 .focus-row-title {
   flex: 0 1 auto;
   width: fit-content;
@@ -3517,7 +3858,7 @@ button.focus-row-check.preview-empty:hover {
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 2fr 1fr;
   align-items: center;
   gap: 4px;
 }
@@ -3548,6 +3889,29 @@ button.focus-row-check.preview-empty:hover {
   min-height: 64px;
   padding: 6px 7px;
   resize: vertical;
+}
+
+.focus-inline-editor > .subtask-editor { grid-column: 1; grid-row: 2; }
+.focus-inline-editor > .focus-note-column {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 3px 0;
+}
+.focus-note-heading {
+  color: var(--ui-muted, #8996a5);
+  font-size: 11px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+.focus-note-column .focus-edit-note,
+.focus-note-column .focus-edit-note.note-empty {
+  flex: 1;
+  height: auto;
+  min-height: 26px;
 }
 
 .focus-edit-name:focus {
@@ -3796,6 +4160,12 @@ button.focus-row-check.preview-empty:hover {
   flex: 0 0 auto;
   fill: currentColor;
 }
+.focus-task-context-action:disabled { opacity: 0.45; cursor: not-allowed; }
+.focus-task-context-convert:not(:disabled):hover,
+.initiative-parent-options .focus-task-context-action:hover {
+  color: var(--ui-blue); background: var(--ui-blue-soft);
+}
+.focus-task-context-menu.theme-light .focus-task-context-action { color: var(--ui-text, #283340); }
 
 .focus-task-context-label {
   padding: 1px 8px 3px;
@@ -4596,7 +4966,7 @@ button.focus-row-check.preview-empty:hover {
 }
 
 .theme-light .focus-task-row.this-week-row {
-  background: #f7f3fb;
+  background: var(--ui-surface-soft);
   border-color: #cbbdde;
 }
 
@@ -4837,13 +5207,13 @@ button.focus-row-check.preview-empty:hover {
 }
 
 .focus-task-context-menu.theme-light .focus-task-context-title {
-  color: #737d8a;
+  color: #2d3440;
   border-bottom-color: #dfe3e8;
 }
 
 .focus-task-context-menu.theme-light .focus-task-context-label,
 .focus-task-context-menu.theme-light .focus-task-context-chevron {
-  color: #7a8490;
+  color: #526071;
 }
 
 .focus-task-context-menu.theme-light .focus-task-context-column {
@@ -4869,7 +5239,20 @@ button.focus-row-check.preview-empty:hover {
 }
 
 .focus-task-context-menu.theme-light .focus-task-context-back {
+  color: #394555;
+}
+
+.focus-task-context-menu.theme-light .focus-task-context-column-choice,
+.focus-task-context-menu.theme-light .focus-task-context-section-choice,
+.focus-task-context-menu.theme-light .initiative-parent-options button,
+.focus-task-context-menu.theme-light .initiative-search {
+  color: #2d3440;
+}
+.focus-task-context-menu.theme-light .initiative-search::placeholder { color: #526071; opacity: 1; }
+.focus-task-context-menu.theme-light .focus-task-context-current-label { color: #1f6fb7; }
+.focus-task-context-menu.theme-light .focus-task-context-action:disabled {
   color: #68727f;
+  opacity: 1;
 }
 
 .focus-task-context-menu.theme-light .focus-task-context-back:hover,
@@ -4975,5 +5358,45 @@ button.focus-row-check.preview-empty:hover {
 .theme-light .focus-quick-add-input:focus {
   border-color: #ff9800;
   background: #ffffff;
+}
+/* The left stack is only a layout wrapper, including while magnified. */
+.focus-panel.panel-upnext.has-initiatives,
+.theme-light .focus-panel.panel-upnext.has-initiatives {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.focus-initiatives .initiative-row {
+  background: transparent;
+  border-color: #2a3240;
+  padding: 3px 4px;
+  gap: 8px;
+}
+.focus-initiatives .initiative-row:not(:has(.focus-inline-editor)) {
+  height: var(--initiative-row-height);
+  box-sizing: border-box;
+}
+.focus-initiatives .focus-row-title { font-size: 14px; font-weight: 650; }
+.focus-initiatives .focus-row-check { width: 19px; min-width: 19px; height: 18px; }
+.focus-initiatives .panel-kicker { font-size: 14px; }
+.focus-initiatives .focus-badge { font-size: 12px; }
+.focus-edit-note.note-empty {
+  min-height: 26px;
+  height: 26px;
+  padding: 4px 7px;
+  background: transparent;
+  border-color: #8996a54d;
+  resize: none;
+}
+.focus-subtask-parent {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-muted);
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 10px;
 }
 </style>

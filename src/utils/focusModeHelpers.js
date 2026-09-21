@@ -162,6 +162,10 @@ const eachFocusTask = (todoData, visit) => {
       if (section.type === 'raw-text') return;
       (section.items || []).filter(isTaskItem).forEach(task => {
         visit({ task, columnName, stackName: column.name, sectionName: section.name, section });
+        (task.children || []).filter(child => child.type === 'subtask'
+          && (extractDuePeriod(child.text) || extractCompletionDateValue(child.text))).forEach(child => {
+          visit({ task: child, parentTask: task, columnName, stackName: column.name, sectionName: section.name, section });
+        });
       });
     });
   });
@@ -212,8 +216,7 @@ export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOve
     const period = extractDuePeriod(task.text);
     const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text, today);
 
-    // A whole-current-week commitment has no honest weekday slot. Active work
-    // belongs at the top of IN PROGRESS / PARKED; unstarted work stays in NOW.
+    // Whole-current-week commitments share NOW regardless of active status.
     if (isCurrentWholeWeek(period, today)) {
       const wholeWeekEntry = {
         ...routedEntry,
@@ -221,8 +224,7 @@ export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOve
         dueRank: DUE_RANK.thisWeek,
         dueTime: period.start.getTime()
       };
-      if (task.statusChar === '~') inProgressQueued.push({ ...wholeWeekEntry, group: 'this-week' });
-      else now.push(wholeWeekEntry);
+      now.push(wholeWeekEntry);
       return;
     }
 
@@ -276,8 +278,8 @@ export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOve
   return {
     inProgressQueued,
     now,
-    upNext: UP_NEXT_GROUP_ORDER.flatMap(group => upNextGroups[group]),
-    done
+    upNext: UP_NEXT_GROUP_ORDER.flatMap(group => upNextGroups[group]).filter(entry => !entry.parentTask),
+    done: done.filter(entry => !entry.parentTask)
   };
 };
 

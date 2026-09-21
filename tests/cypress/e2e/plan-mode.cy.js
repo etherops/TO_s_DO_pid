@@ -49,6 +49,8 @@ describe('View Modes (Triage & Plan)', () => {
         .find('.low-priority-badge').should('contain', 'LOW').click({ force: true });
       cy.contains('.task-card', 'Low planning task')
         .should('not.have.class', 'low-priority-task-card')
+        .find('.priority-btn').should('contain', 'HIGH').click({ force: true });
+      cy.contains('.task-card', 'Low planning task')
         .find('.priority-btn').should('have.attr', 'aria-label', 'Make low priority').click({ force: true });
       cy.contains('.task-card', 'Low planning task')
         .should('have.class', 'low-priority-task-card')

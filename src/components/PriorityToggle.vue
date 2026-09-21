@@ -2,15 +2,16 @@
   <button
       type="button"
       class="priority-toggle"
-      :class="{ active: low }"
-      :title="low ? 'Make normal priority' : 'Make low priority'"
-      :aria-label="low ? 'Make normal priority' : 'Make low priority'"
+      :class="{ active: low || high, high }"
+      :title="high ? 'Make normal priority' : low ? 'Make high priority' : 'Make low priority'"
+      :aria-label="high ? 'Make normal priority' : low ? 'Make high priority' : 'Make low priority'"
       @click.stop="$emit('toggle')"
-  >{{ low ? 'LOW' : '↓' }}</button>
+  >{{ high ? 'HIGH' : low ? 'LOW' : '↕' }}</button>
 </template>
 
 <script setup>
 defineProps({
+  high: Boolean,
   low: {
     type: Boolean,
     default: false
@@ -46,6 +47,11 @@ defineEmits(['toggle']);
   color: #9ca5b1;
   border-color: #4b5563;
   background: rgba(255, 255, 255, 0.035);
+}
+.priority-toggle.high {
+  color: #9674bb;
+  border-color: #b89ad1;
+  background: #b89ad11a;
 }
 
 .priority-toggle.active {

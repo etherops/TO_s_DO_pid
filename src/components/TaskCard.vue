@@ -32,6 +32,7 @@
             'pending-completion': isPendingCompletion
           }]"
             @click="toggleTaskStatus"
+            :title="hasIncompleteSubtasks(task) ? 'Complete all subtasks before completing this task' : undefined"
         ></div>
       </div>
     <template v-if="isEditing">
@@ -65,13 +66,16 @@
           ></textarea>
         </div>
         
-        <!-- Note and Date row -->
+        <!-- Subtasks and notes share the editor width. -->
         <div class="note-date-row">
+          <SubtaskEditor v-if="task.listMarker === '+' || editChildren.length" v-model="editChildren"
+                         :allow-add="task.listMarker === '+'" />
           <!-- Note editing section -->
           <div class="note-edit-section">
-            <label class="note-label">Notes</label>
+            <label class="note-label">Note</label>
             <textarea
                 class="note-text-edit"
+                :class="{ 'note-empty': !editNoteText.trim() }" :rows="editNoteText.trim() ? 3 : 1"
                 v-model="editNoteText"
                 @keydown="handleNoteEditKeydown"
                 ref="noteTextInput"
@@ -79,6 +83,7 @@
             ></textarea>
           </div>
           
+        </div>
           <!-- Date picker section -->
           <div class="date-edit-section">
             <CompactDatePicker
@@ -88,13 +93,11 @@
                 ref="datePickerRef"
             />
           </div>
-        </div>
-        
         <!-- Action buttons row -->
         <div class="edit-actions-row">
           <button class="priority-edit-btn" :class="{ active: task.isLowPriority || task.listMarker === '-' }"
                   @click="toggleTaskPriority">
-            {{ task.isLowPriority || task.listMarker === '-' ? 'LOW priority' : 'Mark low priority' }}
+            {{ taskPriority(task).toUpperCase() }} priority ↕
           </button>
           <button class="confirm-edit-btn" @click="saveAllEdits">
             <span class="confirm-icon">✓</span> Save
@@ -110,8 +113,8 @@
           <!-- Content area that can flex -->
           <div class="task-content-area">
             <button v-if="task.isLowPriority || task.listMarker === '-'" class="low-priority-badge"
-                    title="Low priority — click to make normal priority"
-                    aria-label="Make normal priority" @click.stop="toggleTaskPriority">LOW</button>
+                    title="Low priority — click to make high priority"
+                    aria-label="Make high priority" @click.stop="toggleTaskPriority">LOW</button>
             <span
                 :class="[
                 'task-title',
@@ -127,6 +130,7 @@
               {{ task.displayText || task.text }}
             </span>
 
+            <SubtaskIndicator :task="task" @edit="startEditingAll" />
             <!-- Inline note preview -->
             <div v-if="hasNote(task.text) && !isEditing" 
                  :class="['inline-note-preview', { 'cancelled-note': task.statusChar === '-' }]">
@@ -152,6 +156,7 @@
           <PriorityToggle
               v-if="!isOnIce && !(task.isLowPriority || task.listMarker === '-')"
               class="priority-btn"
+              :high="task.listMarker === '+'"
               @toggle="toggleTaskPriority"
           />
 
@@ -263,6 +268,9 @@
 import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue';
 import CompactDatePicker from './CompactDatePicker.vue';
 import PriorityToggle from './PriorityToggle.vue';
+import SubtaskEditor from './SubtaskEditor.vue';
+import SubtaskIndicator from './SubtaskIndicator.vue';
+import { taskPriority, cycleTaskPriority } from '../utils/priorityHelpers';
 import {
   hasDueDate,
   isPast,
@@ -293,7 +301,7 @@ import {
   reconcileLifecycleDateForStatus,
   setCompletionDate
 } from '../utils/completionDateHelpers';
-import { nextTaskStatus } from '../utils/statusHelpers';
+import { nextTaskStatus, hasIncompleteSubtasks } from '../utils/statusHelpers';
 
 const props = defineProps({
   task: {
@@ -340,6 +348,7 @@ const isLongTitle = computed(() => {
 const isEditing = ref(false);
 const isSimpleEdit = ref(false);
 const editTaskText = ref('');
+const editChildren = ref([]);
 const taskPendingDelete = ref(false);
 const editNoteText = ref('');
 const editDateValue = ref('');
@@ -430,6 +439,8 @@ const handleCompletionDateMenuKeydown = (event) => {
 
 // Toggle task status
 const toggleTaskStatus = () => {
+  if (hasIncompleteSubtasks(props.task) && nextTaskStatus(props.task.statusChar,
+    statusCycleStart.value ?? props.task.statusChar) === 'x') return;
   // Don't allow toggling in "on_ice" columns
   if (props.isOnIce) {
     console.log('Cannot toggle status of items in "on_ice" columns');
@@ -481,9 +492,7 @@ const toggleTaskStatus = () => {
 };
 
 const toggleTaskPriority = () => {
-  const makeLow = !(props.task.isLowPriority || props.task.listMarker === '-');
-  props.task.listMarker = makeLow ? '-' : '*';
-  props.task.isLowPriority = makeLow;
+  cycleTaskPriority(props.task);
   emit('task-updated');
 };
 
@@ -530,6 +539,7 @@ const startSimpleEdit = () => {
 
 // Start editing all (both title and note)
 const startEditingAll = (focusTarget = '') => {
+  editChildren.value = (props.task.children || []).map(child => ({ ...child }));
   isEditing.value = true;
   isSimpleEdit.value = false;
   
@@ -616,6 +626,8 @@ const saveAllEdits = () => {
       : updateTaskNameAndDueDate(newText, getStrippedDisplayText(newText), editDateValue.value);
   }
 
+  if (!isSimpleEdit.value && !wasNewTask) props.task.children = editChildren.value
+    .filter(child => child.type !== 'subtask' || child.rawLine || child.text.trim());
   if (newText !== props.task.text) {
     props.task.text = newText;
     props.task.displayText = getStrippedDisplayText(newText);
@@ -1455,11 +1467,18 @@ onUnmounted(() => {
 }
 
 .note-date-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 10px;
   width: 100%;
-  align-items: flex-start;
+  align-items: stretch;
 }
+
+.note-date-row > .subtask-editor { grid-column: 1; }
+.note-date-row .note-edit-section { min-width: 0; padding: 3px 0; gap: 0; }
+.note-date-row .note-label { color: var(--ui-muted, #8996a5); font-size: 11px;
+  font-weight: 650; margin: 0 0 6px; text-transform: none; letter-spacing: normal; }
+.note-date-row .note-text-edit { flex: 1; width: 100%; box-sizing: border-box; }
 
 .note-edit-section {
   flex: 1;
@@ -1941,5 +1960,15 @@ onUnmounted(() => {
   animation: smoothFloatDown 0.3s cubic-bezier(0.1, 0.8, 0.5, 1) forwards;
   z-index: 200;
   position: relative;
+}
+.note-text-edit.note-empty {
+  min-height: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: transparent;
+  border-color: var(--ui-border);
+  resize: none;
 }
 </style>

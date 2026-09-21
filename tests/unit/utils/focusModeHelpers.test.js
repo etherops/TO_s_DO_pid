@@ -149,7 +149,7 @@ describe('focusModeHelpers', () => {
       expect(taskTexts(currentWeek.upNext)).toContain('Selected inflight due Friday');
     });
 
-    it('keeps month work in UP NEXT and splits current whole-week work by status', () => {
+    it('keeps month work in UP NEXT and combines current whole-week work in NOW', () => {
       const periods = deriveFocusModel(parseTodoMdFile(`# SELECTED
 ## Ready
 * [ ] Whole August ! Aug 2026
@@ -157,10 +157,10 @@ describe('focusModeHelpers', () => {
 * [~] Active current week ! Aug Week #2 2026
 `));
       expect(taskTexts(periods.upNext)).toEqual(['Whole August']);
-      expect(taskTexts(periods.now)).toEqual(['Whole current week']);
-      expect(taskTexts(periods.inProgressQueued)).toEqual(['Active current week']);
+      expect(taskTexts(periods.now)).toEqual(['Whole current week', 'Active current week']);
+      expect(periods.inProgressQueued).toEqual([]);
       expect(periods.now[0].dueGroup).toBe('this-week');
-      expect(periods.inProgressQueued[0]).toMatchObject({ dueGroup: 'this-week', group: 'this-week' });
+      expect(periods.now[1].dueGroup).toBe('this-week');
     });
 
     it('keeps in-progress work after the current week in UP NEXT', () => {

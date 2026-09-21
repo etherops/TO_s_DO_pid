@@ -1,5 +1,6 @@
 # TODO
 ## UP NEXT
+* [ ] improve: Plan/Triage subtask design - Rework the broken non-Focus subtask editor layout and styling to match the app's design (next task)
 * [ ] bug - complete task reloads whole page
 * [ ] SEARCH
 * [ ] BUG: non-destructive subtasks
@@ -35,8 +36,18 @@
 
 # WIP
 ### In Progress
+* [~] bugfix: Subtask title spaces - Preserve untrimmed typing drafts so spaces are not erased on every keystroke
+* [~] bugfix: Release browser checks - Resolve archive-name assertion and obsolete completion-editor checks found during initiatives/subtasks release review before shipping
+* [~] bugfix: Weekly priority control - Center the standard priority arrow and remove the empty badge border in magnified day cards
+* [~] feature: Convert to subtask - Add a searchable initiative parent picker to Focus right-click actions and restrict new subtasks to initiatives while preserving existing children (consistent readable menu text across actions, columns, sections, and parent choices)
+* [~] feature: Subtask week schedule - Show dated subtasks on their assigned day in Week at a Glance with parent labels
+* [~] tweak: Focus weekly card fill - Use the normal neutral card background instead of blue for whole-week tasks
+* [~] improve: Subtask parent context - Give NOW one Subtasks group per main date section, show the full parent title when editing, and allow detaching into a standalone task in the same section
+* [~] improve: Focus drag handles - Place compact 3x3-dot handles outside the left card edge across all panels and week-at-a-glance, omit subtask filler markers, disable where no sorting peer exists, and restore blank-card click to edit
+* [~] feature: Nested subtasks - Support indented minus subtasks with a count badge and preservation of unsupported content (two-thirds subtasks beside one-third notes in task editors; hidden notes preserved, compact day/week/month date picker and qualified Focus routing with parent labels, manual sorting, always-empty trailing row, completion guard)
+* [~] feature: Initiatives - Use plus-marked high-priority tasks, a three-level priority toggle, and a Focus initiatives panel (sortable within source sections; content-sized up to 4.5 rows then scrolls, hidden when empty; debounce priority and status regrouping; date edits stay in place)
 * [~] improve: Partial-start status cycle - Complete settled in-progress tasks on the first click and retain the chosen cycle until debounce settles
-* [~] improve: Focus scheduling boundaries - Keep active current-week work on the right, later weeks in Up Next, low-priority work in bottom groups, and distinguish this-month active and parked work
+* [~] improve: Focus scheduling boundaries - Combine unstarted and active whole-current-week work in NOW, keep later weeks in Up Next and low-priority work in bottom groups, and distinguish this-month active and parked work
 * [~] feature: Focus overdue rollover - Move overdue unfinished Focus tasks to today without shifting the NOW header
 
 # ARCHIVE

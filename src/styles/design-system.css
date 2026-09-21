@@ -202,8 +202,17 @@
 .todo-app .focus-mode.theme-light .panel-header { border-bottom-color: var(--ui-border); }
 .todo-app .focus-mode.theme-light .panel-body { scrollbar-color: var(--ui-border-strong) transparent; }
 .todo-app .focus-mode.theme-light .focus-task-row { background: var(--ui-surface-soft); border-color: var(--ui-border); }
+.todo-app .focus-mode.theme-light .focus-panel.panel-upnext.has-initiatives {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.todo-app .focus-mode.theme-light .focus-initiatives .initiative-row {
+  background: transparent;
+  border-color: var(--ui-border);
+}
 .todo-app .focus-mode.theme-light .focus-task-row.inflight-row { background: var(--ui-orange-soft); border-color: #f3ce8e; }
-.todo-app .focus-mode.theme-light .focus-task-row.this-week-row { background: var(--ui-blue-soft); border-color: #a8c9ea; }
+.todo-app .focus-mode.theme-light .focus-task-row.this-week-row { background: var(--ui-surface-soft); border-color: #a8c9ea; }
 .todo-app .focus-mode.theme-light .focus-task-row.done-row { background: var(--ui-green-soft); border-color: #b9dcbf; }
 .todo-app .focus-mode.theme-light .focus-row-title { color: var(--ui-text); }
 .todo-app .focus-mode.theme-light .focus-row-title.done-title { color: var(--ui-muted); }

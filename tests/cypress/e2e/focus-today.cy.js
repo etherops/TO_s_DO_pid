@@ -404,11 +404,11 @@ describe('Focus Mode (execution carousel)', () => {
     enterFocusMode();
 
     cy.get('.panel-in-progress-queued .focus-day-header').last()
-      .should('contain', 'Low Priority').and('contain', '2');
+      .should('contain', 'Low Priority').and('contain', '1');
     cy.get('.panel-in-progress-queued .focus-task-row.low-priority-row')
-      .should('have.length', 2).and('contain', 'Low blocked task').and('contain', 'Low this-week task');
-    cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Low this-week task')
-      .should('not.have.class', 'this-week-row');
+      .should('have.length', 1).and('contain', 'Low blocked task');
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Low this-week task')
+      .should('have.class', 'this-week-row');
     cy.get('.panel-in-progress-queued .focus-day-header.day-this-week').should('not.exist');
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Normal blocked task')
       .should('not.have.class', 'low-priority-row');
@@ -568,22 +568,19 @@ describe('Focus Mode (execution carousel)', () => {
 
     // Whole-week work has one purple home above the urgent Today group.
     cy.get('.panel-now .focus-day-header').should('have.length', 2);
-    cy.get('.panel-now .focus-day-header').eq(0).should('contain', 'This Week').and('contain', '1')
+    cy.get('.panel-now .focus-day-header').eq(0).should('contain', 'This Week').and('contain', '2')
       .and('have.class', 'day-this-week');
     cy.get('.panel-now .focus-day-header').eq(1).should('contain', 'Today').and('contain', '2')
       .and('have.class', 'day-today');
-    cy.get('.panel-now .focus-task-row').should('have.length', 3);
+    cy.get('.panel-now .focus-task-row').should('have.length', 4);
     cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Wip all week')
       .and('have.class', 'this-week-row');
-    cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Wip overdue')
+    cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Wip active all week');
+    cy.get('.panel-now .focus-task-row').eq(2).should('contain', 'Wip overdue')
       .and('have.class', 'overdue-row');
-    cy.get('.panel-now .focus-task-row').eq(2).should('contain', 'Wip due today');
+    cy.get('.panel-now .focus-task-row').eq(3).should('contain', 'Wip due today');
 
-    // Active whole-week work moves to the top of the right panel.
-    cy.get('.panel-in-progress-queued .focus-day-header').eq(0)
-      .should('contain', 'This Week').and('contain', '1').and('have.class', 'day-this-week');
-    cy.get('.panel-in-progress-queued .focus-task-row').eq(0)
-      .should('contain', 'Wip active all week').and('have.class', 'this-week-row');
+    cy.get('.panel-in-progress-queued').should('not.contain', 'Wip active all week');
 
     // The full-width week strip contains only Sunday-Saturday. Future cards
     // land in their day, while Today mirrors the spotlight counts.
@@ -976,7 +973,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.window().then((win) => {
       const dataTransfer = new win.DataTransfer();
       cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Beta task')
-        .trigger('dragstart', { dataTransfer });
+        .find('.focus-drag-handle').trigger('dragstart', { dataTransfer });
       cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Alpha task').then(($target) => {
         const clientY = $target[0].getBoundingClientRect().top + 1;
         cy.wrap($target)
@@ -997,7 +994,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.window().then((win) => {
       const dataTransfer = new win.DataTransfer();
       cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Beta task')
-        .trigger('dragstart', { dataTransfer });
+        .find('.focus-drag-handle').trigger('dragstart', { dataTransfer });
       cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Gamma task')
         .trigger('dragover', { dataTransfer }).trigger('drop', { dataTransfer });
     });

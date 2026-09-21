@@ -17,9 +17,40 @@ The shared board styling preserves state-specific presentation. Partial-collapse
 
 ## Markdown task model
 
+### Subtasks
+
+Indented `- [status] text` lines following a task belong to that parent. Plain indented `- text` is
+also supported as an unstarted subtask; unchanged lines retain their original syntax. New or edited
+subtasks use `  - [status] text`. Indented `*`, `+`, and other content are preserved verbatim, not
+interpreted as tasks. Attached content moves with the parent.
+
+Subtasks are managed in the parent's full task editor (Plan/Triage and Focus), with add, text, due-date,
+status, and remove controls. Save commits the draft; Cancel discards it. A compact subtask-count badge
+on the parent indicates subtasks and opens its editor. Dated children of SELECTED/WIP tasks also appear
+in Focus NOW or IN PROGRESS / PARKED when normal date/status rules place them there, labeled with their
+parent. Day-dated children also appear on their assigned day in Week at a Glance; other children stay
+editor-only, not in Up Next. Children remain nested in
+storage and never automatically change their parent's status. Subtask `-` is
+a nesting marker, not a low-priority designation.
+Subtask notes have no visual fields or tooltips. Hidden notes and unsupported source content survive
+parse/render and title/date changes; the child title field omits notes and lifecycle suffixes.
+Only initiatives accept new subtasks. Existing children under other tasks remain editable and preserved.
+Focus offers Convert to subtask with a searchable initiative picker and Detach from the subtask editor.
+The initiative editor always shows a trailing empty row instead of an Add button. Typing fills that row and reveals
+the next empty row; Enter advances to the next row. Unused new blank rows
+are excluded from sorting. Drag handles reorder subtasks within their parent; focused handles also support
+Up/Down keys. Sorting is part of the editor draft and preserves non-subtask content in its original slots. Blank rows
+are not saved. A parent cannot be toggled to completed until every subtask is `x`; raw preserved content
+does not affect this check. Empty note fields stay one line and expand when they contain text.
+
+### Parent tasks
+
 - `* [ ]` and `* [~]` are normal queued and in-progress tasks.
 - `* [x]` is completed; `* [-]` is explicitly will-not-do.
 - `- [status]` is the low-priority equivalent of the same status.
+- `+ [status]` marks a high-priority task or initiative. Priority controls cycle normal (`*`), low (`-`),
+  high (`+`), then normal. Status, dates, notes, and source section do not change. High tasks display HIGH
+  on the board; they keep normal-sized cards. Parsing and saving preserve all three Markdown list markers.
 - A nonterminal task has one trailing due marker: `! Aug 13 2026`, `! Aug Week #2 2026`, or `! Aug 2026`.
 - A terminal task has one exact completion marker: `| Aug 13 2026`.
 - Status clicks normally cycle queued → completed → in progress → will-not-do → queued. A sequence starting

@@ -30,7 +30,8 @@ describe('Focus date navigation', () => {
     expect(model.now.map(e => e.task.text)).toEqual(expect.arrayContaining([
       expect.stringContaining('Future day'), expect.stringContaining('Completed then')
     ]));
-    expect(model.inProgressQueued.some(e => e.task.text.includes('Future week'))).toBe(true);
+    expect(model.now.some(e => e.task.text.includes('Future week'))).toBe(true);
+    expect(model.inProgressQueued.some(e => e.task.text.includes('Future week'))).toBe(false);
     expect(model.upNext.some(e => e.task.text.includes('Future month'))).toBe(true);
     const october = deriveFocusModel(data, new Date(2026, 9, 3));
     expect(october.inProgressQueued.some(e => e.task.text.includes('Future month'))).toBe(true);

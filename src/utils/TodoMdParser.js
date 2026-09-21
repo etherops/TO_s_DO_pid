@@ -58,6 +58,7 @@ export function parseTodoMdFile(fileContent) {
   let currentColumn = null;  // Current H1 column we're in
   let currentSection = null; // Current H2/H3 section we're in
   let itemId = 1;
+  let parentTask = null;
 
   // Helper to create a section (H2 or H3 in the markdown)
   const createSection = (name, headerStyle) => {
@@ -125,13 +126,25 @@ export function parseTodoMdFile(fileContent) {
     const line = lines[i];
     const trimmedLine = line.trim();
 
+    // Indented content belongs to its parent, never to the board's task list.
+    if (/^[\t ]+\S/.test(line) && parentTask) {
+      const match = line.match(/^([\t ]+)- (?:\[([ x~-])\] )?(.*)$/);
+      parentTask.children ||= [];
+      parentTask.children.push(match ? {
+        id: itemId++, type: 'subtask', indent: match[1], statusChar: match[2] || ' ', text: match[3],
+        originalStatus: match[2] || ' ', originalText: match[3], rawLine: line
+      } : { type: 'raw-text', text: line });
+      continue;
+    }
+    if (trimmedLine) parentTask = null;
+
     // Skip empty lines - we'll add standard spacing when rendering
     if (trimmedLine === '') {
       continue;
     }
 
     // H1 - Column header (# COLUMN_NAME)
-    if (trimmedLine.match(/^# /)) {
+    if (line.match(/^# /)) {
       let columnName = trimmedLine.substring(2).trim();
       
       // Handle duplicate column names
@@ -162,7 +175,7 @@ export function parseTodoMdFile(fileContent) {
     }
 
     // H2 - Large section header (## SECTION_NAME)
-    if (trimmedLine.match(/^## [^#]/)) {
+    if (line.match(/^## [^#]/)) {
       const sectionName = trimmedLine.substring(3).trim();
       
       currentSection = createSection(sectionName, 'LARGE');
@@ -170,7 +183,7 @@ export function parseTodoMdFile(fileContent) {
     }
 
     // H3 - Small section header (### SECTION_NAME)
-    if (trimmedLine.match(/^### [^#]/)) {
+    if (line.match(/^### [^#]/)) {
       const sectionName = trimmedLine.substring(4).trim();
       
       currentSection = createSection(sectionName, 'SMALL');
@@ -178,8 +191,8 @@ export function parseTodoMdFile(fileContent) {
     }
 
     // Parse todo items
-    if (/^[*-] \[/.test(trimmedLine)) {
-      const statusMatch = trimmedLine.match(/^([*-]) \[([ x~-])\]/);
+    if (/^[*+-] \[/.test(line)) {
+      const statusMatch = trimmedLine.match(/^([*+-]) \[([ x~-])\]/);
 
       if (statusMatch && currentSection) {
         const listMarker = statusMatch[1];
@@ -198,6 +211,7 @@ export function parseTodoMdFile(fileContent) {
         };
 
         currentSection.items.push(todoItem);
+        parentTask = todoItem;
         continue;
       }
     }
@@ -314,7 +328,13 @@ export function renderTodoMdFile(data) {
               outputLines.push(item.text);
             } else {
               // Render task items
-              outputLines.push(`${item.listMarker === '-' || item.isLowPriority ? '-' : '*'} [${item.statusChar}] ${item.text}`);
+              outputLines.push(`${item.listMarker === '+' ? '+' : item.listMarker === '-' || item.isLowPriority ? '-' : '*'} [${item.statusChar}] ${item.text}`);
+              (item.children || []).forEach(child => {
+                if (child.type !== 'subtask') outputLines.push(child.text);
+                else if (child.rawLine && child.text === child.originalText && child.statusChar === child.originalStatus) {
+                  outputLines.push(child.rawLine);
+                } else outputLines.push(`${child.indent || '  '}- [${child.statusChar}] ${child.text}`);
+              });
             }
           });
         }
