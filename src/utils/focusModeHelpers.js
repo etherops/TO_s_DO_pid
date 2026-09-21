@@ -9,7 +9,7 @@
 // its completion date is authoritative because terminal tasks no longer retain
 // a due date.
 
-import { isPast, isToday, extractDuePeriod, majorityMonthForWeek } from './dateHelpers';
+import { extractDuePeriod, majorityMonthForWeek } from './dateHelpers';
 import { extractCompletionDateValue, isCompletedToday } from './completionDateHelpers';
 
 export const UP_NEXT_GROUP_ORDER = ['month', 'week', 'day', 'unscheduled'];
@@ -104,10 +104,10 @@ export const endOfCurrentWeek = (from = new Date()) => {
  * Is this task's due date within reach of this week? Anything already overdue
  * counts too - it was due by now, so it is very much this week's problem.
  */
-export const isOnDeckThisWeek = (text) => {
+export const isOnDeckThisWeek = (text, today = new Date()) => {
   const period = extractDuePeriod(text);
   if (!period || period.kind === 'month') return false;
-  return period.start <= endOfCurrentWeek();
+  return period.start <= endOfCurrentWeek(today);
 };
 
 // Ordering for the execution panels: today's problems first - what's late,
@@ -123,11 +123,13 @@ const isCurrentWholeWeek = (period, today = new Date()) => {
   return period.start.getTime() === start.getTime();
 };
 
-const dueGrouping = (task) => {
+const dueGrouping = (task, today) => {
   const period = extractDuePeriod(task.text);
   if (!period) return { dueGroup: 'undated', dueRank: DUE_RANK.undated, dueTime: 0 };
-  if (isPast(task.text)) return { dueGroup: 'overdue', dueRank: DUE_RANK.overdue, dueTime: period.start.getTime() };
-  if (isToday(task.text)) return { dueGroup: 'today', dueRank: DUE_RANK.today, dueTime: period.start.getTime() };
+  if (period.end < today) return { dueGroup: 'overdue', dueRank: DUE_RANK.overdue, dueTime: period.start.getTime() };
+  if (period.kind === 'day' && period.start.getTime() === today.getTime()) {
+    return { dueGroup: 'today', dueRank: DUE_RANK.today, dueTime: period.start.getTime() };
+  }
   const periodGroup = period.kind === 'day' ? `day-${period.start.getTime()}` : `${period.kind}-${period.start.getTime()}`;
   return { dueGroup: periodGroup, dueRank: DUE_RANK.upcoming, dueTime: period.start.getTime() };
 };
@@ -175,7 +177,9 @@ const eachFocusTask = (todoData, visit) => {
  * @returns {{ inProgressQueued: Array, now: Array, upNext: Array, done: Array }}
  *          entries of shape { task, columnName, sectionName, section, dueGroup?, group? }
  */
-export const deriveFocusModel = (todoData) => {
+export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOverdue = false } = {}) => {
+  const today = new Date(referenceDate);
+  today.setHours(0, 0, 0, 0);
   const inProgressQueued = [];
   const now = [];
   const done = [];
@@ -186,11 +190,11 @@ export const deriveFocusModel = (todoData) => {
 
     const isTerminal = task.statusChar === 'x' || task.statusChar === '-';
     // Terminal tasks have a completion day instead of a due period.
-    if (isTerminal && isCompletedToday(task.text)) {
+    if (isTerminal && isCompletedToday(task.text, today)) {
       const completed = extractCompletionDateValue(task.text);
       now.push({
         ...entry,
-        ...dueGrouping(task),
+        ...dueGrouping(task, today),
         dueGroup: 'today',
         dueRank: DUE_RANK.today,
         dueTime: completed?.getTime() || extractDuePeriod(task.text)?.start.getTime() || 0
@@ -203,13 +207,14 @@ export const deriveFocusModel = (todoData) => {
     }
     if (task.statusChar !== ' ' && task.statusChar !== '~') return;
 
-    const routedEntry = { ...entry, ...dueGrouping(task) };
+    const routedEntry = { ...entry, ...dueGrouping(task, today) };
+    if (hideOverdue && routedEntry.dueGroup === 'overdue') return;
     const period = extractDuePeriod(task.text);
-    const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text);
+    const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text, today);
 
     // A whole-current-week commitment has no honest weekday slot. Active work
     // belongs at the top of IN PROGRESS / PARKED; unstarted work stays in NOW.
-    if (isCurrentWholeWeek(period)) {
+    if (isCurrentWholeWeek(period, today)) {
       const wholeWeekEntry = {
         ...routedEntry,
         dueGroup: 'this-week',
@@ -224,7 +229,7 @@ export const deriveFocusModel = (todoData) => {
     // Anything beyond the current week is planning context even when already
     // in progress. Month-level commitments stay active through their owner month.
     if (task.statusChar === '~' && period
-        && (isDueAfterCurrentWeek(period) || isDueNextMonthOrLater(period))) {
+        && (isDueAfterCurrentWeek(period, today) || isDueNextMonthOrLater(period, today))) {
       upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
       return;
     }
@@ -239,7 +244,7 @@ export const deriveFocusModel = (todoData) => {
       // A future exact day this week is already represented in Week at a
       // glance. Keep it in the source model for that strip, but the upper Up
       // Next display intentionally filters current-week dates out.
-      if (task.statusChar === '~' && period?.kind === 'day' && period.start <= endOfCurrentWeek()) {
+      if (task.statusChar === '~' && period?.kind === 'day' && period.start <= endOfCurrentWeek(today)) {
         upNextGroups.day.push({ ...routedEntry, group: 'day' });
         return;
       }

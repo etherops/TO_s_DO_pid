@@ -40,6 +40,10 @@
 * [~] feature: Focus overdue rollover - Move overdue unfinished Focus tasks to today without shifting the NOW header
 
 # ARCHIVE
+### Sep Week #4 2026
+* [x] feature: Focus note editing - Add, edit, and remove task notes in Focus; Enter saves and Shift+Enter adds a newline | Sep 21 2026
+* [x] feature: Focus week preview - Navigate Focus by day with a header date picker, read-only editing protection, and no future overdue clutter | Sep 21 2026
+
 ### Sep Week #3 2026
 * [x] bugfix: Focus column chooser order - Match the Plan/Triage left-to-right stack order while preserving file order within each stack | Sep 13 2026
 * [x] tweak: Focus weekly low-priority grouping - Put low-priority whole-week tasks in a subgroup at the bottom of NOW's This Week group | Sep 13 2026

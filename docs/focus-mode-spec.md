@@ -4,6 +4,23 @@ Focus Mode is the execution-oriented view of the current week. It is intentional
 
 ## Source and routing
 
+### Viewing another day
+
+The large header date opens the date picker, with previous/next-day arrows alongside it and Back to today below it.
+Header arrows move one calendar day; the lower carousel arrows still move by week. A date other than today makes Focus read-only: all panels, date badges, and the default
+Week at a glance regroup relative to that date. The selected date acts as today throughout Focus, retaining the normal TODAY, Today!, This week, and due-today labels.
+The lower week carousel still navigates independently around the chosen Focus week.
+
+Preview uses current task data, not reconstructed historical statuses or file snapshots. Task edits,
+status changes, priority changes, drag sorting, context actions, quick add, and overdue rollover are unavailable.
+Notes, magnification, and week navigation remain available. Date navigation waits for pending status
+changes/animations to settle; switching dates closes any open editor without saving its draft.
+Back to today restores live editing. Preview selection is local to the mounted Focus view and is not persisted.
+
+Future previews omit unfinished tasks whose due period ends before the chosen date, rather than accumulating
+predicted overdue work in NOW. Day, week, and month periods keep their real end boundaries. Undated work and
+still-current periods remain visible under the normal routing rules. Today and past previews retain overdue routing.
+
 Focus Mode derives its tasks from SELECTED and WIP.
 
 - A task is on deck when it is in WIP or due no later than the Saturday ending the current Sunday–Saturday week.
@@ -52,6 +69,13 @@ Moving the pointer across the week strip produces a Mac Dock-style magnification
 - Leaving the strip returns all panes to equal size and position.
 
 ## Task interactions
+
+- Click an existing note indicator to edit its note, or click the task title to add a note in the inline editor.
+  The note field saves on Enter (also Command/Ctrl+Enter); Shift+Enter inserts a newline. Save, Cancel, and Escape
+  are also supported. Clearing it removes the
+  note. Saving preserves status, priority, due/completion date, and source section. Editing never changes the
+  spotlight. Note hover still shows the immediate tooltip without counting toward pane magnification.
+  Other-date read-only views allow reading notes but not editing them.
 
 - Focus Mode's + Add creates an unstarted task due today, so it appears immediately in NOW. Its storage section is inferred dynamically: use the WIP section with the most `~` tasks, falling back to the first WIP section and then the first SELECTED section; no section title is hard-coded.
 - Task names are edited independently from due dates. Only the rendered title text is an edit target; unused card

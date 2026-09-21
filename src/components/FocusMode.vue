@@ -2,11 +2,26 @@
 <!-- Full-screen execution view with three magnifying work panels above an
      always-visible, week-by-week Sunday-Saturday carousel. -->
 <template>
-  <div ref="focusRoot" class="focus-mode" :class="`theme-${theme}`">
+  <div ref="focusRoot" class="focus-mode" :class="[`theme-${theme}`, { 'focus-preview': isPreview }]">
     <header class="focus-header">
-      <div class="focus-heading">
-        <h1 class="focus-date">{{ currentDateLabel }}</h1>
-      </div>
+      <nav class="focus-heading focus-as-of" aria-label="Focus date preview">
+        <div class="focus-date-navigation">
+          <button aria-label="Preview previous day" :disabled="isChangingStatus" @click="shiftFocusDay(-1)">‹</button>
+          <h1 class="focus-date">
+            <button class="focus-date-trigger" :disabled="isChangingStatus" @click="openFocusDatePicker"
+                    title="Choose a date to preview Focus" aria-label="Choose Focus preview date">{{ currentDateLabel }}</button>
+            <input ref="focusDateInput" class="focus-date-input" type="date" aria-label="Focus date"
+                   :value="focusDateValue" :disabled="isChangingStatus" @change="setFocusDate($event.target.value)" />
+          </h1>
+          <button aria-label="Preview next day" :disabled="isChangingStatus" @click="shiftFocusDay(1)">›</button>
+        </div>
+        <div class="focus-preview-caption">
+          <template v-if="isPreview">
+            <span class="focus-preview-label" title="Current task data, regrouped for this date—not a historical snapshot">Read-only</span>
+            <button @click="setFocusDate('')">Back to today</button>
+          </template>
+        </div>
+      </nav>
       <div v-if="totalCount > 0" class="focus-progress">
         <div class="focus-progress-text">{{ completedCount }} / {{ totalCount }} done</div>
         <div class="focus-progress-track">
@@ -14,7 +29,7 @@
                :style="{ width: progressPercent }"></div>
         </div>
       </div>
-      <button v-if="quickAddTarget" class="focus-quick-add-btn" :class="{ active: showQuickAdd }"
+      <button v-if="quickAddTarget && !isPreview" class="focus-quick-add-btn" :class="{ active: showQuickAdd }"
               title="Add something for this week" @click="toggleQuickAdd">+ Add</button>
       <div v-if="showQuickAdd && quickAddTarget" class="focus-quick-add-popover" @click.stop>
         <div class="focus-quick-add-row">
@@ -103,17 +118,20 @@
                    @drop="finishFocusSort(entry, 'upNext', group.key, $event)"
                    @dragend="clearFocusSort"
                    @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
-              <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
+              <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                       :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                       @click.stop="cycleEntryStatus(entry, 'upNext', $event)"></button>
               <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                 <input v-model="editTaskName" class="focus-edit-name"
                        aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                          rows="3" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                          @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
                 <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                 <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
               </div>
               <div v-else class="focus-row-main">
-                <button class="focus-row-title" draggable="false"
+                <button :disabled="isPreview" class="focus-row-title" draggable="false"
                         :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                         :title="`Edit name: ${cardTitle(entry)}`"
                         @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
@@ -123,12 +141,14 @@
               </div>
               <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-indicator"
                     :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                    role="button" :aria-disabled="isPreview" @click.stop="startNoteEdit(entry)"
+                    @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                     @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                     @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
-              <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
+              <PriorityToggle :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
                               :low="isLowPriorityEntry(entry)"
                               @toggle="toggleEntryPriority(entry)" />
-              <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+              <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                       :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
                       @click.stop="startDueDateEdit(entry, $event)">
                 <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
@@ -179,17 +199,20 @@
                      @drop="finishFocusSort(entry, 'inProgressQueued', group.key, $event)"
                      @dragend="clearFocusSort"
                      @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
-                  <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
+                  <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                           :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                           @click.stop="cycleEntryStatus(entry, 'inProgressQueued', $event)"></button>
                   <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                     <input v-model="editTaskName" class="focus-edit-name"
                            aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                    <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                              rows="3" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                              @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
                     <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                     <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                   </div>
                   <div v-else class="focus-row-main">
-                    <button class="focus-row-title execution-row-title" draggable="false"
+                    <button :disabled="isPreview" class="focus-row-title execution-row-title" draggable="false"
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
@@ -199,12 +222,14 @@
                   </div>
                   <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-indicator"
                         :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                        role="button" :aria-disabled="isPreview" @click.stop="startNoteEdit(entry)"
+                        @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                         @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                         @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
-                  <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
+                  <PriorityToggle :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
                                   :low="isLowPriorityEntry(entry)"
                                   @toggle="toggleEntryPriority(entry)" />
-                  <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+                  <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                           :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
                           @click.stop="startDueDateEdit(entry, $event)">
                     <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
@@ -245,7 +270,7 @@
                   @focus="showPanelRulesTooltip('now', $event)"
                   @blur="hidePanelRulesTooltip">Now</span>
             <div class="focus-now-header-actions">
-              <button v-if="overdueEntries.length" type="button" class="focus-overdue-btn"
+              <button v-if="overdueEntries.length && !isPreview" type="button" class="focus-overdue-btn"
                       :title="`Move ${overdueEntries.length} overdue task${overdueEntries.length === 1 ? '' : 's'} to today`"
                       @click.stop="moveOverdueToToday">
                 Overdue → Today <span class="focus-overdue-count">{{ overdueEntries.length }}</span>
@@ -275,17 +300,20 @@
                    @drop="finishFocusSort(entry, 'now', day.key, $event)"
                    @dragend="clearFocusSort"
                    @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
-                <button v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
+                <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                         @click.stop="cycleEntryStatus(entry, 'now', $event)"></button>
                 <div v-if="isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                  <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                            rows="3" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                            @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
                   <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                   <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                 </div>
                 <div v-else class="focus-row-main">
-                  <button class="focus-row-title" draggable="false"
+                  <button :disabled="isPreview" class="focus-row-title" draggable="false"
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
@@ -295,12 +323,14 @@
                 </div>
                 <span v-if="!isEditingEntry(entry) && entryNote(entry)" class="focus-note-indicator"
                       :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                      role="button" :aria-disabled="isPreview" @click.stop="startNoteEdit(entry)"
+                      @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                       @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                       @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
-                <PriorityToggle v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
+                <PriorityToggle :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-priority-toggle"
                                 :low="isLowPriorityEntry(entry)"
                                 @toggle="toggleEntryPriority(entry)" />
-                <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
+                <button :disabled="isPreview" v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
                         :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
                         @click.stop="startDueDateEdit(entry, $event)">
                   <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
@@ -330,6 +360,8 @@
               <span class="focus-adjacent-task-title">{{ cardTitle(entry) }}</span>
               <span v-if="entryNote(entry)" class="focus-note-indicator"
                     :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                    role="button" :aria-disabled="isPreview" @click.stop="startNoteEdit(entry)"
+                    @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                     @mouseenter.stop="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                     @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
             </div>
@@ -345,7 +377,7 @@
             <span class="focus-week-range">{{ selectedWeekLabel }}</span>
             <button type="button" title="Next week" aria-label="Next week" @click="shiftSelectedWeek(1)">›</button>
             <button v-if="selectedWeekOffset !== 0" type="button" class="focus-week-return"
-                    title="Back to this week" @click="returnToCurrentWeek">This week</button>
+                    title="Back to the Focus week" @click="returnToCurrentWeek">This week</button>
           </div>
           <span class="panel-count">{{ weekStripCount }}</span>
         </header>
@@ -392,7 +424,7 @@
                      @contextmenu.prevent.stop="openTaskContextMenu(entry, $event)">
                 <span v-if="day.isToday" class="focus-row-check" :class="checkClasses(entry)"
                       aria-hidden="true"></span>
-                <button v-else-if="!isEditingEntry(entry) && entry.sourceBucket" class="focus-row-check" :class="checkClasses(entry)"
+                <button :disabled="isPreview" v-else-if="!isEditingEntry(entry) && entry.sourceBucket" class="focus-row-check" :class="checkClasses(entry)"
                         :title="statusTitle(entry)" :aria-label="statusTitle(entry)"
                         @click.stop="cycleEntryStatus(entry, entry.sourceBucket, $event)"></button>
                 <span v-else-if="!isEditingEntry(entry)" class="focus-row-check" :class="checkClasses(entry)"
@@ -400,6 +432,9 @@
                 <div v-if="!day.isToday && isEditingEntry(entry)" class="focus-inline-editor" @click.stop>
                   <input v-model="editTaskName" class="focus-edit-name"
                          aria-label="Task name" @keydown.enter="saveEntryEdits(entry)" @keydown.esc="cancelEntryEdit" />
+                  <textarea v-model="editTaskNote" class="focus-edit-note" aria-label="Task note" placeholder="Add a note…"
+                            rows="3" @keydown.esc.stop="cancelEntryEdit" @keydown.ctrl.enter.prevent="saveEntryEdits(entry)"
+                            @keydown.enter.exact.prevent="saveEntryEdits(entry)" @keydown.meta.enter.prevent="saveEntryEdits(entry)"></textarea>
                   <button class="focus-edit-save" title="Save changes" @click="saveEntryEdits(entry)">Save</button>
                   <button class="focus-edit-cancel" title="Cancel editing" @click="cancelEntryEdit">Cancel</button>
                 </div>
@@ -408,7 +443,7 @@
                         :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }">
                     {{ cardTitle(entry) }}
                   </span>
-                  <button v-else class="focus-row-title execution-row-title"
+                  <button :disabled="isPreview" v-else class="focus-row-title execution-row-title"
                           :class="{ 'done-title': ['x', '-'].includes(entry.task.statusChar) }"
                           :title="`Edit name: ${cardTitle(entry)}`"
                           @click.stop="startNameEdit(entry)">{{ cardTitle(entry) }}</button>
@@ -422,9 +457,11 @@
                   </span>
                   <span v-if="entryNote(entry)" class="focus-note-indicator"
                         :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                        role="button" :aria-disabled="isPreview" @click.stop="startNoteEdit(entry)"
+                        @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                         @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                         @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
-                  <button class="focus-week-priority-badge"
+                  <button :disabled="isPreview" class="focus-week-priority-badge"
                           :class="{ active: isLowPriorityEntry(entry) }"
                           :title="isLowPriorityEntry(entry) ? 'Make normal priority' : 'Make low priority'"
                           :aria-label="isLowPriorityEntry(entry) ? 'Make normal priority' : 'Make low priority'"
@@ -432,7 +469,7 @@
                     {{ isLowPriorityEntry(entry) ? 'LOW' : '↓' }}
                   </button>
                 </div>
-                  <button class="focus-week-clock" :title="dateButtonTitle(entry)" :aria-label="dateButtonTitle(entry)"
+                  <button :disabled="isPreview" class="focus-week-clock" :title="dateButtonTitle(entry)" :aria-label="dateButtonTitle(entry)"
                           @pointerdown.stop.prevent="startDueDateEdit(entry, $event)"
                           @click.stop.prevent
                           @keydown.enter.stop.prevent="startDueDateEdit(entry, $event)"
@@ -462,6 +499,8 @@
               <span class="focus-adjacent-task-title">{{ cardTitle(entry) }}</span>
               <span v-if="entryNote(entry)" class="focus-note-indicator"
                     :aria-label="`Task note: ${entryNote(entry)}`" tabindex="0"
+                    role="button" :aria-disabled="isPreview" @click.stop="startNoteEdit(entry)"
+                    @keydown.enter.stop.prevent="startNoteEdit(entry)" @keydown.space.stop.prevent="startNoteEdit(entry)"
                     @mouseenter.stop="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                     @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip"></span>
             </div>
@@ -618,13 +657,13 @@ import {
   formatDuePeriodValue,
   getDuePeriodLabel,
   isoWeekInputFromSunday,
-  isToday,
   setDuePeriod,
   sundayValueFromIsoWeekInput,
   weekIdentity
 } from '../utils/dateHelpers';
 import {
   extractNoteFromText,
+  updateNoteInText,
   getStrippedDisplayText,
   updateTaskNameAndDueDate
 } from '../utils/taskTextHelpers';
@@ -662,6 +701,7 @@ const quickAddDateKind = ref('day');
 const quickAddCustomDateInput = ref(null);
 const editingTaskId = ref(null);
 const editTaskName = ref('');
+const editTaskNote = ref('');
 const dateMenuTaskId = ref(null);
 const dateMenuPosition = ref({ top: 0, left: 0 });
 const dateMenuSourceRect = ref(null);
@@ -681,6 +721,34 @@ const selectedWeekOffset = ref(0);
 const weekSlideDirection = ref('next');
 const hasNavigatedWeek = ref(false);
 const currentDate = ref(new Date());
+const previewDate = ref(null);
+const focusDateInput = ref(null);
+const openFocusDatePicker = () => {
+  if (focusDateInput.value?.showPicker) focusDateInput.value.showPicker();
+  else focusDateInput.value?.focus();
+};
+const focusDate = computed(() => previewDate.value || currentDate.value);
+const focusDateValue = computed(() => formatDateInputValue(focusDate.value));
+const isPreview = computed(() => focusDateValue.value !== formatDateInputValue(currentDate.value));
+const isChangingStatus = computed(() => pendingStatuses.value.size > 0 || transitions.value.size > 0);
+const setFocusDate = (value) => {
+  if (isChangingStatus.value) return;
+  const date = value ? new Date(`${value}T00:00:00`) : null;
+  if (date && !Number.isFinite(date.getTime())) return;
+  cancelEntryEdit();
+  closeDateMenu();
+  closeTaskContextMenu();
+  closeQuickAdd();
+  clearFocusSort();
+  resetWeekDayMagnification();
+  previewDate.value = date;
+  selectedWeekOffset.value = 0;
+};
+const shiftFocusDay = (direction) => {
+  const date = new Date(focusDate.value);
+  date.setDate(date.getDate() + direction);
+  setFocusDate(formatDateInputValue(date));
+};
 let currentDateTimer = null;
 
 const BOARD_STACK_ORDER = { TODO: 0, PROJECTS: 1, SELECTED: 2, WIP: 3, DONE: 4 };
@@ -717,10 +785,10 @@ const ordinalSuffix = (day) => {
 };
 
 const currentDateLabel = computed(() => {
-  const weekday = currentDate.value.toLocaleDateString('en-US', { weekday: 'long' });
-  const month = currentDate.value.toLocaleDateString('en-US', { month: 'short' });
-  const day = currentDate.value.getDate();
-  return `${weekday}, ${month} ${day}${ordinalSuffix(day)}`;
+  const weekday = focusDate.value.toLocaleDateString('en-US', { weekday: 'long' });
+  const month = focusDate.value.toLocaleDateString('en-US', { month: 'short' });
+  const day = focusDate.value.getDate();
+  return `${weekday}, ${month} ${day}${ordinalSuffix(day)}${isPreview.value ? `, ${focusDate.value.getFullYear()}` : ''}`;
 });
 
 const resetWeekDayMagnification = () => {
@@ -801,7 +869,9 @@ const magnifyWeekDays = (event) => {
   });
 };
 
-const model = computed(() => deriveFocusModel(props.todoData));
+const model = computed(() => deriveFocusModel(props.todoData, focusDate.value, {
+  hideOverdue: focusDateValue.value > formatDateInputValue(currentDate.value)
+}));
 const quickAddTarget = computed(() => findQuickAddTarget(props.todoData));
 
 // ========================= Panel transitions =========================
@@ -923,7 +993,7 @@ const sortablePeers = (entry, entries) => entries.filter(candidate =>
   candidate.section === entry.section
   && candidate.columnName === entry.columnName
 );
-const isFocusEntrySortable = (entry, entries) => !isEditingEntry(entry)
+const isFocusEntrySortable = (entry, entries) => !isPreview.value && !isEditingEntry(entry)
   && !transitions.value.has(entry.task.id)
   && !pendingStatuses.value.has(entry.task.id)
   && sortablePeers(entry, entries).length > 1;
@@ -998,9 +1068,9 @@ const upNextDisplayGroups = computed(() => {
   const weekGroups = new Map();
   const unscheduled = [];
   const lowPriority = [];
-  const today = new Date();
+  const today = new Date(focusDate.value);
   const weekStart = startOfThisWeek();
-  const weekEnd = endOfCurrentWeek();
+  const weekEnd = endOfCurrentWeek(focusDate.value);
 
   upNext.value.forEach(entry => {
     const period = extractDuePeriod(entry.task.text);
@@ -1124,7 +1194,7 @@ const dayLabel = (dueGroup, entry) => {
   if (!dueDate) return 'General';
   if (period.kind === 'week') return 'This week';
   if (period.kind === 'month') return getDuePeriodLabel(entry.task.text);
-  return dueDate <= endOfCurrentWeek()
+  return dueDate <= endOfCurrentWeek(focusDate.value)
       ? dueDate.toLocaleDateString('en-US', { weekday: 'long' })
       : dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 };
@@ -1158,7 +1228,7 @@ const inProgressQueuedGroups = computed(() => groupInProgressQueuedEntries(inPro
 const isScheduledThisWeek = (entry) => {
   if (!String(entry.dueGroup).startsWith('day-')) return false;
   const dueDate = extractDateFromText(entry.task.text);
-  return Boolean(dueDate) && dueDate <= endOfCurrentWeek();
+  return Boolean(dueDate) && dueDate <= endOfCurrentWeek(focusDate.value);
 };
 const immediateNow = computed(() => now.value.filter(entry =>
   !isScheduledThisWeek(entry)
@@ -1194,7 +1264,7 @@ const nowDays = computed(() => {
 });
 
 const startOfThisWeek = () => {
-  const start = new Date();
+  const start = new Date(focusDate.value);
   start.setHours(0, 0, 0, 0);
   start.setDate(start.getDate() - start.getDay());
   return start;
@@ -1258,7 +1328,7 @@ const weeklySourceEntries = computed(() => {
 });
 
 const emptyWeekDays = (start) => {
-  const today = new Date();
+  const today = new Date(focusDate.value);
   today.setHours(0, 0, 0, 0);
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(start);
@@ -1509,6 +1579,7 @@ const rowClasses = (entry) => {
 };
 
 const toggleEntryPriority = (entry) => {
+  if (isPreview.value) return;
   const makeLow = !isLowPriorityEntry(entry);
   entry.task.listMarker = makeLow ? '-' : '*';
   entry.task.isLowPriority = makeLow;
@@ -1529,6 +1600,7 @@ const checkClasses = (entry) => ({
 const STATUS_LABELS = { ' ': 'Queued', '~': 'In progress', x: 'Completed', '-': 'Cancelled' };
 
 const statusTitle = (entry) => {
+  if (isPreview.value) return `${STATUS_LABELS[entry.task.statusChar]} — read-only preview`;
   const current = STATUS_LABELS[entry.task.statusChar] || STATUS_LABELS[' '];
   const next = STATUS_LABELS[nextTaskStatus(entry.task.statusChar,
     pendingStatuses.value.get(entry.task.id)?.initialStatus ?? entry.task.statusChar)];
@@ -1549,6 +1621,7 @@ const overdueEntries = computed(() => {
     });
 });
 const moveOverdueToToday = () => {
+  if (isPreview.value) return;
   currentDate.value = new Date();
   const entries = overdueEntries.value;
   if (!entries.length) return;
@@ -1732,6 +1805,7 @@ const closeTaskContextMenu = () => {
 };
 
 const openTaskContextMenu = async (entry, event) => {
+  if (isPreview.value) return;
   closeDateMenu();
   hideSectionTooltip();
   hideNoteTooltip();
@@ -1951,15 +2025,26 @@ const focusEditNameInput = (select = false) => {
 };
 
 const startNameEdit = async (entry) => {
+  if (isPreview.value) return;
   if (transitions.value.has(entry.task.id)) return;
   closeDateMenu();
   editingTaskId.value = entry.task.id;
   editTaskName.value = getStrippedDisplayText(entry.task.text);
+  editTaskNote.value = entryNote(entry) || '';
   await nextTick();
   focusEditNameInput(true);
 };
 
+const startNoteEdit = async (entry) => {
+  if (isPreview.value || transitions.value.has(entry.task.id)) return;
+  hideNoteTooltip();
+  cancelMainPaneMagnifyTimer();
+  await startNameEdit(entry);
+  focusRoot.value?.querySelector('.focus-edit-note')?.focus();
+};
+
 const startDueDateEdit = (entry, event) => {
+  if (isPreview.value) return;
   if (transitions.value.has(entry.task.id)) return;
   cancelEntryEdit();
   if (dateMenuTaskId.value === entry.task.id) {
@@ -1983,9 +2068,11 @@ const startDueDateEdit = (entry, event) => {
 const cancelEntryEdit = () => {
   editingTaskId.value = null;
   editTaskName.value = '';
+  editTaskNote.value = '';
 };
 
 const saveEntryEdits = (entry) => {
+  if (isPreview.value) return;
   if (!editTaskName.value.trim()) {
     focusEditNameInput();
     return;
@@ -1993,6 +2080,7 @@ const saveEntryEdits = (entry) => {
 
   const currentDueDate = formatDuePeriodValue(extractDuePeriod(entry.task.text));
   let updatedText = updateTaskNameAndDueDate(entry.task.text, editTaskName.value, currentDueDate);
+  updatedText = updateNoteInText(updatedText, editTaskNote.value);
   if (isTerminalEntry(entry)) {
     const completion = extractCompletionDateValue(entry.task.text);
     const completionValue = formatDateInputValue(completion);
@@ -2221,10 +2309,11 @@ const dueBadge = (entry) => {
   const period = extractDuePeriod(entry.task.text);
   const dueDate = period?.start;
   if (!period) return null;
-  if (isToday(entry.task.text)) return { kind: 'due-today', label: 'today' };
-
-  const today = new Date();
+  const today = new Date(focusDate.value);
   today.setHours(0, 0, 0, 0);
+  if (period.kind === 'day' && period.start.getTime() === today.getTime()) {
+    return { kind: 'due-today', label: 'today' };
+  }
   const endDay = new Date(period.end);
   endDay.setHours(0, 0, 0, 0);
   const daysLate = Math.round((today - endDay) / 86400000);
@@ -2236,11 +2325,11 @@ const dueBadge = (entry) => {
   if (period.kind === 'month') return { kind: 'due-month', label: getDuePeriodLabel(entry.task.text) };
 
   // Still to come: name the weekday while it is this week, then fall back to a date
-  const label = dueDate <= endOfCurrentWeek()
+  const label = dueDate <= endOfCurrentWeek(focusDate.value)
       ? dueDate.toLocaleDateString('en-US', { weekday: 'short' })
       : dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-  return { kind: dueDate <= endOfCurrentWeek() ? 'due-week' : 'due-later', label };
+  return { kind: dueDate <= endOfCurrentWeek(focusDate.value) ? 'due-week' : 'due-later', label };
 };
 
 // ========================= Actions =========================
@@ -2322,6 +2411,7 @@ const finishPendingStatus = (taskId) => {
 };
 
 const cycleEntryStatus = (entry, sourceBucket, event = null) => {
+  if (isPreview.value) return;
   const taskId = entry.task.id;
   if (transitions.value.has(taskId)) return;
 
@@ -2401,6 +2491,44 @@ const toggleQuickAdd = async () => {
 /* ========================= */
 /* Header                    */
 /* ========================= */
+.focus-as-of {
+  color: #8393a5;
+  font-size: 12px;
+}
+.focus-date-navigation, .focus-preview-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.focus-preview-caption { min-height: 24px; }
+.focus-as-of button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.focus-as-of button:hover { background: #8393a51a; }
+.focus-date-navigation > button { font-size: 24px; color: #7fb2e5; }
+.focus-date { position: relative; }
+.focus-date-input {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.focus-date:focus-within { outline: 1px solid #7fb2e5; border-radius: 6px; }
+.focus-preview-label { color: #7fb2e5; }
+.focus-preview .focus-task-row button:disabled {
+  cursor: default;
+  pointer-events: none;
+}
+
 .focus-header {
   position: relative;
   z-index: 200;
@@ -2410,17 +2538,17 @@ const toggleQuickAdd = async () => {
   width: 100%;
   box-sizing: border-box;
   margin: 0;
-  min-height: 46px;
+  min-height: 70px;
   padding: 10px 24px 6px;
 }
 
 .focus-heading {
   position: absolute;
   left: 50%;
-  bottom: 8px;
+  bottom: 2px;
   transform: translateX(-50%);
   text-align: center;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .focus-date {
@@ -2473,7 +2601,7 @@ const toggleQuickAdd = async () => {
 /* ========================= */
 .focus-stage {
   position: relative;
-  height: calc(100vh - 125px);
+  height: calc(100vh - 149px);
   min-height: 480px;
   margin-top: 4px;
 }
@@ -3388,12 +3516,15 @@ button.focus-row-check.preview-empty:hover {
 .focus-inline-editor {
   flex: 1;
   min-width: 0;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
   gap: 4px;
 }
 
-.focus-edit-name {
+.focus-edit-name,
+.focus-edit-note {
+  grid-column: 1 / -1;
   min-width: 0;
   height: 24px;
   box-sizing: border-box;
@@ -3409,6 +3540,14 @@ button.focus-row-check.preview-empty:hover {
 .focus-edit-name {
   flex: 1;
   padding: 2px 7px;
+}
+
+.focus-edit-note {
+  width: 100%;
+  height: auto;
+  min-height: 64px;
+  padding: 6px 7px;
+  resize: vertical;
 }
 
 .focus-edit-name:focus {
@@ -4652,7 +4791,8 @@ button.focus-row-check.preview-empty:hover {
   border-color: #e0e0e0;
 }
 
-.theme-light .focus-edit-name {
+.theme-light .focus-edit-name,
+.theme-light .focus-edit-note {
   color: #333;
   border-color: #ccc;
   background: #fff;
