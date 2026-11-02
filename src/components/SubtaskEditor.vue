@@ -7,45 +7,97 @@
       <div v-if="child.type === 'subtask'" class="subtask-edit-row"
            :class="{ 'drop-before': dropTarget?.index === index && !dropTarget.after,
                      'drop-after': dropTarget?.index === index && dropTarget.after }"
-           @dragover.stop="hoverRow(index, $event)" @drop.stop="dropRow(index, $event)">
+           @dragover.stop="hoverRow(index, $event)" @drop.stop="dropRow(index, $event)"
+           @contextmenu.prevent.stop="openContextMenu(child, $event)">
         <button v-if="child.text.trim()" type="button" class="subtask-drag-handle" draggable="true"
                 aria-label="Reorder subtask" title="Drag to reorder; arrow keys move up/down"
                 @dragstart.stop="startDrag(index, $event)" @dragend.stop="clearDrag"
                 @keydown.up.prevent="moveBy(index, -1)" @keydown.down.prevent="moveBy(index, 1)">⠿</button>
         <button type="button" class="subtask-status" :aria-label="`Change subtask status: ${child.text}`"
                 :class="{ 'is-active': child.statusChar === '~', 'is-done': child.statusChar === 'x',
-                          'is-cancelled': child.statusChar === '-' }"
+                          'is-cancelled': child.statusChar === '-', 'status-blocked': child.statusChar === '!' }"
                 @click="toggleStatus(index, child)"></button>
         <input :value="titleDrafts.get(child.id) ?? getStrippedDisplayText(child.text)" aria-label="Subtask title" placeholder="Subtask…"
                @keydown.enter.prevent.stop="advance(index)"
+               @blur="commit()"
                @input="updateTitle(index, child, $event.target.value)" />
-        <button v-if="child.text.trim()" type="button" class="subtask-date"
-                aria-label="Edit subtask due date" @click="dateIndex = dateIndex === index ? null : index">
+        <button v-if="child.text.trim() && isTerminal(child)" type="button"
+              class="subtask-date subtask-completion-date" aria-label="Edit subtask completion date"
+              :title="completionLabel(child)" @pointerdown.stop.prevent="toggleDate(index)"
+              @click.stop="!$event.detail && toggleDate(index)">
+          {{ completionLabel(child) }}
+        </button>
+        <button v-else-if="child.text.trim()" type="button" class="subtask-date"
+                aria-label="Edit subtask due date" @pointerdown.stop.prevent="toggleDate(index)"
+                @click.stop="!$event.detail && toggleDate(index)">
           {{ dueLabel(child) || '◷' }}
         </button>
         <button v-if="index < modelValue.length" type="button" class="subtask-remove"
                 aria-label="Remove subtask" @click="remove(index)">×</button>
       </div>
       <SubtaskDatePicker v-if="child.type === 'subtask' && dateIndex === index"
-                         :model-value="formatDuePeriodValue(extractDuePeriod(child.text))" label="Due date"
-                         @update:model-value="value => update(index, { text: setDuePeriod(child.text, value) })"
+                         :key="`${child.id}-${isTerminal(child)}`" :completion="isTerminal(child)"
+                         :model-value="dateValue(child)"
+                         @update:model-value="value => updateDate(index, child, value)"
                          @close="dateIndex = null" />
     </template>
+    <SubtaskDeleteMenu v-if="contextMenu" :key="contextMenu.child.id"
+                       :title="getStrippedDisplayText(contextMenu.child.text)"
+                       :position="contextMenu.position" :theme="contextMenu.theme"
+                       @close="contextMenu = null" @delete="deleteContextSubtask" />
   </div>
 </template>
 <script setup>
 import { ref, nextTick, computed } from 'vue';
 import { nextTaskStatus } from '../utils/statusHelpers';
-import { reconcileLifecycleDateForStatus } from '../utils/completionDateHelpers';
+import {
+  reconcileLifecycleDateForStatus, extractCompletionDate, extractCompletionDateValue, setCompletionDate
+} from '../utils/completionDateHelpers';
 import SubtaskDatePicker from './SubtaskDatePicker.vue';
+import SubtaskDeleteMenu from './SubtaskDeleteMenu.vue';
 import { getStrippedDisplayText } from '../utils/taskTextHelpers';
 import { updateSubtaskTitle } from '../utils/subtaskHelpers';
 import { extractDuePeriod, formatDuePeriodValue, getDuePeriodLabel, setDuePeriod } from '../utils/dateHelpers';
 const props = defineProps({ modelValue: { type: Array, default: () => [] }, allowAdd: { type: Boolean, default: true } });
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue', 'commit']);
+const commit = (rows = props.modelValue) => emit('commit', rows);
 const editorRoot = ref(null);
+const contextMenu = ref(null);
+const openContextMenu = (child, event) => {
+  contextMenu.value = null;
+  if (!child.text.trim() || !props.modelValue.some(row => row.id === child.id)) return;
+  dateIndex.value = null;
+  contextMenu.value = {
+    child, position: { x: event.clientX, y: event.clientY },
+    theme: editorRoot.value?.closest('.theme-dark') ? 'dark' : 'light'
+  };
+};
+const deleteContextSubtask = () => {
+  const index = props.modelValue.findIndex(child => child.id === contextMenu.value?.child.id);
+  contextMenu.value = null;
+  if (index >= 0) remove(index);
+};
 const titleDrafts = ref(new Map());
 const dateIndex = ref(null);
+const toggleDate = index => {
+  commit();
+  dateIndex.value = dateIndex.value === index ? null : index;
+};
+const isTerminal = child => ['x', '-'].includes(child.statusChar);
+const dateValue = child => {
+  if (!isTerminal(child)) return formatDuePeriodValue(extractDuePeriod(child.text));
+  const date = extractCompletionDateValue(child.text);
+  return date ? formatDuePeriodValue({ kind: 'day', start: date }) : '';
+};
+const updateDate = (index, child, value) => {
+  const text = isTerminal(child) ? setCompletionDate(child.text, value) : setDuePeriod(child.text, value);
+  update(index, { text }, true);
+};
+const completionLabel = child => {
+  const status = child.statusChar === 'x' ? 'Done' : 'Will not do';
+  const date = extractCompletionDate(child.text);
+  return date ? `${status} ${date}` : `${status} · no date`;
+};
 const dueLabel = (child) => {
   const period = extractDuePeriod(child.text);
   return period ? getDuePeriodLabel(child.text) : '';
@@ -65,6 +117,7 @@ const reorder = (source, target, after) => {
   const result = [...props.modelValue];
   indexes.forEach((index, position) => { result[index] = ordered[position]; });
   emit('update:modelValue', result);
+  commit(result);
 };
 const clearDrag = () => { dragIndex.value = null; dropTarget.value = null; };
 const startDrag = (index, event) => {
@@ -101,21 +154,35 @@ const displayedRows = computed(() => {
   return last?.type === 'subtask' && !last.text.trim()
     ? props.modelValue : [...props.modelValue, newRow()];
 });
-const update = (index, changes) => {
+const update = (index, changes, save = false) => {
   const rows = [...props.modelValue];
   rows[index] = { ...(rows[index] || newRow()), ...changes };
   emit('update:modelValue', rows);
+  if (save) commit(rows);
 };
 const updateTitle = (index, child, title) => {
   titleDrafts.value.set(child.id, title);
   update(index, { id: child.id, text: updateSubtaskTitle(child.text, title) });
 };
+const statusSequences = new Map();
 const toggleStatus = (index, child) => {
-  const statusChar = nextTaskStatus(child.statusChar);
-  update(index, { statusChar, text: reconcileLifecycleDateForStatus(child.text, statusChar) });
+  const previous = statusSequences.get(child.id);
+  const sequence = previous && previous.lastText === child.text && Date.now() - previous.lastClick < 1500
+    ? previous : { initialStatus: child.statusChar, text: child.text };
+  sequence.lastClick = Date.now();
+  statusSequences.set(child.id, sequence);
+  const statusChar = nextTaskStatus(child.statusChar, sequence.initialStatus);
+  sequence.lastText = reconcileLifecycleDateForStatus(sequence.text, statusChar);
+  update(index, { statusChar, text: sequence.lastText }, true);
 };
-const remove = (index) => emit('update:modelValue', props.modelValue.filter((_, i) => i !== index));
+const remove = (index) => {
+  dateIndex.value = null;
+  const rows = props.modelValue.filter((_, i) => i !== index);
+  emit('update:modelValue', rows);
+  commit(rows);
+};
 const advance = async (index) => {
+  commit();
   const position = props.modelValue.slice(0, index + 1).filter(child => child.type === 'subtask').length;
   await nextTick();
   editorRoot.value?.querySelectorAll('[aria-label="Subtask title"]')[position]?.focus();
@@ -141,6 +208,7 @@ const advance = async (index) => {
 .subtask-editor button { cursor: pointer; font-family: inherit; }
 .subtask-date { flex: none; border: 1px solid var(--subtask-border); border-radius: 4px;
   background: transparent; color: var(--ui-muted); font: inherit; font-size: 10px; padding: 1px 4px; }
+.subtask-completion-date { white-space: nowrap; }
 .subtask-remove { background: transparent; border: 0; border-radius: 4px; padding: 2px 5px; }
 .subtask-editor button:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: 2px; }
 .subtask-remove { color: var(--ui-muted, #8996a5); font-size: 14px; line-height: 14px; padding: 0 4px; }

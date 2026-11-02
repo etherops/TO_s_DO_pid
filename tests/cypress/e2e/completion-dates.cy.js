@@ -86,9 +86,10 @@ describe('Completion Date Feature', () => {
     findTask('HOME - Lawn care').within(() => {
       cy.get('.custom-checkbox').click(); // unchecked -> completed
       
-      // Continue through in progress and cancelled before the timeout.
+      // Continue through in progress, blocked and cancelled before the timeout.
       cy.get('.custom-checkbox').click(); // completed -> in-progress
-      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
+      cy.get('.custom-checkbox').click(); // in-progress -> blocked
+      cy.get('.custom-checkbox').click(); // blocked -> cancelled
       
       // Immediately click again before timeout to unchecked
       cy.get('.custom-checkbox').click(); // cancelled -> unchecked
@@ -106,7 +107,9 @@ describe('Completion Date Feature', () => {
   it('should add completion date for cancelled tasks', () => {
     // Mark SOCIAL task as cancelled (it starts as in-progress [~])
     findTask('SOCIAL - Event coordination for friends').within(() => {
-      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
+      cy.get('.custom-checkbox').click(); // in-progress -> completed
+      cy.get('.custom-checkbox').click(); // completed -> blocked (partial-start cycle)
+      cy.get('.custom-checkbox').click(); // blocked -> cancelled
     });
     
     cy.wait(2000); // Wait for completion date to be added
@@ -156,7 +159,8 @@ describe('Completion Date Feature', () => {
       cy.wait(100);
       cy.get('.custom-checkbox').click(); // completed -> in-progress
       cy.wait(100);
-      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
+      cy.get('.custom-checkbox').click(); // in-progress -> blocked
+      cy.get('.custom-checkbox').click(); // blocked -> cancelled
       cy.wait(100);
       cy.get('.custom-checkbox').click(); // cancelled -> unchecked
       cy.wait(100);

@@ -37,15 +37,18 @@ export const orderEntriesBySourcePosition = (entries) => {
 export const groupInProgressQueuedEntries = (entries) => {
   const lowPriority = entries.filter(isLowPriorityEntry);
   const normalPriority = entries.filter(entry => !isLowPriorityEntry(entry));
-  const thisWeek = normalPriority.filter(entry => entry.dueGroup === 'this-week');
-  const remaining = normalPriority.filter(entry => entry.dueGroup !== 'this-week');
+  const blocked = normalPriority.filter(entry => entry.task.statusChar === '!');
+  const unblocked = normalPriority.filter(entry => entry.task.statusChar !== '!');
+  const thisWeek = unblocked.filter(entry => entry.dueGroup === 'this-week');
+  const remaining = unblocked.filter(entry => entry.dueGroup !== 'this-week');
   const active = remaining.filter(entry => entry.group !== 'waiting');
   const parked = remaining.filter(entry => entry.group === 'waiting');
 
   return [
+    { key: 'blocked', label: 'Blocked', entries: orderEntriesBySourcePosition(blocked) },
     { key: 'this-week', label: 'This Week', entries: orderEntriesBySourcePosition(thisWeek) },
     { key: 'this-month-active', label: 'This Month - Active', entries: orderEntriesBySourcePosition(active) },
-    { key: 'this-month-parked', label: 'This Month - Parked', entries: orderEntriesBySourcePosition(parked) },
+    { key: 'this-month-parked', label: 'Parked', entries: orderEntriesBySourcePosition(parked) },
     { key: 'low-priority', label: 'Low Priority', entries: orderEntriesBySourcePosition(lowPriority) }
   ].filter(group => group.entries.length);
 };
@@ -163,7 +166,8 @@ const eachFocusTask = (todoData, visit) => {
       (section.items || []).filter(isTaskItem).forEach(task => {
         visit({ task, columnName, stackName: column.name, sectionName: section.name, section });
         (task.children || []).filter(child => child.type === 'subtask'
-          && (extractDuePeriod(child.text) || extractCompletionDateValue(child.text))).forEach(child => {
+          && (child.statusChar === '!' || extractDuePeriod(child.text)
+            || extractCompletionDateValue(child.text))).forEach(child => {
           visit({ task: child, parentTask: task, columnName, stackName: column.name, sectionName: section.name, section });
         });
       });
@@ -209,12 +213,31 @@ export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOve
       done.push(entry);
       return;
     }
-    if (task.statusChar !== ' ' && task.statusChar !== '~') return;
+    if (![' ', '~', '!'].includes(task.statusChar)) return;
 
     const routedEntry = { ...entry, ...dueGrouping(task, today) };
     if (hideOverdue && routedEntry.dueGroup === 'overdue') return;
+    // A blocker is actionable in the right pane regardless of its due period.
+    if (task.statusChar === '!') {
+      inProgressQueued.push({ ...routedEntry, group: 'blocked' });
+      return;
+    }
     const period = extractDuePeriod(task.text);
     const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text, today);
+
+    // Current-week commitments use NOW; other nonurgent SELECTED work stays parked.
+    if (stackName === 'SELECTED' && task.statusChar === '~' && !entry.parentTask
+        && !isCurrentWholeWeek(period, today)) {
+      if (routedEntry.dueGroup === 'today' || routedEntry.dueGroup === 'overdue') {
+        now.push(routedEntry);
+        return;
+      }
+      inProgressQueued.push({
+        ...routedEntry,
+        group: 'waiting'
+      });
+      return;
+    }
 
     // Whole-current-week commitments share NOW regardless of active status.
     if (isCurrentWholeWeek(period, today)) {
@@ -237,8 +260,7 @@ export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOve
     }
 
     if (wasOnDeck) {
-      const isUrgent = routedEntry.dueGroup === 'today' || routedEntry.dueGroup === 'overdue';
-      if (isUrgent) {
+      if (routedEntry.dueGroup === 'today' || routedEntry.dueGroup === 'overdue') {
         now.push(routedEntry);
         return;
       }

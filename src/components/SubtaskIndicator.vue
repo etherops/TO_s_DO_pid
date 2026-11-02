@@ -1,14 +1,28 @@
 <template>
-  <button v-if="count" type="button" class="subtask-indicator" :title="`${count} subtasks — edit task`"
-          :aria-label="`Edit ${count} subtasks`" @click.stop="$emit('edit')">
-    {{ count }} {{ count === 1 ? 'subtask' : 'subtasks' }}
+  <button v-if="subtasks.length" type="button" class="subtask-indicator" :title="summary"
+          :aria-label="`Edit subtasks: ${summary}`" @click.stop="$emit('edit')">
+    <span class="subtask-total" aria-hidden="true">{{ subtasks.length }} {{ subtasks.length === 1 ? 'subtask' : 'subtasks' }}</span>
   </button>
 </template>
 <script setup>
 import { computed } from 'vue';
 const props = defineProps({ task: { type: Object, required: true } });
 defineEmits(['edit']);
-const count = computed(() => (props.task.children || []).filter(child => child.type === 'subtask').length);
+const states = [
+  { status: 'x', kind: 'checked', label: 'done' },
+  { status: '~', kind: 'in-progress', label: 'in progress' },
+  { status: '!', kind: 'blocked', label: 'blocked' },
+  { status: ' ', kind: 'unchecked', label: 'not started' },
+  { status: '-', kind: 'cancelled', label: 'will not do' }
+];
+const subtasks = computed(() => (props.task.children || []).filter(child => child.type === 'subtask'));
+const groups = computed(() => states.map(state => ({
+  ...state,
+  count: subtasks.value.filter(child => child.statusChar === state.status).length
+})).filter(group => group.count));
+const summary = computed(() => [
+  `${subtasks.value.length} total`, ...groups.value.map(group => `${group.count} ${group.label}`)
+].join(', '));
 </script>
 <style scoped>
 .subtask-indicator { display: inline-flex; align-items: center; padding: 1px 4px;

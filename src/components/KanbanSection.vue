@@ -1,6 +1,7 @@
 <!-- components/KanbanSection.vue -->
 <template>
   <div
+      @set-collapse-state.stop="handleSetCollapseState"
       :class="['section', {
       'archivable-section': section.archivable,
       'on-ice-section': columnData.on_ice,
@@ -41,7 +42,7 @@
         <div v-if="section.on_ice" class="on-ice-label">ON ICE</div>
         <div v-if="!isColumnCollapsed" class="section-header-actions">
           <!-- Collapse controls wrapper (event target for column-level collapse/expand) -->
-          <div v-if="!columnData.on_ice && !isFullyCollapsed" class="collapse-controls" ref="collapseBtn">
+          <div v-if="!columnData.on_ice && !isFullyCollapsed" class="collapse-controls">
           </div>
 
           <!-- Inline summary when fully collapsed (header only mode) -->
@@ -53,6 +54,10 @@
             <span v-if="fullCollapseSummary.inProgress > 0" class="summary-item">
               <span class="mini-checkbox in-progress"></span>
               <span class="summary-text">{{ fullCollapseSummary.inProgress }}</span>
+            </span>
+            <span v-if="fullCollapseSummary.blocked > 0" class="summary-item" title="Blocked">
+              <span class="mini-checkbox status-blocked"></span>
+              <span class="summary-text">{{ fullCollapseSummary.blocked }}</span>
             </span>
             <span v-if="fullCollapseSummary.completed > 0" class="summary-item">
               <span class="mini-checkbox checked"></span>
@@ -175,6 +180,10 @@
               <div class="custom-checkbox in-progress"></div>
               <span class="summary-text">{{ fullCollapseSummary.inProgress }} in progress</span>
             </span>
+            <span v-if="fullCollapseSummary.blocked > 0" class="summary-item">
+              <span class="custom-checkbox status-blocked"></span>
+              <span class="summary-text">{{ fullCollapseSummary.blocked }} blocked</span>
+            </span>
             <span v-if="fullCollapseSummary.completed > 0" class="summary-item">
               <div class="custom-checkbox checked"></div>
               <span class="summary-text">{{ fullCollapseSummary.completed }} completed</span>
@@ -236,11 +245,11 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue';
+import { ref, nextTick, onMounted, computed } from 'vue';
 import draggable from 'vuedraggable';
 import TaskCard from './TaskCard.vue';
 import {
-  getStatusPriority,
+  getBoardTaskSortPriority,
   sortTaskToCorrectPosition
 } from '../utils/sortHelpers';
 
@@ -325,26 +334,11 @@ const loadCollapseState = () => {
 const isSummaryCollapsed = computed(() => collapseState.value === 'summary');
 
 
-// Load collapse state on mount and set up event listener
-onMounted(() => {
-  loadCollapseState();
-
-  // Listen for set-collapse-state custom event from column
-  if (collapseBtn.value) {
-    collapseBtn.value.addEventListener('set-collapse-state', handleSetCollapseState);
-  }
-});
-
-// Clean up event listener on unmount
-onUnmounted(() => {
-  if (collapseBtn.value) {
-    collapseBtn.value.removeEventListener('set-collapse-state', handleSetCollapseState);
-  }
-});
+// Keep expansion available on the section root when its controls are hidden.
+onMounted(loadCollapseState);
 
 // Template refs
 const sectionNameInput = ref(null);
-const collapseBtn = ref(null);
 
 // Computed property to check if section has completed/cancelled tasks
 const hasCompletedTasks = computed(() => {
@@ -462,6 +456,7 @@ const fullCollapseSummary = computed(() => {
   return {
     todo: allTasks.filter(task => task.statusChar === ' ').length,
     inProgress: allTasks.filter(task => task.statusChar === '~').length,
+    blocked: allTasks.filter(task => task.statusChar === '!').length,
     completed: allTasks.filter(task => task.statusChar === 'x').length,
     cancelled: allTasks.filter(task => task.statusChar === '-').length,
     total: allTasks.length
@@ -694,6 +689,7 @@ const sortSingleTask = async (task) => {
     emit,
     {
       allowOverlap: true,
+      getPriority: getBoardTaskSortPriority,
       animationDuration: 150
     }
   );

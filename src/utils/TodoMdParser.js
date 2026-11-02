@@ -128,7 +128,7 @@ export function parseTodoMdFile(fileContent) {
 
     // Indented content belongs to its parent, never to the board's task list.
     if (/^[\t ]+\S/.test(line) && parentTask) {
-      const match = line.match(/^([\t ]+)- (?:\[([ x~-])\] )?(.*)$/);
+      const match = line.match(/^([\t ]+)- (?:\[([ x~!-])\] )?(.*)$/);
       parentTask.children ||= [];
       parentTask.children.push(match ? {
         id: itemId++, type: 'subtask', indent: match[1], statusChar: match[2] || ' ', text: match[3],
@@ -192,7 +192,7 @@ export function parseTodoMdFile(fileContent) {
 
     // Parse todo items
     if (/^[*+-] \[/.test(line)) {
-      const statusMatch = trimmedLine.match(/^([*+-]) \[([ x~-])\]/);
+      const statusMatch = trimmedLine.match(/^([*+-]) \[([ x~!-])\]/);
 
       if (statusMatch && currentSection) {
         const listMarker = statusMatch[1];

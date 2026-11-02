@@ -1,22 +1,37 @@
 <!-- components/ArchiveConfirmationModal.vue -->
 <template>
   <div class="modal-backdrop" @click="$emit('close')">
-    <div class="modal-content" @click.stop>
+    <div ref="dialog" class="modal-content" role="dialog" aria-modal="true"
+         aria-labelledby="archive-dialog-title" tabindex="-1" @click.stop
+         @keydown.esc.prevent.stop="$emit('close')" @keydown.tab="trapFocus">
       <div class="modal-header">
-        <h3>Archive Completed Tasks</h3>
+        <h3 id="archive-dialog-title">Archive Completed Tasks</h3>
       </div>
       
       <div class="modal-body">
         <p class="confirmation-message">
-          Are you sure you want to archive the section <strong>"{{ sectionName }}"</strong>?
+          Archive completed tasks from <strong>"{{ sectionName }}"</strong> by completion week?
         </p>
         
         <div class="archive-details">
-          <div v-if="archiveTasks.length > 0" class="detail-item">
+          <div v-if="archiveGroups.length > 0" class="detail-item">
             <span class="detail-icon">📋</span>
             <span class="detail-text">
-              {{ archiveTasks.length }} completed or will-not-do task{{ archiveTasks.length > 1 ? 's' : '' }}
-              will be moved to: <strong>"{{ newSectionName }}"</strong>
+              {{ initialWeeks ? 'Review this week before archiving.'
+                : 'Choose weeks to archive. Only closed weeks are selected by default.' }}
+              <label v-for="group in archiveGroups" :key="group.name" class="archive-week-summary">
+                <input v-model="selectedWeeks" type="checkbox" :value="group.name" :aria-label="group.name" />
+                <span>
+                  <strong>{{ group.name }}</strong> — {{ group.tasks.length }} task{{ group.tasks.length === 1 ? '' : 's' }}
+                  <span class="archive-week-state">{{ group.closed ? 'Closed' : 'Open / upcoming' }}</span>
+                  <span v-if="group.undatedCount" class="archive-undated-note">
+                    ({{ group.undatedCount }} without a completion date; using this week)
+                  </span>
+                </span>
+              </label>
+              <span class="archive-selection-count" aria-live="polite">
+                {{ archiveTasks.length }} task{{ archiveTasks.length === 1 ? '' : 's' }} selected
+              </span>
             </span>
           </div>
           
@@ -57,14 +72,27 @@
               <span class="destination-name">{{ column }}</span>
             </button>
           </div>
+          <p v-for="summary in destinationSummaries" :key="summary.name" class="archive-destination-summary">
+            <template v-if="summary.matches.length">
+              Add {{ summary.count }} task{{ summary.count === 1 ? '' : 's' }} to existing
+              <strong>{{ summary.matches[0].name }}</strong> ({{ summary.existingCount }} already there).
+              No new week section will be created.
+              <span v-if="summary.matches.length > 1" class="archive-duplicate-warning">
+                {{ summary.matches.length }} matching sections already exist; tasks will go into the first.
+                Existing sections will not be merged or deleted.
+              </span>
+            </template>
+            <template v-else>Create <strong>{{ summary.name }}</strong> with {{ summary.count }}
+              task{{ summary.count === 1 ? '' : 's' }}.</template>
+          </p>
         </div>
       </div>
       
       <div class="modal-footer">
-        <button class="btn-cancel" @click="$emit('close')">
+        <button ref="cancelButton" class="btn-cancel" @click="$emit('close')">
           Cancel
         </button>
-        <button class="btn-confirm" @click="handleConfirm">
+        <button class="btn-confirm" :disabled="submitted || !archiveTasks.length" @click="handleConfirm">
           Archive Completed Tasks
         </button>
       </div>
@@ -73,7 +101,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { groupTasksForArchive, matchingArchiveSections } from '../utils/archiveHelpers';
 
 const props = defineProps({
   sectionName: {
@@ -84,27 +113,54 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
-  newSectionName: {
-    type: String,
-    required: true
+  fallbackDate: {
+    type: Date,
+    default: () => new Date()
   },
   availableColumns: {
     type: Array,
     default: () => ['ARCHIVE']
-  }
+  },
+  initialWeeks: { type: Array, default: null },
+  archiveColumns: { type: Object, default: () => ({}) }
 });
 
 const emit = defineEmits(['close', 'confirm']);
+const dialog = ref(null);
+const cancelButton = ref(null);
+const submitted = ref(false);
+const previousFocus = document.activeElement;
+onMounted(() => cancelButton.value?.focus());
+onUnmounted(() => { if (previousFocus?.isConnected) previousFocus.focus(); });
+const trapFocus = event => {
+  const elements = [...dialog.value.querySelectorAll('button:not(:disabled), input:not(:disabled)')];
+  const first = elements[0];
+  const last = elements.at(-1);
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last?.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first?.focus();
+  }
+};
 
 // Selected archive destination
 const selectedColumn = ref(props.availableColumns[0]);
 
 // Only completed and explicitly will-not-do tasks are archived.
-const archiveTasks = computed(() => {
-  return props.sectionItems.filter(item => 
-    item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')
-  );
-});
+const archiveGroups = computed(() => groupTasksForArchive(props.sectionItems, props.fallbackDate));
+const selectedWeeks = ref(props.initialWeeks || archiveGroups.value.filter(group => group.closed).map(group => group.name));
+const archiveTasks = computed(() => archiveGroups.value
+  .filter(group => selectedWeeks.value.includes(group.name)).flatMap(group => group.tasks));
+const destinationSummaries = computed(() => archiveGroups.value
+  .filter(group => selectedWeeks.value.includes(group.name)).map(group => {
+    const matches = matchingArchiveSections(props.archiveColumns[selectedColumn.value]?.sections, group);
+    return {
+      name: group.name, count: group.tasks.length, matches,
+      existingCount: (matches[0]?.items || []).filter(item => item.type === 'task').length
+    };
+  }));
 
 // Get CSS class for task status
 const getStatusClass = (statusChar) => {
@@ -119,11 +175,21 @@ const getStatusClass = (statusChar) => {
 
 // Handle confirm with selected column
 const handleConfirm = () => {
-  emit('confirm', selectedColumn.value);
+  if (submitted.value || !archiveTasks.value.length) return;
+  submitted.value = true;
+  emit('confirm', selectedColumn.value, [...selectedWeeks.value]);
 };
 </script>
 
 <style scoped>
+.archive-destination-summary { font-size: 13px; line-height: 1.5; color: var(--ui-text); margin: 12px 0 0; }
+.archive-duplicate-warning { display: block; margin-top: 5px; color: var(--ui-orange); }
+.archive-week-summary { display: flex; align-items: flex-start; gap: 8px; margin-top: 12px; cursor: pointer; }
+.archive-week-summary input { margin: 3px 0 0; flex: none; accent-color: var(--ui-green, #4caf50); }
+.archive-week-state { display: block; font-size: 12px; color: var(--ui-muted); }
+.archive-selection-count { display: block; margin-top: 14px; font-weight: 600; }
+.btn-confirm:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+.archive-undated-note { display: block; font-size: 12px; color: var(--ui-muted); }
 .modal-backdrop {
   position: fixed;
   top: 0;

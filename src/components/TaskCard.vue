@@ -28,12 +28,13 @@
             'in-progress': task.statusChar === '~',
             'checked': task.statusChar === 'x',
             'cancelled': task.statusChar === '-',
+            'status-blocked': task.statusChar === '!',
             'pending-sort': isPendingSort,
             'pending-completion': isPendingCompletion
           }]"
+            :aria-label="task.statusChar === '!' ? 'Blocked; change status' : 'Change task status'"
             @click="toggleTaskStatus"
-            :title="hasIncompleteSubtasks(task) ? 'Complete all subtasks before completing this task' : undefined"
-        ></div>
+        ><SubtaskStatusGrid :task="task" /></div>
       </div>
     <template v-if="isEditing">
       <!-- Simplified interface for new tasks or simple edit mode -->
@@ -68,8 +69,8 @@
         
         <!-- Subtasks and notes share the editor width. -->
         <div class="note-date-row">
-          <SubtaskEditor v-if="task.listMarker === '+' || editChildren.length" v-model="editChildren"
-                         :allow-add="task.listMarker === '+'" />
+          <SubtaskEditor v-if="showSubtaskEditor" v-model="editChildren"
+                         :allow-add="taskPriority(task) !== 'low'" @commit="persistSubtaskEdits" />
           <!-- Note editing section -->
           <div class="note-edit-section">
             <label class="note-label">Note</label>
@@ -81,9 +82,10 @@
                 ref="noteTextInput"
                 placeholder="Enter note..."
             ></textarea>
+            <button v-if="taskPriority(task) === 'normal' && !showSubtaskEditor" type="button"
+                    class="add-subtasks-control" @click="editSubtasksExpanded = true">+ Add subtasks</button>
           </div>
           
-        </div>
           <!-- Date picker section -->
           <div class="date-edit-section">
             <CompactDatePicker
@@ -93,6 +95,7 @@
                 ref="datePickerRef"
             />
           </div>
+        </div>
         <!-- Action buttons row -->
         <div class="edit-actions-row">
           <button class="priority-edit-btn" :class="{ active: task.isLowPriority || task.listMarker === '-' }"
@@ -168,7 +171,7 @@
               @click.stop="handleDateClick"
               :title="isTerminalTask ? (hasCompletionDate(task.text) ? `Completed: ${getCompletionBadgeFromText(task.text)}` : 'Set completion date') : (hasDueDate(task.text) ? getDueDateTooltip(task.text) : 'Add due date')"
           >
-            ⏰
+            {{ inPlanningWorkspace ? (isTerminalTask ? 'Completed' : getDuePeriodLabel(task.text) || '+ Date') : '⏰' }}
           </button>
 
           <!-- Notes button -->
@@ -262,15 +265,21 @@
              aria-label="Custom completion date" @change="setTaskCompletionDate($event.target.value)" />
     </div>
   </Teleport>
+  <DetachSubtasksModal v-if="priorityConfirmation" :title="task.displayText || task.text"
+                       :subtasks="priorityConfirmation.subtasks" @cancel="priorityConfirmation = null"
+                       @confirm="toggleTaskPriority(true)" />
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted, computed } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, computed, inject } from 'vue';
 import CompactDatePicker from './CompactDatePicker.vue';
 import PriorityToggle from './PriorityToggle.vue';
 import SubtaskEditor from './SubtaskEditor.vue';
 import SubtaskIndicator from './SubtaskIndicator.vue';
+import SubtaskStatusGrid from './SubtaskStatusGrid.vue';
 import { taskPriority, cycleTaskPriority } from '../utils/priorityHelpers';
+import { detachAllSubtasks, saveSubtaskEdits } from '../utils/subtaskHelpers';
+import DetachSubtasksModal from './DetachSubtasksModal.vue';
 import {
   hasDueDate,
   isPast,
@@ -291,7 +300,8 @@ import {
   updateTaskNameAndDueDate
 } from '../utils/taskTextHelpers';
 import {
-  sortTaskToCorrectPosition
+  sortTaskToCorrectPosition,
+  getBoardTaskSortPriority
 } from '../utils/sortHelpers';
 import {
   hasCompletionDate,
@@ -301,7 +311,10 @@ import {
   reconcileLifecycleDateForStatus,
   setCompletionDate
 } from '../utils/completionDateHelpers';
-import { nextTaskStatus, hasIncompleteSubtasks } from '../utils/statusHelpers';
+import { nextTaskStatus } from '../utils/statusHelpers';
+import { getDuePeriodLabel } from '../utils/dateHelpers';
+
+const inPlanningWorkspace = inject('planningWorkspace', false);
 
 const props = defineProps({
   task: {
@@ -349,6 +362,12 @@ const isEditing = ref(false);
 const isSimpleEdit = ref(false);
 const editTaskText = ref('');
 const editChildren = ref([]);
+const editSubtasksExpanded = ref(false);
+const persistSubtaskEdits = change => {
+  if (saveSubtaskEdits(props.task, change)) emit('task-updated');
+};
+const showSubtaskEditor = computed(() => taskPriority(props.task) === 'high'
+  || editSubtasksExpanded.value || editChildren.value.some(child => child.type === 'subtask'));
 const taskPendingDelete = ref(false);
 const editNoteText = ref('');
 const editDateValue = ref('');
@@ -439,8 +458,6 @@ const handleCompletionDateMenuKeydown = (event) => {
 
 // Toggle task status
 const toggleTaskStatus = () => {
-  if (hasIncompleteSubtasks(props.task) && nextTaskStatus(props.task.statusChar,
-    statusCycleStart.value ?? props.task.statusChar) === 'x') return;
   // Don't allow toggling in "on_ice" columns
   if (props.isOnIce) {
     console.log('Cannot toggle status of items in "on_ice" columns');
@@ -461,7 +478,7 @@ const toggleTaskStatus = () => {
     isPendingCompletion.value = false;
   }
 
-  // Cycle through states: unchecked -> checked -> in-progress -> cancelled -> unchecked
+  // Keep the starting cycle fixed until status sorting settles.
   const oldStatus = props.task.statusChar;
   props.task.statusChar = nextTaskStatus(props.task.statusChar, statusCycleStart.value);
 
@@ -491,14 +508,28 @@ const toggleTaskStatus = () => {
   emit('task-updated');
 };
 
-const toggleTaskPriority = () => {
+const priorityConfirmation = ref(null);
+const toggleTaskPriority = (confirmed = false) => {
+  const children = isEditing.value && !isSimpleEdit.value
+    ? editChildren.value.filter(child => child.type !== 'subtask' || child.rawLine || child.text.trim())
+    : props.task.children || [];
+  if (taskPriority(props.task) === 'normal' && children.some(child => child.type === 'subtask')) {
+    if (confirmed !== true) {
+      priorityConfirmation.value = { subtasks: children.filter(child => child.type === 'subtask') };
+      return;
+    }
+    props.task.children = children;
+    detachAllSubtasks(props.task, props.section);
+    editChildren.value = [...props.task.children];
+  }
+  priorityConfirmation.value = null;
   cycleTaskPriority(props.task);
   emit('task-updated');
 };
 
 // Sort task after status change using shared sorting utility
 const sortTaskAfterStatusChange = () => {
-  sortTaskToCorrectPosition(props.section.items, props.task, emit);
+  sortTaskToCorrectPosition(props.section.items, props.task, emit, { getPriority: getBoardTaskSortPriority });
 };
 
 // Handle edit button click (check for shift key)
@@ -539,6 +570,7 @@ const startSimpleEdit = () => {
 
 // Start editing all (both title and note)
 const startEditingAll = (focusTarget = '') => {
+  editSubtasksExpanded.value = false;
   editChildren.value = (props.task.children || []).map(child => ({ ...child }));
   isEditing.value = true;
   isSimpleEdit.value = false;
@@ -1475,6 +1507,8 @@ onUnmounted(() => {
 }
 
 .note-date-row > .subtask-editor { grid-column: 1; }
+.note-date-row:not(:has(> .subtask-editor)) { grid-template-columns: minmax(0, 1fr) 120px; }
+.note-date-row:has(> .subtask-editor) > .date-edit-section { grid-column: 1 / -1; }
 .note-date-row .note-edit-section { min-width: 0; padding: 3px 0; gap: 0; }
 .note-date-row .note-label { color: var(--ui-muted, #8996a5); font-size: 11px;
   font-weight: 650; margin: 0 0 6px; text-transform: none; letter-spacing: normal; }

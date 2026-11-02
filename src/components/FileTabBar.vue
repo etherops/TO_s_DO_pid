@@ -40,6 +40,14 @@
                   <span class="file-status-icon in-progress" aria-hidden="true"></span>
                 </span>
               </template>
+              <template v-if="file.taskCounts.blocked">
+                <span class="count-separator" aria-hidden="true">·</span>
+                <span class="file-status-count" title="Blocked">
+                  <span class="visually-hidden">Blocked:</span>
+                  {{ file.taskCounts.blocked }}
+                  <span class="file-status-icon status-blocked" aria-hidden="true"></span>
+                </span>
+              </template>
               <template v-if="file.taskCounts.done">
                 <span class="count-separator" aria-hidden="true">·</span>
                 <span class="file-status-count" title="Done">
@@ -73,6 +81,11 @@
         <span class="file-status-icon in-progress" aria-hidden="true"></span>
         <span class="header-status-label">In progress</span>
         <span class="header-status-number">{{ selectedFile.taskCounts.active }}</span>
+      </span>
+      <span v-if="selectedFile.taskCounts.blocked" class="header-status-count" title="Blocked">
+        <span class="file-status-icon status-blocked" aria-hidden="true"></span>
+        <span class="header-status-label">Blocked</span>
+        <span class="header-status-number">{{ selectedFile.taskCounts.blocked }}</span>
       </span>
       <span class="header-status-count" title="Done">
         <span class="file-status-icon checked" aria-hidden="true"></span>
@@ -132,17 +145,9 @@
       <div class="view-mode-buttons">
         <button
             class="view-mode-btn"
-            :class="{ active: viewMode === 'triage' }"
-            @click="$emit('set-view-mode', 'triage')"
-            title="Triage Mode: Expand TODO, PROJECTS, SELECTED; Collapse WIP, ARCHIVE"
-        >
-          Triage
-        </button>
-        <button
-            class="view-mode-btn"
             :class="{ active: viewMode === 'plan' }"
             @click="$emit('set-view-mode', 'plan')"
-            title="Plan Mode: Expand SELECTED, WIP; Collapse TODO, PROJECTS, ARCHIVE"
+            title="Plan: SELECTED and WIP side by side, with file outline and schedule"
         >
           Plan
         </button>
@@ -158,9 +163,13 @@
             class="view-mode-btn"
             :class="{ active: viewMode === 'review' }"
             @click="$emit('set-view-mode', 'review')"
-            title="Review Mode: Week or month calendar of what was completed, dropped, and still due, over a year of monthly bars"
+            title="Calendar: Tasks by completion or due date"
         >
-          Review
+          Calendar
+        </button>
+        <button class="view-mode-btn" :class="{ active: viewMode === 'raw' }"
+                @click="$emit('set-view-mode', 'raw')" title="Raw Markdown — read-only until you choose Edit">
+          Raw
         </button>
       </div>
     </div>
@@ -205,7 +214,7 @@ const props = defineProps({
   },
   viewMode: {
     type: String,
-    default: 'normal'
+    default: 'plan'
   },
   themePreference: {
     type: String,
@@ -401,6 +410,12 @@ onBeforeUnmount(() => {
 
 .header-status-label {
   font-weight: 600;
+}
+
+@media (max-width: 1400px) {
+  .selected-file-status-summary:has(.status-blocked) .header-status-label {
+    display: none;
+  }
 }
 
 .header-status-number {

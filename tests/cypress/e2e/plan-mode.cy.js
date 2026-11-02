@@ -1,427 +1,63 @@
-import { refreshAndWait, findSection, findTask } from '../support/helpers.js';
-
-describe('View Modes (Triage & Plan)', () => {
-  const fixtureContent = `# TODO
-## BACKLOG
-* [ ] Todo task 1
-
-## PROJECTS
-* [ ] Project task 1
-
-# PROJECTS
-## Active Projects
-* [ ] Active project task
-
-# SELECTED
-## Ready
-* [ ] Selected task 1
-- [ ] Low planning task
-
-# SCHEDULED
-### WIP
-* [~] BILLS - Phone bill really really really really really really really really really really really really really really really really really long (Jan 14, follow up about refund)
-
-### CURRENT WEEK
-* [~] WORK - Website maintenance
-* [ ] TECH - Schedule service appointment
-
-# ARCHIVE
-## Old Stuff
-* [x] Completed task
-`;
+describe('Unified Plan navigation', () => {
+  const content = '# TODO\n### Inbox\n* [ ] Backlog task\n# PROJECTS\n### Ideas\n* [ ] Project task\n'
+    + '# SELECTED\n### Ready\n* [ ] Selected task\n- [ ] Low planning task\n'
+    + '# WIP\n### Current\n* [~] Active task\n# ARCHIVE\n### Past\n* [x] Old task | Oct 1 2026\n';
 
   beforeEach(() => {
-    cy.clearLocalStorage();
-    cy.writeTestFileContent(fixtureContent).then((fileInfo) => {
-      cy.wait(500);
+    cy.viewport(1800, 1000);
+    cy.writeTestFileContent(content).then(file => {
+      cy.wrap(file).as('file');
       cy.reload();
-      cy.contains('TO_s_DO_pid').should('be.visible');
-      cy.switchToFile(fileInfo.fileName);
+      cy.switchToFile(file.fileName);
     });
   });
 
-  describe('Plan Mode', () => {
-    it('should toggle low priority from the card and persist its markdown marker', () => {
-      cy.get('.view-mode-btn').contains('Plan').click();
+  it('has four tabs and stays in Plan when the active tab is clicked', () => {
+    cy.get('.view-mode-btn').then($tabs => expect([...$tabs].map(tab => tab.textContent.trim()))
+      .to.deep.equal(['Plan', 'Focus', 'Calendar', 'Raw']));
+    cy.contains('.view-mode-btn', 'Plan').should('have.class', 'active').click();
+    cy.get('.planning-workspace').should('be.visible');
+    cy.get('.planning-layout-switch, .drawer-toggle-btn').should('not.exist');
+  });
 
-      cy.contains('.task-card', 'Low planning task').as('lowTask')
-        .should('have.class', 'low-priority-task-card')
-        .find('.low-priority-badge').should('contain', 'LOW').click({ force: true });
-      cy.contains('.task-card', 'Low planning task')
-        .should('not.have.class', 'low-priority-task-card')
-        .find('.priority-btn').should('contain', 'HIGH').click({ force: true });
-      cy.contains('.task-card', 'Low planning task')
-        .find('.priority-btn').should('have.attr', 'aria-label', 'Make low priority').click({ force: true });
-      cy.contains('.task-card', 'Low planning task')
-        .should('have.class', 'low-priority-task-card')
-        .find('.low-priority-badge').should('contain', 'LOW');
-
-      cy.wait(500);
+  for (const oldMode of ['normal', 'triage', 'plan']) {
+    it(`opens old ${oldMode} preferences in the outline workspace`, () => {
+      cy.window().then(win => {
+        win.localStorage.setItem('viewMode', oldMode);
+        win.localStorage.setItem('planningLayout', 'board');
+      });
       cy.reload();
-      cy.contains('.task-card', 'Low planning task')
-        .should('have.class', 'low-priority-task-card')
-        .find('.low-priority-badge').should('contain', 'LOW');
+      cy.get('.planning-workspace').should('be.visible');
+      cy.get('.planning-columns .selected-stack').should('be.visible');
+      cy.get('.planning-columns .wip-stack').should('be.visible');
+      cy.contains('.view-mode-btn', 'Plan').should('have.class', 'active');
     });
+  }
 
-    it('should toggle plan mode and interact with WIP tasks', () => {
-      // Use existing WIP tasks from fixture
-      const existingWipTask = 'BILLS - Phone bill really really really really really really really really really really really really really really really really really long';
-
-      // Verify task is visible in normal mode
-      cy.get('.wip-column').should('contain', existingWipTask);
-
-      // Enable plan mode by clicking the Plan button
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-
-      // Verify Plan button is active
-      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
-
-      // Verify WIP tasks are still visible and we can interact with them
-      cy.get('.wip-column').should('contain', existingWipTask);
-
-      // Create a new task to test checkbox interaction
-      cy.get('.wip-column').contains('.section-header', 'CURRENT WEEK').parent().within(() => {
-        cy.get('.add-task-btn').click();
-        cy.get('.new-task-input').type('Test checkbox task');
-        cy.get('.confirm-edit-btn').click();
-      });
-
-      // Now test the checkbox on the new task
-      findTask('Test checkbox task').parent().within(() => {
-        // First verify it's unchecked
-        cy.get('.custom-checkbox').should('have.class', 'unchecked');
-        // Click to mark as completed
-        cy.get('.custom-checkbox').click();
-        // Verify it's now completed
-        cy.get('.custom-checkbox').should('have.class', 'checked');
-      });
-    });
-
-    it('should collapse TODO, PROJECTS, and DONE but expand SELECTED and WIP in plan mode', () => {
-      // Start in normal mode - all columns should be expanded
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.projects-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.done-stack').should('not.have.class', 'drawer-collapsed');
-
-      // Enable plan mode
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-
-      // Verify correct columns are collapsed/expanded
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.projects-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.done-stack').should('have.class', 'drawer-collapsed');
-
-      // SELECTED column doesn't have collapse behavior, so just verify it's visible
-      cy.get('.selected-stack').should('be.visible');
-    });
-
-    it('should hide section action buttons when column is collapsed in plan mode', () => {
-      // Enable plan mode
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-
-      // TODO and PROJECTS should be collapsed
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.projects-stack').should('have.class', 'drawer-collapsed');
-
-      // Section action buttons should be hidden in collapsed columns
-      cy.get('.todo-column .section-header-actions').should('not.exist');
-      cy.get('.projects-column .section-header-actions').should('not.exist');
-
-      // But section titles should still be visible
-      cy.get('.todo-column .section-title').should('exist');
-      cy.get('.projects-column .section-title').should('exist');
-
-      // Expanded columns (SELECTED, WIP) should still have action buttons
-      cy.get('.selected-column .section-header-actions').should('exist');
-      cy.get('.wip-column .section-header-actions').should('exist');
-    });
-
-    it('should persist plan mode across page reload', () => {
-      // Enable plan mode
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-
-      // Verify it's enabled - button is active and drawers are collapsed
-      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.done-stack').should('have.class', 'drawer-collapsed');
-
-      // Reload and verify persistence
-      refreshAndWait();
-
-      // Verify plan mode is still enabled
-      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-
-      // Verify we can still interact with tasks
-      findTask('TECH - Schedule service appointment').should('be.visible');
-
-      // Disable plan mode by clicking Plan again
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-
-      // Reload and verify mode stays disabled
-      refreshAndWait();
-
-      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
-      // After disabling view mode, drawer states return to default (expanded)
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-    });
-
-    it('should return to normal mode and expand all columns when clicking active Plan button', () => {
-      // Enable plan mode
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-
-      // Click Plan again to disable (return to normal)
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-
-      // Verify we're back to normal mode (no active button)
-      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
-      cy.get('.view-mode-btn').contains('Triage').should('not.have.class', 'active');
-
-      // All columns should be expanded
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.projects-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.done-stack').should('not.have.class', 'drawer-collapsed');
-    });
+  it('opens backlog groups and archive from the outline without changing the file', () => {
+    cy.contains('.planning-overview', 'Todo + Projects').click();
+    cy.get('.planning-columns .todo-stack').should('be.visible');
+    cy.get('.planning-columns .projects-stack').should('be.visible');
+    cy.contains('.planning-heading-link', 'ARCHIVE').click();
+    cy.get('.planning-columns .done-stack').should('be.visible');
+    cy.contains('.planning-overview', 'Selected + WIP').click();
+    cy.get('@file').then(file => cy.readFile(file.filePath).should('equal', content));
   });
 
-  describe('Triage Mode', () => {
-    it('should collapse WIP and DONE but expand TODO, PROJECTS, and SELECTED in triage mode', () => {
-      // Start in normal mode - all columns should be expanded
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-
-      // Enable triage mode
-      cy.get('.view-mode-btn').contains('Triage').click();
-      cy.wait(100);
-
-      // Verify Triage button is active
-      cy.get('.view-mode-btn').contains('Triage').should('have.class', 'active');
-
-      // Verify correct columns are collapsed/expanded
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.projects-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.done-stack').should('have.class', 'drawer-collapsed');
-
-      // SELECTED column should be visible
-      cy.get('.selected-stack').should('be.visible');
-    });
-
-    it('should allow interaction with TODO and PROJECTS columns in triage mode', () => {
-      // Enable triage mode
-      cy.get('.view-mode-btn').contains('Triage').click();
-      cy.wait(100);
-
-      // TODO column should be expanded, so we can add tasks directly
-      findSection('PROJECTS').scrollIntoView();
-      findSection('PROJECTS').within(() => {
-        cy.get('.add-task-btn').click();
-        cy.get('.new-task-input').type('Triage mode task');
-        cy.get('.confirm-edit-btn').click();
-      });
-
-      // Verify task was created
-      findTask('Triage mode task').should('exist');
-    });
-
-    it('should hide section action buttons when column is collapsed in triage mode', () => {
-      // Enable triage mode
-      cy.get('.view-mode-btn').contains('Triage').click();
-      cy.wait(100);
-
-      // WIP and DONE should be collapsed
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.done-stack').should('have.class', 'drawer-collapsed');
-
-      // Section action buttons should be hidden in collapsed columns
-      cy.get('.wip-column .section-header-actions').should('not.exist');
-      cy.get('.done-column .section-header-actions').should('not.exist');
-
-      // But section titles should still be visible
-      cy.get('.wip-column .section-title').should('exist');
-      cy.get('.done-column .section-title').should('exist');
-
-      // Expanded columns (TODO, PROJECTS, SELECTED) should still have action buttons
-      cy.get('.todo-column .section-header-actions').should('exist');
-      cy.get('.projects-column .section-header-actions').should('exist');
-      cy.get('.selected-column .section-header-actions').should('exist');
-    });
-
-    it('should persist triage mode across page reload', () => {
-      // Enable triage mode
-      cy.get('.view-mode-btn').contains('Triage').click();
-      cy.wait(100);
-
-      // Verify it's enabled
-      cy.get('.view-mode-btn').contains('Triage').should('have.class', 'active');
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-
-      // Reload and verify persistence
-      refreshAndWait();
-
-      // Verify triage mode is still enabled
-      cy.get('.view-mode-btn').contains('Triage').should('have.class', 'active');
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-    });
-
-    it('should return to normal mode when clicking active Triage button', () => {
-      // Enable triage mode
-      cy.get('.view-mode-btn').contains('Triage').click();
-      cy.wait(100);
-      cy.get('.view-mode-btn').contains('Triage').should('have.class', 'active');
-
-      // Click Triage again to disable (return to normal)
-      cy.get('.view-mode-btn').contains('Triage').click();
-      cy.wait(100);
-
-      // Verify we're back to normal mode (no active button)
-      cy.get('.view-mode-btn').contains('Triage').should('not.have.class', 'active');
-      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
-
-      // Drawer states return to default (all expanded)
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-    });
+  it('adds and completes a task using the existing controls', () => {
+    cy.contains('.planning-columns .section', 'Current').find('.add-task-btn').click();
+    cy.get('.new-task-input').type('New outline task{enter}');
+    cy.contains('.planning-columns .task-card', 'New outline task').find('.custom-checkbox').click();
+    cy.get('@file').then(file => cy.readFile(file.filePath).should('contain', '[x] New outline task'));
   });
 
-  describe('Mode Switching', () => {
-    it('should switch directly from Triage to Plan mode', () => {
-      // Enable triage mode
-      cy.get('.view-mode-btn').contains('Triage').click();
-      cy.wait(100);
-      cy.get('.view-mode-btn').contains('Triage').should('have.class', 'active');
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-
-      // Switch directly to plan mode
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-
-      // Verify Plan is now active and Triage is not
-      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
-      cy.get('.view-mode-btn').contains('Triage').should('not.have.class', 'active');
-
-      // Verify plan mode drawer states
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-    });
-
-    it('should switch directly from Plan to Triage mode', () => {
-      // Enable plan mode
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-
-      // Switch directly to triage mode
-      cy.get('.view-mode-btn').contains('Triage').click();
-      cy.wait(100);
-
-      // Verify Triage is now active and Plan is not
-      cy.get('.view-mode-btn').contains('Triage').should('have.class', 'active');
-      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
-
-      // Verify triage mode drawer states
-      cy.get('.todo-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-    });
-  });
-
-  describe('WIP Column Drawer', () => {
-    it('should have a toggle button for WIP drawer when expanded', () => {
-      // WIP column should be expanded by default
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-
-      // Find the hide button (←) in WIP column header
-      cy.get('.wip-column .column-header-buttons .drawer-toggle-btn').should('exist');
-      cy.get('.wip-column .column-header-buttons .drawer-toggle-btn').should('contain', '←');
-    });
-
-    it('should collapse WIP drawer when clicking hide button', () => {
-      // Click the hide button
-      cy.get('.wip-column .column-header-buttons .drawer-toggle-btn').click();
-      cy.wait(100);
-
-      // Verify WIP is collapsed
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-
-      // Verify the expand button (→) appears
-      cy.get('.wip-column .column-title-container .drawer-toggle-btn').should('contain', '→');
-    });
-
-    it('should expand WIP drawer when clicking show button', () => {
-      // First collapse it
-      cy.get('.wip-column .column-header-buttons .drawer-toggle-btn').click();
-      cy.wait(100);
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-
-      // Click the expand button
-      cy.get('.wip-column .column-title-container .drawer-toggle-btn').click();
-      cy.wait(100);
-
-      // Verify WIP is expanded
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-    });
-
-    it('should persist WIP drawer state across page reload', () => {
-      // Collapse WIP drawer
-      cy.get('.wip-column .column-header-buttons .drawer-toggle-btn').click();
-      cy.wait(100);
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-
-      // Reload and verify persistence
-      refreshAndWait();
-
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-
-      // Expand again
-      cy.get('.wip-column .column-title-container .drawer-toggle-btn').click();
-      cy.wait(100);
-
-      // Reload and verify it stays expanded
-      refreshAndWait();
-
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-    });
-
-    it('should exit view mode when manually toggling WIP drawer but preserve other column states', () => {
-      // Enable plan mode (WIP is expanded, TODO/PROJECTS/DONE collapsed)
-      cy.get('.view-mode-btn').contains('Plan').click();
-      cy.wait(100);
-      cy.get('.view-mode-btn').contains('Plan').should('have.class', 'active');
-      cy.get('.wip-stack').should('not.have.class', 'drawer-collapsed');
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.projects-stack').should('have.class', 'drawer-collapsed');
-
-      // Manually collapse WIP
-      cy.get('.wip-column .column-header-buttons .drawer-toggle-btn').click();
-      cy.wait(100);
-
-      // View mode should be deactivated (back to normal)
-      cy.get('.view-mode-btn').contains('Plan').should('not.have.class', 'active');
-      cy.get('.view-mode-btn').contains('Triage').should('not.have.class', 'active');
-
-      // WIP is now collapsed (we just toggled it)
-      cy.get('.wip-stack').should('have.class', 'drawer-collapsed');
-
-      // Other columns should remain in their plan mode state (collapsed)
-      cy.get('.todo-stack').should('have.class', 'drawer-collapsed');
-      cy.get('.projects-stack').should('have.class', 'drawer-collapsed');
+  it('keeps low-priority controls and compact rows', () => {
+    cy.contains('.planning-columns .task-card', 'Low planning task')
+      .find('.low-priority-badge').click();
+    cy.contains('.planning-columns .task-card', 'Low planning task')
+      .should('not.have.class', 'low-priority-task-card');
+    cy.get('.planning-columns .task-card').each($card => {
+      expect($card[0].getBoundingClientRect().height).to.be.lessThan(40);
     });
   });
 });

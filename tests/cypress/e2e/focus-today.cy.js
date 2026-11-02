@@ -180,7 +180,7 @@ describe('Focus Mode (execution carousel)', () => {
       .and('contain', 'Inflight wip task').and('contain', 'Parked selected task');
     cy.get('.panel-in-progress-queued .focus-row-check.inflight').should('have.length', 2);
     cy.get('.panel-in-progress-queued .focus-day-header').eq(0).should('contain', 'In Progress / Parked');
-    cy.get('.panel-in-progress-queued .focus-day-header').eq(1).should('contain', 'Waiting / Blocked');
+    cy.get('.panel-in-progress-queued .focus-day-header').eq(1).should('contain', 'Parked');
 
     // NOW: remaining unstarted work, under a Today section holding the overdue
     // SELECTED card (flagged urgent) ahead of the WIP card due today
@@ -272,8 +272,9 @@ describe('Focus Mode (execution carousel)', () => {
 
     enterFocusMode();
 
-    // Urgent underway work joins NOW; later active work returns to Up Next.
-    cy.get('.panel-in-progress-queued .focus-task-row').should('not.exist');
+    // Today/overdue override SELECTED; other started SELECTED work is parked.
+    cy.get('.panel-in-progress-queued .focus-task-row').should('have.length', 1)
+      .and('contain', 'Selected inflight later');
 
     // Overdue and due-today work remain in NOW.
     cy.get('.panel-now .focus-task-row').should('have.length', 2);
@@ -281,13 +282,11 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Selected inflight overdue')
       .find('.focus-badge.overdue').should('exist');
     cy.get('.panel-now .focus-task-row').eq(1).should('contain', 'Selected due today');
-    // Future work goes to Up Next regardless of active status; undated queued work follows.
-    cy.get('.panel-upnext .focus-task-row').should('have.length', 4);
-    cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Selected inflight later')
-      .find('.focus-badge.due-later').should('exist');
-    cy.get('.panel-upnext .focus-task-row').eq(1).should('contain', 'Selected due later');
-    cy.get('.panel-upnext .focus-task-row').eq(2).should('contain', 'Selected undated');
-    cy.get('.panel-upnext .focus-task-row').eq(3).should('contain', 'Wip undated');
+    // Unstarted future/undated tasks retain their existing Up Next placement.
+    cy.get('.panel-upnext .focus-task-row').should('have.length', 3);
+    cy.get('.panel-upnext .focus-task-row').eq(0).should('contain', 'Selected due later');
+    cy.get('.panel-upnext .focus-task-row').eq(1).should('contain', 'Selected undated');
+    cy.get('.panel-upnext .focus-task-row').eq(2).should('contain', 'Wip undated');
   });
 
   it('should group current-month work at the top of Up Next', () => {
@@ -407,8 +406,7 @@ describe('Focus Mode (execution carousel)', () => {
       .should('contain', 'Low Priority').and('contain', '1');
     cy.get('.panel-in-progress-queued .focus-task-row.low-priority-row')
       .should('have.length', 1).and('contain', 'Low blocked task');
-    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Low this-week task')
-      .should('have.class', 'this-week-row');
+    cy.get('.panel-now').should('contain', 'Low this-week task');
     cy.get('.panel-in-progress-queued .focus-day-header.day-this-week').should('not.exist');
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Normal blocked task')
       .should('not.have.class', 'low-priority-row');
@@ -479,14 +477,14 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-now .focus-task-row').eq(3).should('contain', 'Today task');
 
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Normal weekly task')
-      .find('.focus-priority-toggle').click();
+      .find('[aria-label="Make low priority"]').click();
     cy.get('.panel-now .focus-day-header').eq(0).should('contain', '3');
     cy.get('.panel-now .focus-day-header').eq(1).should('contain', '3');
     cy.get('.panel-now .focus-task-row').eq(0).should('contain', 'Normal weekly task')
       .and('have.class', 'low-priority-row');
   });
 
-  it('should cycle all four statuses and keep completed-due-today work in NOW', () => {
+  it('should cycle all five statuses and keep completed-due-today work in NOW', () => {
     enterFocusMode();
 
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
@@ -504,6 +502,10 @@ describe('Focus Mode (execution carousel)', () => {
       .find('.focus-row-check').should('have.class', 'inflight');
     cy.get('.focus-task-row.transitioning').should('not.exist');
 
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
+      .find('.focus-row-check').click();
+    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
+      .find('.focus-row-check').should('have.class', 'status-blocked');
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
       .find('.focus-row-check').click();
     cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Queued wip task')
@@ -566,9 +568,9 @@ describe('Focus Mode (execution carousel)', () => {
 
     enterFocusMode();
 
-    // Whole-week work has one purple home above the urgent Today group.
+    // Unstarted and active weekly work share NOW.
     cy.get('.panel-now .focus-day-header').should('have.length', 2);
-    cy.get('.panel-now .focus-day-header').eq(0).should('contain', 'This Week').and('contain', '2')
+    cy.get('.panel-now .focus-day-header').eq(0).should('contain', 'THIS WEEK').and('contain', '2')
       .and('have.class', 'day-this-week');
     cy.get('.panel-now .focus-day-header').eq(1).should('contain', 'Today').and('contain', '2')
       .and('have.class', 'day-today');
@@ -581,6 +583,7 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-now .focus-task-row').eq(3).should('contain', 'Wip due today');
 
     cy.get('.panel-in-progress-queued').should('not.contain', 'Wip active all week');
+    cy.get('.panel-in-progress-queued .day-this-week').should('not.exist');
 
     // The full-width week strip contains only Sunday-Saturday. Future cards
     // land in their day, while Today mirrors the spotlight counts.
@@ -934,8 +937,8 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-upnext .focus-panel-rule-trigger').trigger('mouseenter');
     cy.get('.focus-panel-rules-tooltip').should('be.visible')
       .and('contain', 'Up Next includes')
-      .and('contain', 'Work due after this week, regardless of status')
-      .and('contain', 'Unstarted, unscheduled work');
+      .and('contain', 'Unstarted work due after this week, assigned to a whole month, or unscheduled')
+      .and('contain', 'In-progress WIP work due after this week');
     cy.get('.panel-upnext .focus-panel-rule-trigger').trigger('mouseleave');
 
     cy.get('.panel-now .focus-panel-rule-trigger').trigger('mouseenter');
@@ -948,9 +951,8 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-in-progress-queued .focus-panel-rule-trigger').trigger('mouseenter');
     cy.get('.focus-panel-rules-tooltip').should('be.visible')
       .and('contain', 'In Progress / Parked includes')
-      .and('contain', 'In-progress work due this week as a whole')
-      .and('contain', 'In Progress / Parked')
-      .and('contain', 'Waiting / Blocked');
+      .and('contain', 'In-progress WIP work assigned to this month or unscheduled')
+      .and('contain', 'In-progress SELECTED work under Parked, except whole-current-week, due-today and overdue work');
   });
 
   it('should persist card sorting within one Focus group and source section', () => {
@@ -1079,37 +1081,28 @@ describe('Focus Mode (execution carousel)', () => {
     cy.get('.panel-in-progress-queued').should('contain', 'Parked selected task');
   });
 
-  it('should keep off-deck in-progress SELECTED work in Waiting / Blocked', () => {
+  it('should keep off-deck in-progress SELECTED work in Parked', () => {
     enterFocusMode();
 
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Parked selected task')
       .find('.focus-section-badge').should('contain', 'Ready');
-    cy.get('.panel-in-progress-queued .focus-day-header').should('contain', 'Waiting / Blocked');
+    cy.get('.panel-in-progress-queued .focus-day-header').should('contain', 'Parked');
 
     // Merely viewing status does not needlessly move the underlying task
     cy.get('.focus-exit-btn').click();
     cy.get('.selected-column').should('contain', 'Parked selected task');
   });
 
-  it('should cycle in-progress through completed, cancelled, queued, and back', () => {
+  it('should cycle in-progress through completed, blocked, cancelled, queued, and back', () => {
     enterFocusMode();
-
-    cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-row-check').click({ force: true });
-
-    cy.wait(2100);
-    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-row-check.checked').click({ force: true });
-
-    cy.wait(1600);
-    cy.get('.panel-now .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-row-check.cancelled').click({ force: true });
-
-    cy.wait(1600);
-    cy.get('.panel-upnext .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-row-check.unchecked').click({ force: true });
-
-    cy.wait(2100);
+    cy.clock();
+    for (const state of ['checked', 'status-blocked', 'cancelled', 'unchecked', 'in-progress']) {
+      cy.contains('.panel-in-progress-queued .focus-task-row', 'Inflight wip task')
+        .find('.focus-row-check').click({ force: true });
+      cy.contains('.panel-in-progress-queued .focus-task-row', 'Inflight wip task')
+        .find('.focus-row-check').should('have.class', state);
+    }
+    cy.tick(3000);
     cy.get('.panel-in-progress-queued .focus-task-row').should('contain', 'Inflight wip task');
   });
 

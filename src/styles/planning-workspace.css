@@ -1,0 +1,81 @@
+/* Presentation only: the workspace uses the existing board editors and mutations. */
+.todo-app .planning-workspace .kanban-column:not(.ice-column) {
+  box-sizing: border-box;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  box-shadow: var(--ui-shadow-sm);
+  overflow: visible;
+}
+.todo-app .planning-workspace .kanban-column .column-header {
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  border: 0;
+  border-bottom: 1px solid var(--ui-border);
+  border-radius: 14px 14px 0 0;
+  padding: 12px;
+  min-height: 46px;
+  height: auto;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.todo-app .planning-workspace .column-title-container {
+  font-size: 15px;
+  letter-spacing: 1.8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.todo-app .planning-workspace .column-header-buttons { gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.todo-app .planning-workspace .column-counts { gap: 3px; }
+.todo-app .planning-workspace .count-badge { font-size: 11px; padding: 1px 5px; }
+.todo-app .planning-workspace .column-content { border-radius: 0 0 14px 14px; padding: 7px; }
+.todo-app .planning-workspace .section:not(.on-ice-section) {
+  background: var(--ui-surface);
+  padding: 6px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+.todo-app .planning-workspace .section-header { padding: 6px 2px 8px; flex-wrap: wrap; gap: 5px; }
+.todo-app .planning-workspace .section-header .section-title {
+  color: var(--ui-muted);
+  font-size: 12px;
+  letter-spacing: 1.1px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.todo-app .planning-workspace .collapse-expand-link { font-size: 11px; }
+.todo-app .planning-workspace .section-header-actions { gap: 3px; margin-left: auto; }
+.todo-app .planning-workspace .section-header-actions button,
+.todo-app .planning-workspace .column-header-buttons button { font-size: 12px; padding: 3px 6px; min-width: 0; }
+.todo-app .planning-workspace .task-card:not(.ice-task-card) {
+  background: var(--ui-surface-soft);
+  color: var(--ui-text);
+  border-radius: 8px;
+}
+.todo-app .planning-workspace .task-title { font-size: 15px; font-weight: 650; }
+.todo-app .planning-workspace .task-card.low-priority-task-card .task-title { font-size: 13px; }
+.todo-app .planning-workspace .task-buttons-container {
+  gap: 2px; flex-wrap: nowrap; justify-content: flex-end; width: auto; min-width: 0; flex: 0 0 auto;
+}
+.todo-app .planning-workspace .task-container { flex-wrap: nowrap; align-items: center; }
+.todo-app .planning-workspace .task-content-area { flex: 1; gap: 4px; }
+.todo-app .planning-workspace .task-icon-btn { font-size: 13px; padding: 2px 3px; min-width: 20px; }
+.todo-app .planning-workspace .task-icon-btn.clock-btn {
+  font-size: 11px;
+  color: var(--ui-blue);
+  border: 1px solid var(--ui-border-strong);
+  background: var(--ui-surface);
+  border-radius: 5px;
+  padding: 3px 5px;
+  white-space: nowrap;
+  width: auto;
+  height: auto;
+}
+.todo-app .planning-workspace .inline-note-preview { font-size: 11px; max-width: 100px; }
+.todo-app .planning-workspace .note-date-row { flex-wrap: wrap; gap: 8px; }
+.todo-app .planning-workspace .note-edit-section,
+.todo-app .planning-workspace .date-edit-section { min-width: 130px; flex: 1; }
+.todo-app .planning-workspace .note-date-row > .subtask-editor { flex: 1 1 100%; min-width: 0; }
+.todo-app .planning-workspace .task-edit-wrapper { min-width: 0; }
+.todo-app .planning-workspace .task-text-edit,
+.todo-app .planning-workspace .note-text-edit { font-size: 14px; }
+.todo-app .planning-workspace .edit-actions-row { flex-wrap: wrap; }

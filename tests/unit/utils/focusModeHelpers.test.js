@@ -103,7 +103,8 @@ describe('focusModeHelpers', () => {
     it('keeps active and waiting work on the right while scheduled work goes left and urgent/general work stays in NOW', () => {
       expect(taskTexts(model().inProgressQueued)).toEqual([
         'Selected inflight undated',
-        'Wip inflight undated'
+        'Wip inflight undated',
+        'Selected inflight due Friday'
       ]);
 
       expect(taskTexts(model().now)).toEqual([
@@ -125,13 +126,13 @@ describe('focusModeHelpers', () => {
       ]);
       expect(model().inProgressQueued.map(entry => entry.dueGroup)).toEqual([
         'undated',
-        'undated'
+        'undated',
+        `day-${new Date(2026, 7, 14).getTime()}`
       ]);
     });
 
     it('puts unstarted scheduled work in UP NEXT by period precision', () => {
       expect(taskTexts(model().upNext)).toEqual([
-        'Selected inflight due Friday',
         'Wip due Saturday',
         'Selected due next week',
         'Selected undated',
@@ -142,14 +143,14 @@ describe('focusModeHelpers', () => {
       expect([...groupSequence].sort((a, b) => a - b)).toEqual(groupSequence);
     });
 
-    it('represents an in-progress future day this week only through the weekly source bucket', () => {
+    it('parks SELECTED work assigned to a future day this week', () => {
       const currentWeek = model();
-      expect(taskTexts(currentWeek.inProgressQueued)).not.toContain('Selected inflight due Friday');
+      expect(taskTexts(currentWeek.inProgressQueued)).toContain('Selected inflight due Friday');
       expect(taskTexts(currentWeek.now)).not.toContain('Selected inflight due Friday');
-      expect(taskTexts(currentWeek.upNext)).toContain('Selected inflight due Friday');
+      expect(taskTexts(currentWeek.upNext)).not.toContain('Selected inflight due Friday');
     });
 
-    it('keeps month work in UP NEXT and combines current whole-week work in NOW', () => {
+    it('parks only started SELECTED work and retains unstarted placement', () => {
       const periods = deriveFocusModel(parseTodoMdFile(`# SELECTED
 ## Ready
 * [ ] Whole August ! Aug 2026
@@ -159,8 +160,32 @@ describe('focusModeHelpers', () => {
       expect(taskTexts(periods.upNext)).toEqual(['Whole August']);
       expect(taskTexts(periods.now)).toEqual(['Whole current week', 'Active current week']);
       expect(periods.inProgressQueued).toEqual([]);
-      expect(periods.now[0].dueGroup).toBe('this-week');
-      expect(periods.now[1].dueGroup).toBe('this-week');
+      expect(periods.now.every(entry => entry.dueGroup === 'this-week')).toBe(true);
+    });
+
+    it('routes active weekly WIP tasks and subtasks to NOW without changing urgency or future weeks', () => {
+      const data = parseTodoMdFile(`# WIP
+### Work
+* [~] Active week ! Aug Week #2 2026
+* [ ] Queued week ! Aug Week #2 2026
+- [~] Low active week ! Aug Week #2 2026
+* [~] Urgent ! Aug 12 2026
+* [~] Late ! Aug 11 2026
+* [~] Later ! Aug Week #3 2026
++ [~] Initiative
+  - [~] Active child ! Aug Week #2 2026
+  - [ ] Queued child ! Aug Week #2 2026
+`);
+      const result = deriveFocusModel(data);
+      const weekly = result.now.filter(entry => entry.dueGroup === 'this-week');
+      const titles = entries => entries.map(entry => entry.task.text.split(' ! ')[0]);
+      expect(titles(weekly)).toEqual([
+        'Active week', 'Queued week', 'Low active week', 'Active child', 'Queued child'
+      ]);
+      expect(titles(result.now)).toEqual(expect.arrayContaining(['Queued week', 'Queued child', 'Urgent', 'Late']));
+      expect(taskTexts(result.inProgressQueued)).not.toContain('Active week');
+      expect(titles(result.inProgressQueued)).not.toContain('Active child');
+      expect(taskTexts(result.upNext)).toContain('Later');
     });
 
     it('keeps in-progress work after the current week in UP NEXT', () => {
@@ -233,7 +258,7 @@ describe('focusModeHelpers', () => {
       expect(entry.section.items).toContain(entry.task);
     });
 
-    it('allows only in-progress status in the right panel and groups other undated work as unscheduled', () => {
+    it('parks only started work and keeps unstarted undated work unscheduled', () => {
       expect(model().inProgressQueued.every(entry => entry.task.statusChar === '~')).toBe(true);
       const unscheduled = model().upNext.filter(entry => entry.group === 'unscheduled');
       expect(taskTexts(unscheduled)).toEqual(['Selected undated', 'Wip queued undated']);
@@ -280,7 +305,7 @@ describe('focusModeHelpers', () => {
       expect(groups.map(group => group.label)).toEqual([
         'This Week',
         'This Month - Active',
-        'This Month - Parked'
+        'Parked'
       ]);
       expect(groups.map(group => taskTexts(group.entries))).toEqual([
         ['Whole week'],

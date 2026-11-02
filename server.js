@@ -226,13 +226,14 @@ const isTodoFileName = (fileName) => fileName.endsWith('.todo.md') || fileName.e
 
 // Helper function to scan a directory for todo files
 const getTaskCounts = (filePath) => {
-  const counts = { total: 0, open: 0, active: 0, done: 0, skipped: 0 };
+  const counts = { total: 0, open: 0, active: 0, blocked: 0, done: 0, skipped: 0 };
   const content = fs.readFileSync(filePath, 'utf8');
   for (const line of content.split('\n')) {
-    const match = line.match(/^\s*[*-]\s+\[([ x~-])\]\s+/);
+    const match = line.match(/^\s*[*+-]\s+\[([ x~!-])\]\s+/);
     if (!match) continue;
     counts.total += 1;
     if (match[1] === '~') counts.active += 1;
+    else if (match[1] === '!') counts.blocked += 1;
     else if (match[1] === 'x') counts.done += 1;
     else if (match[1] === '-') counts.skipped += 1;
     else counts.open += 1;
@@ -363,7 +364,7 @@ app.get('/api/todos', (req, res) => {
 // Update todo file content - only endpoint for writing to file
 app.post('/api/todos', (req, res) => {
   try {
-    const { content, path: filePath } = req.body;
+    const { content, path: filePath, expectedContent } = req.body;
 
     logger.info('Received POST request to /api/todos', {
       path: filePath,
@@ -378,6 +379,16 @@ app.post('/api/todos', (req, res) => {
     if (!filePath) {
       logger.error('Missing path in request');
       return res.status(400).json({ error: 'Path is required' });
+    }
+
+    // Raw editing uses an exact-source precondition so stale drafts cannot overwrite newer work.
+    if (expectedContent !== undefined) {
+      if (typeof expectedContent !== 'string') {
+        return res.status(400).json({ error: 'expectedContent must be source text' });
+      }
+      if (!fs.existsSync(filePath) || fs.readFileSync(filePath, 'utf8') !== expectedContent) {
+        return res.status(409).json({ error: 'The file changed since editing began' });
+      }
     }
 
     // Create backup before writing to file

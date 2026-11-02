@@ -38,7 +38,7 @@ describe('Focus date navigation', () => {
     expect(renderTodoMdFile(data)).toBe(before);
   });
 
-  it('navigates by day or date, disables mutation, and restores live mode', async () => {
+  it('navigates by day or date and edits the actual task while viewing another date', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 19, 12));
     const data = parseTodoMdFile(source);
@@ -56,18 +56,22 @@ describe('Focus date navigation', () => {
     expect(wrapper.get('.focus-current-day-label').text()).toBe('Today!');
     expect(wrapper.get('.focus-week-range').text()).toContain('This week');
     expect(wrapper.text()).not.toContain('As of');
-    expect(wrapper.get('.focus-preview-label').text()).toBe('Read-only');
-    expect(wrapper.find('.focus-quick-add-btn').exists()).toBe(false);
+    expect(wrapper.find('.focus-preview-label').exists()).toBe(false);
+    expect(wrapper.find('.focus-quick-add-btn').exists()).toBe(true);
     expect(wrapper.find('.focus-overdue-btn').exists()).toBe(false);
-    for (const button of wrapper.findAll('.focus-task-row button')) {
-      expect(button.attributes('disabled')).toBeDefined();
-      await button.trigger('click');
-    }
-    await wrapper.get('.focus-task-row').trigger('contextmenu');
-    expect(wrapper.find('.focus-task-context-menu').exists()).toBe(false);
-    expect(wrapper.find('[draggable="true"]').exists()).toBe(false);
-    expect(wrapper.emitted('update')).toBeUndefined();
-    expect(renderTodoMdFile(data)).toBe(before);
+    const title = wrapper.findAll('.panel-now .focus-row-title').find(button => button.text() === 'Future day');
+    expect(title.attributes('disabled')).toBeUndefined();
+    await title.trigger('click');
+    await wrapper.get('.focus-edit-name').setValue('Edited future day');
+    await wrapper.get('.focus-edit-save').trigger('click');
+    expect(wrapper.emitted('update')).toHaveLength(1);
+    expect(renderTodoMdFile(data)).toContain('Edited future day ! Sep 26 2026');
+    expect(renderTodoMdFile(data)).not.toBe(before);
+    await wrapper.get('.focus-quick-add-btn').trigger('click');
+    expect(wrapper.get('.focus-quick-add-popover').text()).toContain('Today');
+    await wrapper.get('.focus-quick-add-input').setValue('Added on displayed date');
+    await wrapper.get('.focus-quick-add-input').trigger('keydown', { key: 'Enter' });
+    expect(renderTodoMdFile(data)).toContain('Added on displayed date ! Sep 26 2026');
     await wrapper.get('[aria-label="Focus date"]').setValue('2027-01-03');
     expect(wrapper.get('.focus-date').text()).toContain('Jan 3rd, 2027');
     await wrapper.findAll('.focus-as-of button').find(b => b.text() === 'Back to today').trigger('click');

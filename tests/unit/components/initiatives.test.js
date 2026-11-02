@@ -54,7 +54,7 @@ describe('Initiatives', () => {
     expect(wrapper.get('.focus-upnext-content').text()).not.toContain('Initiative');
     await wrapper.get('.focus-initiatives .priority-toggle').trigger('click');
     expect(wrapper.find('.focus-initiatives').exists()).toBe(true);
-    expect(wrapper.get('.focus-initiatives .priority-toggle').text()).toBe('↕');
+    expect(wrapper.findAll('.focus-initiatives .priority-toggle').map(button => button.text())).toEqual(['↑', '↓']);
     await vi.advanceTimersByTimeAsync(700);
     await nextTick();
     expect(wrapper.find('.focus-initiatives').exists()).toBe(false);
@@ -68,13 +68,12 @@ describe('Initiatives', () => {
     const data = parseTodoMdFile('# WIP\n### Work\n* [ ] Task ! Dec 2099\n');
     const task = data.columnStacks.WIP.sections[0].items[0];
     const wrapper = mount(FocusMode, { props: { todoData: data } });
-    const button = wrapper.get('.focus-upnext-content .priority-toggle');
-    await button.trigger('click');
-    expect(button.text()).toBe('LOW');
+    await wrapper.get('.focus-upnext-content [aria-label="Make low priority"]').trigger('click');
+    expect(wrapper.get('.focus-upnext-content .priority-toggle').text()).toBe('LOW');
     expect(task.listMarker).toBe('*');
     await vi.advanceTimersByTimeAsync(500);
-    await button.trigger('click');
-    expect(button.text()).toBe('HIGH');
+    await wrapper.get('.focus-upnext-content .priority-toggle').trigger('click');
+    expect(wrapper.get('.focus-upnext-content .priority-toggle').text()).toBe('HIGH');
     await vi.advanceTimersByTimeAsync(500);
     expect(task.listMarker).toBe('*');
     expect(wrapper.find('.focus-initiatives').exists()).toBe(false);

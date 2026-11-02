@@ -5,7 +5,7 @@ describe('Task Sorting Feature', () => {
     // Use existing test data from AUTOSORT TEST section
     findTask('sort4').within(() => {
       // Change status to trigger animation
-      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
+      cy.get('.custom-checkbox').click(); // settled in-progress -> completed
       
       // Verify the checkbox has the pending-sort class (pulsing animation)
       cy.get('.custom-checkbox').should('have.class', 'pending-sort');
@@ -42,7 +42,8 @@ describe('Task Sorting Feature', () => {
     // Change sort8 from completed [x] to unchecked [ ] - should float down
     findTask('sort8').within(() => {
       cy.get('.custom-checkbox').click(); // completed -> in-progress
-      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
+      cy.get('.custom-checkbox').click(); // in-progress -> blocked
+      cy.get('.custom-checkbox').click(); // blocked -> cancelled
       cy.get('.custom-checkbox').click(); // - -> (space)
     });
     
@@ -73,7 +74,8 @@ describe('Task Sorting Feature', () => {
     findTask('sort6').within(() => {
       cy.get('.custom-checkbox').click(); // unchecked -> completed
       cy.get('.custom-checkbox').click(); // completed -> in-progress
-      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
+      cy.get('.custom-checkbox').click(); // in-progress -> blocked
+      cy.get('.custom-checkbox').click(); // blocked -> cancelled
     });
     cy.wait(3500);
     
@@ -192,7 +194,8 @@ describe('Task Sorting Feature', () => {
     // Now change it back to unchecked (should move down)
     findTask('sort0').within(() => {
       cy.get('.custom-checkbox').click(); // completed -> in-progress
-      cy.get('.custom-checkbox').click(); // in-progress -> cancelled
+      cy.get('.custom-checkbox').click(); // in-progress -> blocked
+      cy.get('.custom-checkbox').click(); // blocked -> cancelled
       cy.get('.custom-checkbox').click(); // cancelled -> unchecked
     });
     

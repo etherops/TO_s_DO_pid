@@ -27,6 +27,7 @@
             <span class="count-badge total-count">{{ taskCounts.total }}</span>
             <span v-if="taskCounts.todo > 0" class="count-badge todo-count">{{ taskCounts.todo }}</span>
             <span v-if="taskCounts.inProgress > 0" class="count-badge in-progress-count">{{ taskCounts.inProgress }}</span>
+            <span v-if="taskCounts.blocked > 0" class="count-badge blocked-count" title="Blocked">{{ taskCounts.blocked }}</span>
             <span v-if="taskCounts.completed > 0" class="count-badge completed-count">{{ taskCounts.completed }}</span>
             <span v-if="taskCounts.cancelled > 0" class="count-badge cancelled-count">{{ taskCounts.cancelled }}</span>
           </div>
@@ -73,6 +74,7 @@
         </div>
       </div>
       <div class="column-content">
+        <slot name="before-sections" />
         <draggable
             :list="sections"
             :group="'sections'"
@@ -81,10 +83,11 @@
             ghost-class="ghost-section"
             @end="$emit('update')"
         >
-          <template #item="{ element: section }">
+          <template #item="{ element: section, index }">
             <KanbanSection
                 v-if="section.type !== 'raw-text'"
                 :section="section"
+                :data-planning-section="index"
                 :column-type="columnType"
                 :column="title"
                 :column-data="columnData"
@@ -166,7 +169,7 @@ const isRawTextColumn = computed(() => props.columnData?.type === 'raw-text');
 
 // Count tasks by status across all sections
 const taskCounts = computed(() => {
-  const counts = { todo: 0, inProgress: 0, completed: 0, cancelled: 0, total: 0 };
+  const counts = { todo: 0, inProgress: 0, blocked: 0, completed: 0, cancelled: 0, total: 0 };
 
   for (const section of props.sections) {
     if (section.type === 'raw-text') continue;
@@ -176,6 +179,7 @@ const taskCounts = computed(() => {
       switch (item.statusChar) {
         case ' ': counts.todo++; break;
         case '~': counts.inProgress++; break;
+        case '!': counts.blocked++; break;
         case 'x': counts.completed++; break;
         case '-': counts.cancelled++; break;
       }
@@ -268,15 +272,10 @@ const cycleColumnCollapseState = () => {
 const setAllSectionsCollapseState = (targetState) => {
   if (!columnRef.value) return;
 
-  // Dispatch custom event that sections will listen to
-  const event = new CustomEvent('set-collapse-state', {
-    detail: { state: targetState },
-    bubbles: true
-  });
-  // Target the collapse-controls wrapper in each section
-  columnRef.value.querySelectorAll('.collapse-controls').forEach(el => {
-    el.dispatchEvent(event);
-  });
+  // Section roots remain mounted even when fully hidden.
+  for (const el of columnRef.value.querySelectorAll('.section')) {
+    el.dispatchEvent(new CustomEvent('set-collapse-state', { detail: { state: targetState } }));
+  }
 };
 
 // Collapse all sections in this column (set to partial state)

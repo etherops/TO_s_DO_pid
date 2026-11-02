@@ -1,29 +1,40 @@
 <template>
-  <div class="subtask-date-picker" aria-label="Subtask due date" @keydown.esc.stop="$emit('close')">
+  <div class="subtask-date-picker" :aria-label="completion ? 'Subtask completion date' : 'Subtask due date'"
+       @keydown.esc.stop="$emit('close')">
     <div class="shortcuts">
       <button v-for="option in shortcuts" :key="option.label" type="button"
-              @click="choose(option.value)">{{ option.label }}</button>
-      <button type="button" @click="choose('')">Clear</button>
+              @pointerdown.stop.prevent="choose(option.value)"
+              @click="!$event.detail && choose(option.value)">{{ option.label }}</button>
+      <button type="button" @pointerdown.stop.prevent="choose('')"
+              @click="!$event.detail && choose('')">Clear</button>
       <button type="button" aria-label="Close date picker" @click="$emit('close')">×</button>
     </div>
     <div class="custom-date">
-      <button v-for="option in ['day', 'week', 'month']" :key="option" type="button"
+      <button v-for="option in (completion ? [] : ['day', 'week', 'month'])" :key="option" type="button"
               :class="{ active: kind === option }" @click="kind = option">{{ option }}</button>
       <input :type="kind === 'day' ? 'date' : kind" :value="inputValue"
-             :aria-label="`Subtask due ${kind}`" @change="chooseInput($event.target.value)" />
+             :aria-label="completion ? 'Subtask completed on' : `Subtask due ${kind}`"
+             @change="chooseInput($event.target.value)" />
     </div>
   </div>
 </template>
 <script setup>
 import { computed, ref } from 'vue';
 import { isoWeekInputFromSunday, sundayValueFromIsoWeekInput } from '../utils/dateHelpers';
-const props = defineProps({ modelValue: { type: String, default: '' } });
+const props = defineProps({
+  modelValue: { type: String, default: '' }, completion: { type: Boolean, default: false }
+});
 const emit = defineEmits(['update:modelValue', 'close']);
-const kind = ref(props.modelValue.startsWith('week:') ? 'week'
+const kind = ref(props.completion ? 'day' : props.modelValue.startsWith('week:') ? 'week'
   : props.modelValue.startsWith('month:') ? 'month' : 'day');
 const format = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const shortcuts = computed(() => {
   const today = new Date();
+  if (props.completion) {
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    return [{ label: 'Today', value: format(today) }, { label: 'Yesterday', value: format(yesterday) }];
+  }
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   const sunday = new Date(today);

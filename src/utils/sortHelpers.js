@@ -6,13 +6,24 @@ export const getStatusPriority = (statusChar) => {
     case 'x': return 4; // Completed - highest priority
     case '-': return 3; // Cancelled - second highest
     case '~': return 2; // In progress - third highest  
+    case '!': return 2; // Blocked work stays with active work
     case ' ': return 1; // Unchecked - lowest priority
     default: return 0;
   }
 };
 
+const getTaskStatusPriority = task => getStatusPriority(task.statusChar);
+
+export const getBoardTaskSortPriority = task => {
+  if (task.statusChar !== ' ') return getTaskStatusPriority(task);
+  const hasProgress = (task.children || []).some(child =>
+    child.type === 'subtask' && ['x', '~', '!', '-'].includes(child.statusChar)
+  );
+  return getStatusPriority(hasProgress ? '~' : ' ');
+};
+
 // Find the correct target index for a task based on its priority
-export const findTargetIndex = (items, taskIndex, targetPriority) => {
+export const findTargetIndex = (items, taskIndex, targetPriority, getPriority = getTaskStatusPriority) => {
   let targetIndex = taskIndex;
   
   // Check if we need to move UP (higher priority)
@@ -22,7 +33,7 @@ export const findTargetIndex = (items, taskIndex, targetPriority) => {
     // Skip raw-text items
     if (currentItem.type === 'raw-text') continue;
     
-    const currentPriority = getStatusPriority(currentItem.statusChar);
+    const currentPriority = getPriority(currentItem);
     
     // If current item has higher priority, we can't go above it
     if (currentPriority > targetPriority) {
@@ -48,7 +59,7 @@ export const findTargetIndex = (items, taskIndex, targetPriority) => {
       // Skip raw-text items
       if (currentItem.type === 'raw-text') continue;
       
-      const currentPriority = getStatusPriority(currentItem.statusChar);
+      const currentPriority = getPriority(currentItem);
       
       // If current item has higher priority, we should move below it
       if (currentPriority > targetPriority) {
@@ -119,8 +130,9 @@ export const sortTaskToCorrectPosition = async (items, task, emit, options = {})
   
   if (taskIndex === -1) return false; // Not found
   
-  const targetPriority = getStatusPriority(task.statusChar);
-  const targetIndex = findTargetIndex(items, taskIndex, targetPriority);
+  const getPriority = options.getPriority || getTaskStatusPriority;
+  const targetPriority = getPriority(task);
+  const targetIndex = findTargetIndex(items, taskIndex, targetPriority, getPriority);
   
   // Move the task if we found a different position
   if (targetIndex !== taskIndex) {

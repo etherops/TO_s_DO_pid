@@ -27,7 +27,7 @@ describe('Focus note editing', () => {
     expect(task.text).toBe('Task ! Dec 2099');
     await wrapper.get('[aria-label="Preview next day"]').trigger('click');
     await wrapper.get('button.focus-row-title').trigger('click');
-    expect(wrapper.find('.focus-edit-note').exists()).toBe(false);
+    expect(wrapper.find('.focus-edit-note').exists()).toBe(true);
     wrapper.unmount();
   });
 });

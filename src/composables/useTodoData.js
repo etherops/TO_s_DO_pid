@@ -40,12 +40,13 @@ export function useTodoData() {
     };
 
     const taskCountsFromContent = (content) => {
-        const counts = { total: 0, open: 0, active: 0, done: 0, skipped: 0 };
+        const counts = { total: 0, open: 0, active: 0, blocked: 0, done: 0, skipped: 0 };
         String(content).split('\n').forEach(line => {
-            const match = line.match(/^\s*[*-]\s+\[([ x~-])\]\s+/);
+            const match = line.match(/^\s*[*+-]\s+\[([ x~!-])\]\s+/);
             if (!match) return;
             counts.total += 1;
             if (match[1] === '~') counts.active += 1;
+            else if (match[1] === '!') counts.blocked += 1;
             else if (match[1] === 'x') counts.done += 1;
             else if (match[1] === '-') counts.skipped += 1;
             else counts.open += 1;

@@ -48,6 +48,7 @@ const statusBucket = (statusChar) => {
   if (statusChar === 'x') return 'completed';
   if (statusChar === '-') return 'cancelled';
   if (statusChar === '~') return 'inProgress';
+  if (statusChar === '!') return 'blocked';
   return 'queued';
 };
 

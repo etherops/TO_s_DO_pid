@@ -1,13 +1,16 @@
 <!-- components/KanbanBoard.vue -->
 <template>
-  <div class="kanban-container">
+  <div class="kanban-shell">
+  <div class="kanban-container outline-container">
     <!-- Archive Confirmation Modal -->
     <ArchiveConfirmationModal
         v-if="archiveConfirmation"
         :section-name="archiveConfirmation.sectionName"
         :section-items="archiveConfirmation.sectionItems"
-        :new-section-name="archiveConfirmation.newSectionName"
+        :fallback-date="archiveConfirmation.fallbackDate"
         :available-columns="archiveConfirmation.availableColumns"
+        :initial-weeks="archiveConfirmation.initialWeeks"
+        :archive-columns="todoData.columnStacks"
         @close="cancelArchiveConfirmation"
         @confirm="confirmArchive"
     />
@@ -25,161 +28,60 @@
         @move-to-section="handleMoveToSection"
     />
 
-    <!-- TODO Columns -->
-    <div v-if="hasTodoColumns" class="column-stack todo-stack" :class="{ 'drawer-collapsed': !isTodoDrawerExpanded }">
-      <template v-for="columnName in props.todoData.columnOrder" :key="`todo-${columnName}`">
+    <PlanningWorkspace :todo-data="todoData">
+      <template #column="{ column, showArchiveWeeks, showArchive }">
         <KanbanColumn
-            v-if="props.todoData.columnStacks[columnName]?.name === 'TODO'"
-            column-type="TODO"
-            :title="columnName"
-            :sections="props.todoData.columnStacks[columnName].sections"
-            :can-add-section="true"
-            :column="columnName"
-            :column-data="getColumnDataWithIce(columnName)"
+            :column-type="column.name"
+            :title="column.key"
+            :sections="column.sections"
+            :can-add-section="column.name !== 'DONE'"
+            :column="column.key"
+            :column-data="getColumnDataWithIce(column.key)"
             :is-task-selected="isTaskSelected"
             :selected-task-ids="selectedTaskIds"
-            :is-drawer-expanded="isTodoDrawerExpanded"
-            @add-section="createNewSection('TODO', columnName)"
-            @task-updated="handleTaskUpdate"
-            @section-updated="handleSectionUpdate"
-            @update="emit('update')"
-            @task-click="handleTaskClick"
-            @task-context-menu="handleTaskContextMenu"
-            @toggle-drawer="toggleTodoDrawer"
-            @multi-drag-complete="handleMultiDragComplete"
-        />
-      </template>
-    </div>
-
-    <!-- PROJECTS Columns -->
-    <div v-if="hasProjectsColumns" class="column-stack projects-stack" :class="{ 'drawer-collapsed': !isProjectsDrawerExpanded }">
-      <template v-for="columnName in props.todoData.columnOrder" :key="`projects-${columnName}`">
-        <KanbanColumn
-            v-if="props.todoData.columnStacks[columnName]?.name === 'PROJECTS'"
-            column-type="PROJECTS"
-            :title="columnName"
-            :sections="props.todoData.columnStacks[columnName].sections"
-            :can-add-section="true"
-            :column="columnName"
-            :column-data="getColumnDataWithIce(columnName)"
-            :is-task-selected="isTaskSelected"
-            :selected-task-ids="selectedTaskIds"
-            :is-drawer-expanded="isProjectsDrawerExpanded"
-            @add-section="createNewSection('PROJECTS', columnName)"
-            @task-updated="handleTaskUpdate"
-            @section-updated="handleSectionUpdate"
-            @update="emit('update')"
-            @task-click="handleTaskClick"
-            @task-context-menu="handleTaskContextMenu"
-            @toggle-drawer="toggleProjectsDrawer"
-            @multi-drag-complete="handleMultiDragComplete"
-        />
-      </template>
-    </div>
-
-    <!-- SELECTED Columns -->
-    <div v-if="hasSelectedColumns" class="column-stack selected-stack">
-      <template v-for="columnName in props.todoData.columnOrder" :key="`selected-${columnName}`">
-        <KanbanColumn
-            v-if="props.todoData.columnStacks[columnName]?.name === 'SELECTED'"
-            column-type="SELECTED"
-            :title="columnName"
-            :sections="props.todoData.columnStacks[columnName].sections"
-            :can-add-section="true"
-            :column="columnName"
-            :column-data="getColumnDataWithIce(columnName)"
-            :is-task-selected="isTaskSelected"
-            :selected-task-ids="selectedTaskIds"
-            @add-section="createNewSection('SELECTED', columnName)"
+            @add-section="createNewSection(column.name, column.key)"
             @task-updated="handleTaskUpdate"
             @section-updated="handleSectionUpdate"
             @update="emit('update')"
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
             @multi-drag-complete="handleMultiDragComplete"
-        />
+        >
+          <template #before-sections>
+            <PlanningArchiveWeeks v-if="showArchiveWeeks" :todo-data="todoData"
+                                  @archive-week="archiveWipWeek" @view-archive="showArchive" />
+          </template>
+        </KanbanColumn>
       </template>
-    </div>
-
-    <!-- WIP Columns -->
-    <div v-if="hasWipColumns" class="column-stack wip-stack" :class="{ 'drawer-collapsed': !isWipDrawerExpanded }">
-      <template v-for="columnName in props.todoData.columnOrder" :key="`wip-${columnName}`">
-        <KanbanColumn
-            v-if="props.todoData.columnStacks[columnName]?.name === 'WIP'"
-            column-type="WIP"
-            :title="columnName"
-            :sections="props.todoData.columnStacks[columnName].sections"
-            :can-add-section="true"
-            :column="columnName"
-            :column-data="getColumnDataWithIce(columnName)"
-            :is-task-selected="isTaskSelected"
-            :selected-task-ids="selectedTaskIds"
-            :is-drawer-expanded="isWipDrawerExpanded"
-            @add-section="createNewSection('WIP', columnName)"
-            @task-updated="handleTaskUpdate"
-            @section-updated="handleSectionUpdate"
-            @update="emit('update')"
-            @task-click="handleTaskClick"
-            @task-context-menu="handleTaskContextMenu"
-            @toggle-drawer="toggleWipDrawer"
-            @multi-drag-complete="handleMultiDragComplete"
-        />
-      </template>
-    </div>
-
-    <!-- DONE Columns -->
-    <div v-if="hasDoneColumns" class="column-stack done-stack" :class="{ 'drawer-collapsed': !isDoneDrawerExpanded }">
-      <template v-for="columnName in props.todoData.columnOrder" :key="`done-${columnName}`">
-        <KanbanColumn
-            v-if="props.todoData.columnStacks[columnName]?.name === 'DONE'"
-            column-type="DONE"
-            :title="columnName"
-            :sections="props.todoData.columnStacks[columnName].sections"
-            :can-add-section="false"
-            :column="columnName"
-            :column-data="getColumnDataWithIce(columnName)"
-            :is-task-selected="isTaskSelected"
-            :selected-task-ids="selectedTaskIds"
-            :is-drawer-expanded="isDoneDrawerExpanded"
-            @task-updated="handleTaskUpdate"
-            @section-updated="handleSectionUpdate"
-            @update="emit('update')"
-            @task-click="handleTaskClick"
-            @task-context-menu="handleTaskContextMenu"
-            @toggle-drawer="toggleDoneDrawer"
-            @multi-drag-complete="handleMultiDragComplete"
-        />
-      </template>
-    </div>
+    </PlanningWorkspace>
+  </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import KanbanColumn from './KanbanColumn.vue';
 import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
 import ContextMenu from './ContextMenu.vue';
-import { formatWeekPeriodLabel, startOfSundayWeek } from '../utils/dateHelpers.js';
+import PlanningWorkspace from './PlanningWorkspace.vue';
+import PlanningArchiveWeeks from './PlanningArchiveWeeks.vue';
+import '../styles/planning-workspace.css';
+import { archiveTaskGroups, groupTasksForArchive, wipArchiveSections } from '../utils/archiveHelpers.js';
 import { useTaskSelection } from '../composables/useTaskSelection.js';
-import { sortTaskToCorrectPosition } from '../utils/sortHelpers.js';
+import { getBoardTaskSortPriority, sortTaskToCorrectPosition } from '../utils/sortHelpers.js';
 
 const props = defineProps({
   todoData: {
     type: Object,
     default: () => ({ columnOrder: [], columnStacks: {} })
-  },
-  viewMode: {
-    type: String,
-    default: 'normal',
-    validator: (value) => ['normal', 'triage', 'plan'].includes(value)
   }
 });
 
-const emit = defineEmits(['update', 'set-view-mode', 'clear-view-mode']);
-
+const emit = defineEmits(['update']);
 
 // Archive confirmation state
 const archiveConfirmation = ref(null);
+watch(() => props.todoData, () => { archiveConfirmation.value = null; });
 
 // Task selection composable
 const {
@@ -196,144 +98,6 @@ const contextMenu = ref({
   position: { x: 0, y: 0 },
   currentColumn: '',
   currentSection: ''
-});
-
-// Flag to preserve drawer states when exiting view mode via column toggle
-const preserveDrawersOnExit = ref(false);
-
-// Drawer state for TODO column - load from localStorage
-const isTodoDrawerExpanded = ref(
-  localStorage.getItem('todoDrawerExpanded') !== 'false'
-);
-
-const toggleTodoDrawer = () => {
-  // If in a view mode, exit it (but preserve other drawer states)
-  if (props.viewMode !== 'normal') {
-    preserveDrawersOnExit.value = true;
-    emit('clear-view-mode');
-  }
-  isTodoDrawerExpanded.value = !isTodoDrawerExpanded.value;
-};
-
-// Save TODO drawer state to localStorage when it changes
-watch(isTodoDrawerExpanded, (newValue) => {
-  localStorage.setItem('todoDrawerExpanded', String(newValue));
-});
-
-// Drawer state for PROJECTS column - load from localStorage
-const isProjectsDrawerExpanded = ref(
-  localStorage.getItem('projectsDrawerExpanded') !== 'false'
-);
-
-const toggleProjectsDrawer = () => {
-  if (props.viewMode !== 'normal') {
-    preserveDrawersOnExit.value = true;
-    emit('clear-view-mode');
-  }
-  isProjectsDrawerExpanded.value = !isProjectsDrawerExpanded.value;
-};
-
-// Save PROJECTS drawer state to localStorage when it changes
-watch(isProjectsDrawerExpanded, (newValue) => {
-  localStorage.setItem('projectsDrawerExpanded', String(newValue));
-});
-
-// Drawer state for DONE column - load from localStorage
-const isDoneDrawerExpanded = ref(
-  localStorage.getItem('doneDrawerExpanded') !== 'false'
-);
-
-const toggleDoneDrawer = () => {
-  if (props.viewMode !== 'normal') {
-    preserveDrawersOnExit.value = true;
-    emit('clear-view-mode');
-  }
-  isDoneDrawerExpanded.value = !isDoneDrawerExpanded.value;
-};
-
-// Save DONE drawer state to localStorage when it changes
-watch(isDoneDrawerExpanded, (newValue) => {
-  localStorage.setItem('doneDrawerExpanded', String(newValue));
-});
-
-// Drawer state for WIP column - load from localStorage
-const isWipDrawerExpanded = ref(
-  localStorage.getItem('wipDrawerExpanded') !== 'false'
-);
-
-const toggleWipDrawer = () => {
-  if (props.viewMode !== 'normal') {
-    preserveDrawersOnExit.value = true;
-    emit('clear-view-mode');
-  }
-  isWipDrawerExpanded.value = !isWipDrawerExpanded.value;
-};
-
-// Save WIP drawer state to localStorage when it changes
-watch(isWipDrawerExpanded, (newValue) => {
-  localStorage.setItem('wipDrawerExpanded', String(newValue));
-});
-
-// Drawer arrangements per view mode
-const DRAWER_PRESETS = {
-  plan:   { todo: false, projects: false, wip: true,  done: false },
-  triage: { todo: true,  projects: true,  wip: false, done: false },
-  normal: { todo: true,  projects: true,  wip: true,  done: true }
-};
-
-const applyDrawerPreset = (mode) => {
-  const preset = DRAWER_PRESETS[mode];
-  if (!preset) return;
-  isTodoDrawerExpanded.value = preset.todo;
-  isProjectsDrawerExpanded.value = preset.projects;
-  isWipDrawerExpanded.value = preset.wip;
-  isDoneDrawerExpanded.value = preset.done;
-};
-
-// Apply drawer presets on view mode changes, and on mount (the board remounts
-// when returning from the full-screen Focus mode)
-watch(() => props.viewMode, (newViewMode, oldViewMode) => {
-  if (newViewMode === 'normal') {
-    // On mount in normal mode, keep the drawer states persisted in localStorage
-    if (oldViewMode === undefined) return;
-    // Keep current drawer states when exiting a mode via manual column toggle
-    if (preserveDrawersOnExit.value) {
-      preserveDrawersOnExit.value = false;
-      return;
-    }
-  }
-  applyDrawerPreset(newViewMode);
-}, { immediate: true });
-
-// Check if each column stack type has any columns
-const hasTodoColumns = computed(() => {
-  return props.todoData.columnOrder?.some(columnName =>
-    props.todoData.columnStacks[columnName]?.name === 'TODO'
-  ) ?? false;
-});
-
-const hasProjectsColumns = computed(() => {
-  return props.todoData.columnOrder?.some(columnName =>
-    props.todoData.columnStacks[columnName]?.name === 'PROJECTS'
-  ) ?? false;
-});
-
-const hasSelectedColumns = computed(() => {
-  return props.todoData.columnOrder?.some(columnName =>
-    props.todoData.columnStacks[columnName]?.name === 'SELECTED'
-  ) ?? false;
-});
-
-const hasWipColumns = computed(() => {
-  return props.todoData.columnOrder?.some(columnName =>
-    props.todoData.columnStacks[columnName]?.name === 'WIP'
-  ) ?? false;
-});
-
-const hasDoneColumns = computed(() => {
-  return props.todoData.columnOrder?.some(columnName =>
-    props.todoData.columnStacks[columnName]?.name === 'DONE'
-  ) ?? false;
 });
 
 // Helper function to add ice logic to column data
@@ -512,7 +276,7 @@ const moveTasksToSection = async (taskIds, targetSection) => {
         
         // Auto-sort each moved task to its correct position based on status
         tasksToMove.forEach(task => {
-          sortTaskToCorrectPosition(targetSectionObj.items, task, emit);
+          sortTaskToCorrectPosition(targetSectionObj.items, task, emit, { getPriority: getBoardTaskSortPriority });
         });
         
         return true;
@@ -648,10 +412,6 @@ const handleSectionUpdate = (payload) => {
     }
     
     if (sectionToArchive) {
-      // Archive sections are named for the Sunday-Saturday week in which the
-      // archive action happens, using the same canonical naming as due weeks.
-      const newSectionName = formatWeekPeriodLabel(startOfSundayWeek(new Date()), { includeYear: true });
-      
       // Get available DONE columns
       const doneColumns = getDoneFileColumns();
       const availableColumns = doneColumns.length > 0 ? doneColumns : ['ARCHIVE'];
@@ -660,7 +420,7 @@ const handleSectionUpdate = (payload) => {
       archiveConfirmation.value = {
         sectionName: payload.sectionName,
         sectionItems: sectionToArchive.items || [],
-        newSectionName: newSectionName,
+        fallbackDate: new Date(),
         section: sectionToArchive,
         availableColumns: availableColumns
       };
@@ -678,124 +438,35 @@ const cancelArchiveConfirmation = () => {
 };
 
 // Confirm archive - execute the enhanced archive process
-const confirmArchive = (selectedColumn) => {
+const archiveWipWeek = weekName => {
+  if (archiveConfirmation.value) return;
+  const sections = wipArchiveSections(props.todoData);
+  const fallbackDate = new Date();
+  const group = groupTasksForArchive(sections.flatMap(section => section.items || []), fallbackDate)
+    .find(candidate => candidate.name === weekName);
+  if (!group) return;
+  const doneColumns = getDoneFileColumns();
+  const availableColumns = doneColumns.length ? doneColumns : ['ARCHIVE'];
+  archiveConfirmation.value = {
+    sectionName: 'WIP', sectionItems: group.tasks, sections, fallbackDate,
+    initialWeeks: [weekName], availableColumns
+  };
+};
+
+const confirmArchive = (selectedColumn, selectedWeeks = []) => {
   if (!archiveConfirmation.value) return;
-  
-  const { section, newSectionName } = archiveConfirmation.value;
-
-  // Only terminal cards belong in the archive. Leave the source section and
-  // every unfinished card in place.
-  const completedItems = section.items.filter(item =>
-    item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')
-  );
-
-  if (completedItems.length > 0) {
-    if (!props.todoData.columnStacks[selectedColumn]) {
-      props.todoData.columnStacks[selectedColumn] = { name: 'DONE', sections: [] };
-      props.todoData.columnOrder.push(selectedColumn);
-    }
-
-    const targetSections = props.todoData.columnStacks[selectedColumn].sections;
-    const existingArchive = targetSections.find(candidate => candidate.name === newSectionName);
-    if (existingArchive) {
-      existingArchive.items.push(...completedItems);
-    } else {
-      targetSections.unshift({
-        name: newSectionName,
-        type: 'section',
-        headerStyle: 'SMALL',
-        archivable: false,
-        on_ice: false,
-        items: [...completedItems]
-      });
-    }
-
-    section.items = section.items.filter(item => !completedItems.includes(item));
-  }
-
-  emit('update');
-  
-  // Clear confirmation modal
+  const { section, sections, fallbackDate } = archiveConfirmation.value;
   archiveConfirmation.value = null;
+  if (archiveTaskGroups(props.todoData, sections || [section], selectedColumn, selectedWeeks, fallbackDate)) {
+    clearSelection();
+    emit('update');
+  }
 };
 
 </script>
 
 <style scoped>
-.kanban-container {
-  display: flex;
-  height: calc(100vh - 40px);
-  gap: 10px;
-  padding: 10px;
-  overflow-x: auto;
-  position: relative;
-}
-
-.column-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex: 1;
-  min-width: 300px;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: relative;
-}
-
-/* TODO drawer styles */
-.todo-stack {
-  transition: min-width 0.3s ease-in-out, max-width 0.3s ease-in-out;
-}
-
-.todo-stack.drawer-collapsed {
-  min-width: 125px;
-  max-width: 125px;
-  overflow: hidden;
-}
-
-.todo-stack.drawer-collapsed :deep(.column-header-buttons) {
-  display: none;
-}
-
-/* PROJECTS drawer styles */
-.projects-stack {
-  transition: min-width 0.3s ease-in-out, max-width 0.3s ease-in-out;
-}
-
-.projects-stack.drawer-collapsed {
-  min-width: 125px;
-  max-width: 125px;
-  overflow: hidden;
-}
-
-.projects-stack.drawer-collapsed :deep(.column-header-buttons) {
-  display: none;
-}
-
-/* WIP drawer styles */
-.wip-stack {
-  transition: min-width 0.3s ease-in-out, max-width 0.3s ease-in-out;
-}
-
-.wip-stack.drawer-collapsed {
-  min-width: 125px;
-  max-width: 125px;
-  overflow: hidden;
-}
-
-.wip-stack.drawer-collapsed :deep(.column-header-buttons) {
-  display: none;
-}
-
-/* DONE drawer styles */
-.done-stack {
-  transition: min-width 0.3s ease-in-out, max-width 0.3s ease-in-out;
-}
-
-.done-stack.drawer-collapsed {
-  min-width: 50px;
-  max-width: 50px;
-  overflow: hidden;
-}
+.kanban-shell { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.kanban-container { display: flex; flex: 1; min-height: 0; overflow: hidden; padding: 6px 20px 20px; }
+.kanban-shell .kanban-container { padding-top: 6px; }
 </style>

@@ -9,8 +9,8 @@
         :selected-file="selectedFile"
         :view-mode="viewMode"
         :theme-preference="themePreference"
-        :can-undo="canUndo"
-        :can-redo="canRedo"
+        :can-undo="viewMode !== 'raw' && canUndo"
+        :can-redo="viewMode !== 'raw' && canRedo"
         @file-selected="handleFileSelected"
         @set-view-mode="setViewMode"
         @cycle-theme="cycleTheme"
@@ -32,7 +32,10 @@
       {{ parsingError }}
     </div>
 
-    <div v-if="loading" class="loading">
+    <RawMode v-if="viewMode === 'raw'" ref="rawMode" :file-path="selectedFile.path"
+             :file-label="selectedFile.name" :revision="todoData" @saved="loadTodoData" />
+
+    <div v-else-if="loading" class="loading">
       Loading...
     </div>
 
@@ -53,10 +56,7 @@
     <KanbanBoard
         v-else
         :todo-data="todoData"
-        :view-mode="viewMode"
         @update="handleUpdate"
-        @set-view-mode="setViewMode"
-        @clear-view-mode="clearViewMode"
     />
   </div>
 </template>
@@ -67,6 +67,7 @@ import FileTabBar from './components/FileTabBar.vue';
 import KanbanBoard from './components/KanbanBoard.vue';
 import FocusMode from './components/FocusMode.vue';
 import ReviewMode from './components/ReviewMode.vue';
+import RawMode from './components/RawMode.vue';
 import HistoryPanel from './components/HistoryPanel.vue';
 import { useTodoData } from './composables/useTodoData';
 import { useUndoRedo } from './composables/useUndoRedo';
@@ -86,24 +87,16 @@ const {
   registerAfterLoad
 } = useTodoData();
 
-// View mode state - load from localStorage ('normal', 'triage', 'plan', 'focus', 'review')
-// 'plan' arranges the board drawers for planning; 'focus' is the full-screen
-// execute-today view; 'review' is the full-screen calendar retrospective
-const viewMode = ref(
-  localStorage.getItem('viewMode') || 'normal'
-);
-
-const setViewMode = (mode) => {
-  // If clicking the same mode, toggle back to normal (which resets all drawers)
-  viewMode.value = (viewMode.value === mode) ? 'normal' : mode;
+// Old normal/triage preferences now open the single outline-based Plan workspace.
+const savedViewMode = localStorage.getItem('viewMode');
+const viewMode = ref(['focus', 'review', 'raw'].includes(savedViewMode) ? savedViewMode : 'plan');
+const rawMode = ref(null);
+const setViewMode = async (mode) => {
+  const nextMode = ['focus', 'review', 'raw'].includes(mode) ? mode : 'plan';
+  if (nextMode === viewMode.value) return;
+  if (rawMode.value && !await rawMode.value.confirmLeave()) return;
+  viewMode.value = nextMode;
   localStorage.setItem('viewMode', viewMode.value);
-};
-
-// Clear view mode without resetting drawer states (used when manually toggling columns)
-// The KanbanBoard sets a flag before emitting this, so the watcher knows to preserve drawers
-const clearViewMode = () => {
-  viewMode.value = 'normal';
-  localStorage.setItem('viewMode', 'normal');
 };
 
 // Theme preference - 'auto' follows the system, resolved to 'dark' or 'light'
@@ -152,6 +145,7 @@ const handleHistoryRestored = async () => {
 };
 
 const handleFileSelected = async (file) => {
+  if (rawMode.value && !await rawMode.value.confirmLeave()) return;
   await handleFileChange(file);
 };
 
@@ -160,6 +154,7 @@ const isEditableTarget = (target) => {
 };
 
 const handleUndoRedoShortcut = (event) => {
+  if (viewMode.value === 'raw') return;
   const key = event.key.toLowerCase();
   const modifierPressed = event.metaKey || event.ctrlKey;
 

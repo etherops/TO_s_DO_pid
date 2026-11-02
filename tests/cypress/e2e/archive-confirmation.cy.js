@@ -24,15 +24,14 @@ describe('Archive Confirmation Modal', () => {
     cy.get('.modal-backdrop').should('not.exist');
   });
 
-  it('should show the current-week archive section name in modal', () => {
+  it('should show completion-week choices in modal', () => {
     const sectionName = 'WIP';
     
     findSection(sectionName).within(() => {
       cy.get('.archive-section-btn').click();
     });
     
-    // The archive target is named using the canonical current-week format.
-    cy.get('.detail-text').should('match', /[A-Z][a-z]{2} Week #\d+ \d{4}/);
+    cy.get('.archive-week-summary').first().invoke('text').should('match', /[A-Z][a-z]{2} Week #\d+ \d{4}/);
     
     // Cancel
     cy.get('.btn-cancel').click();
@@ -46,6 +45,7 @@ describe('Archive Confirmation Modal', () => {
     });
     
     // Check for terminal-task preview
+    cy.get('.archive-week-summary input').check();
     cy.get('.incomplete-tasks-preview').should('exist');
     cy.get('.task-list .task-item').should('have.length.at.least', 1);
     
@@ -72,6 +72,7 @@ describe('Archive Confirmation Modal', () => {
     });
     
     // Confirm archive
+    cy.get('.archive-week-summary input').check();
     cy.get('.btn-confirm').contains('Archive Completed Tasks').click();
     
     // If archive column picker appears (multiple DONE columns), select ARCHIVE
@@ -89,7 +90,7 @@ describe('Archive Confirmation Modal', () => {
       cy.contains('.section-header', sectionName).should('exist');
     });
     
-    // Verify a current-week archive section appears in DONE.
+    // Verify a completion-week archive section appears in DONE.
     cy.get('.column-stack').eq(2).within(() => {
       cy.contains('.section-header', /Week #\d+ \d{4}/).should('exist');
     });
@@ -169,6 +170,7 @@ describe('Archive Confirmation Modal', () => {
     });
     
     // Confirm archive
+    cy.get('.archive-week-summary input').check();
     cy.get('.btn-confirm').click();
     
     // Wait for DOM updates

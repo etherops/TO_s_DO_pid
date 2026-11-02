@@ -44,7 +44,14 @@ describe('Task Status Toggle', () => {
             cy.get('.custom-checkbox').should('have.class', 'in-progress')
         })
 
-        // Click to change to cancelled
+        // Settled in-progress starts with done, then blocked on the next rapid click.
+        findTask(taskText).find('.custom-checkbox').click()
+        findTask(taskText).find('.custom-checkbox').click()
+        findTask(taskText).find('.custom-checkbox').should('have.class', 'status-blocked')
+        refreshAndWait()
+        findTask(taskText).find('.custom-checkbox').should('have.class', 'status-blocked')
+
+        // Blocked advances to cancelled.
         findTask(taskText).within(() => {
             cy.get('.custom-checkbox').click()
         })

@@ -86,15 +86,21 @@
 
           <div class="review-weeks">
           <div v-for="(week, weekIndex) in model.weeks" :key="weekIndex" class="review-week-row">
-            <button
+            <article
                 v-for="day in week"
                 :key="day.key"
-                type="button"
                 class="review-day"
                 :class="dayClasses(day)"
-                :aria-label="`${day.label}: ${day.completed.length} completed, ${day.cancelled.length} will not do, ${day.due.length} due`"
+                :data-date="day.key"
                 @click="selectBucket(day)"
             >
+              <button
+                  type="button"
+                  class="review-day-summary"
+                  :aria-label="`${day.label}: ${day.completed.length} completed, ${day.cancelled.length} will not do, ${day.due.length} due`"
+                  :aria-pressed="day.key === selectedBucketKey"
+                  @click.stop="selectBucket(day)"
+              >
               <div class="review-day-head">
                 <span class="review-day-number">{{ day.dayOfMonth }}</span>
                 <span v-if="bucketTotal(day)" class="review-day-total">{{ bucketTotal(day) }}</span>
@@ -111,7 +117,17 @@
                 <span v-if="day.cancelled.length" class="review-chip dropped">{{ day.cancelled.length }}</span>
                 <span v-if="day.due.length" class="review-chip open">{{ day.due.length }}</span>
               </div>
-            </button>
+              </button>
+              <ul v-if="bucketTotal(day)" class="calendar-day-tasks" tabindex="0"
+                  :aria-label="`Tasks for ${formatDateForTooltip(day.date)}`" @keydown.stop>
+                <li v-for="entry in dayEntries(day)" :key="entry.task.id" class="calendar-day-task"
+                    :title="`${taskStatusLabel(entry)}: ${entry.task.displayText}`">
+                  <span class="calendar-task-status" :class="`status-${entry.bucket}`"
+                        role="img" :aria-label="taskStatusLabel(entry)">{{ taskStatusSymbol(entry) }}</span>
+                  <span class="calendar-task-title">{{ entry.task.displayText }}</span>
+                </li>
+              </ul>
+            </article>
               </div>
             </div>
           </div>
@@ -292,6 +308,17 @@ const monthCompletedCount = computed(() =>
 );
 
 const bucketTotal = (bucket) => bucket.completed.length + bucket.cancelled.length + bucket.due.length;
+
+const dayEntries = (day) => [...day.due, ...day.completed, ...day.cancelled];
+const taskStatuses = {
+  queued: { label: 'Not started', symbol: '' },
+  inProgress: { label: 'In progress', symbol: '▪' },
+  blocked: { label: 'Blocked', symbol: '' },
+  completed: { label: 'Done', symbol: '✓' },
+  cancelled: { label: 'Will not do', symbol: '−' }
+};
+const taskStatusLabel = (entry) => taskStatuses[entry.bucket].label;
+const taskStatusSymbol = (entry) => taskStatuses[entry.bucket].symbol;
 
 const meterScale = computed(() => Math.max(1, model.value.totals.peakDayCount));
 const meterWidth = (count) => `${Math.round((count / meterScale.value) * 100)}%`;
@@ -541,8 +568,8 @@ const statTiles = computed(() => {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 8px;
-  flex: 1;
-  min-height: 56px;
+  flex: 1 0 120px;
+  min-height: 120px;
 }
 
 .review-strip {
@@ -656,8 +683,10 @@ const statTiles = computed(() => {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding: 6px;
   border: 1px solid var(--review-border);
   border-radius: 8px;
   background: var(--review-surface);
@@ -674,6 +703,90 @@ const statTiles = computed(() => {
 .review-day.is-today { border-color: var(--review-open); box-shadow: inset 0 0 0 1px var(--review-open); }
 .review-day.is-selected { border-color: var(--review-accent); box-shadow: inset 0 0 0 2px var(--review-accent); }
 .review-day.is-future .review-day-number { color: var(--review-muted); }
+
+.review-day-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.review-day-summary:focus-visible,
+.calendar-day-tasks:focus-visible {
+  outline: 2px solid var(--review-open);
+  outline-offset: -2px;
+  border-radius: 3px;
+}
+
+/* Busy days scroll independently; theme the native scrollbar in both color schemes. */
+.calendar-day-tasks {
+  flex: 1 1 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-strong, #c4cfda) transparent;
+  list-style: none;
+}
+
+.calendar-day-task {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.calendar-task-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-task-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 12px;
+  height: 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--review-muted);
+  border-radius: 2px;
+  color: var(--review-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.calendar-task-status.status-inProgress {
+  color: var(--ui-orange, #ff9800);
+  border-color: currentColor;
+  background: var(--ui-orange-soft, #fff6df);
+}
+.calendar-task-status.status-completed {
+  color: var(--review-done-text);
+  border-color: currentColor;
+  background: var(--ui-green-soft, #e7f4e6);
+}
+.calendar-task-status.status-blocked {
+  color: var(--ui-blocked, #df4c43);
+  border-color: currentColor;
+  background: var(--ui-blocked-soft, #fff0ee);
+}
+.calendar-task-status.status-cancelled { background: var(--ui-gray-soft, #edf0f3); }
 
 .review-day-head {
   display: flex;
@@ -707,6 +820,7 @@ const statTiles = computed(() => {
 
 .review-item-dot.bucket-completed { background: var(--review-done-fill); }
 .review-item-dot.bucket-cancelled { background: var(--review-dropped); }
+.review-item-dot.bucket-blocked { background: var(--ui-blocked); }
 
 .review-day.is-empty .review-day-meter { visibility: hidden; }
 
