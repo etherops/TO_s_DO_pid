@@ -1,4 +1,8 @@
 /* Presentation only: the workspace uses the existing board editors and mutations. */
+.planning-low-priority-heading, .planning-entry-heading { display: flex; justify-content: space-between;
+  margin: 8px 0 4px; padding: 3px 0; border-bottom: 1px solid var(--ui-border);
+  color: var(--ui-muted); font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+.planning-low-priority-heading > span, .planning-entry-heading > span { font-weight: 500; letter-spacing: 0; }
 .todo-app .planning-workspace .kanban-column:not(.ice-column) {
   box-sizing: border-box;
   border: 1px solid var(--ui-border);
@@ -12,46 +16,66 @@
   border: 0;
   border-bottom: 1px solid var(--ui-border);
   border-radius: 14px 14px 0 0;
-  padding: 12px;
-  min-height: 46px;
+  padding: 2px 8px;
+  min-height: 0;
   height: auto;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 .todo-app .planning-workspace .column-title-container {
-  font-size: 15px;
-  letter-spacing: 1.8px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  gap: 6px;
   flex-wrap: wrap;
   min-width: 0;
 }
-.todo-app .planning-workspace .column-header-buttons { gap: 4px; margin-left: auto; flex-wrap: wrap; }
-.todo-app .planning-workspace .column-counts { gap: 3px; }
-.todo-app .planning-workspace .count-badge { font-size: 11px; padding: 1px 5px; }
-.todo-app .planning-workspace .column-content { border-radius: 0 0 14px 14px; padding: 7px; }
+.todo-app .planning-workspace .column-header-buttons { gap: 2px; margin-left: auto; flex-wrap: nowrap; }
+.todo-app .planning-workspace .column-counts { gap: 2px; letter-spacing: 0; }
+.todo-app .planning-workspace .count-badge { font-size: 11px; padding: 1px 4px; }
+.todo-app .planning-workspace .column-content { border-radius: 0 0 14px 14px; padding: 3px; }
+.todo-app .planning-workspace .section-list { min-height: 0; }
 .todo-app .planning-workspace .section:not(.on-ice-section) {
   background: var(--ui-surface);
-  padding: 6px;
-  margin-bottom: 10px;
+  padding: 3px;
+  margin-bottom: 4px;
   min-width: 0;
 }
-.todo-app .planning-workspace .section-header { padding: 6px 2px 8px; flex-wrap: wrap; gap: 5px; }
+.todo-app .planning-workspace .section-header {
+  padding: 0 2px; margin-bottom: 2px; flex-wrap: nowrap; gap: 6px;
+}
+.todo-app .planning-workspace .section:last-child { margin-bottom: 0; }
+.todo-app .planning-workspace .section.column-root-section { border: 0; box-shadow: none; }
+.todo-app .planning-workspace .section-items { padding: 0 2px 2px; }
 .todo-app .planning-workspace .section-header .section-title {
+  flex: 1; min-width: 0;
   color: var(--ui-muted);
   font-size: 12px;
-  letter-spacing: 1.1px;
   font-weight: 700;
-  overflow-wrap: anywhere;
+  letter-spacing: .6px;
 }
-.todo-app .planning-workspace .collapse-expand-link { font-size: 11px; }
-.todo-app .planning-workspace .section-header-actions { gap: 3px; margin-left: auto; }
+.todo-app .planning-workspace .collapse-expand-link { display: none; }
+.todo-app .planning-workspace .section-header-actions {
+  gap: 2px; margin-left: auto; flex: 0 0 auto; min-height: 22px;
+}
+.todo-app .planning-workspace .section-header-actions .collapse-controls { display: none; }
 .todo-app .planning-workspace .section-header-actions button,
 .todo-app .planning-workspace .column-header-buttons button { font-size: 12px; padding: 3px 6px; min-width: 0; }
+.todo-app .planning-workspace .section-header-actions button {
+  margin: 0; height: 22px; box-sizing: border-box; padding: 1px 4px;
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.todo-app .planning-workspace .section-header-actions .add-task-btn { gap: 3px; }
+.todo-app .planning-workspace .section-header-actions .add-icon { margin: 0; font-size: 12px; }
 .todo-app .planning-workspace .task-card:not(.ice-task-card) {
   background: var(--ui-surface-soft);
   color: var(--ui-text);
   border-radius: 8px;
 }
 .todo-app .planning-workspace .task-title { font-size: 15px; font-weight: 650; }
+.todo-app .planning-workspace .task-title[role="button"] { cursor: text; }
+.todo-app .planning-workspace .task-title[role="button"]:focus-visible {
+  outline: 2px solid var(--ui-blue); outline-offset: 2px; border-radius: 3px;
+}
 .todo-app .planning-workspace .task-card.low-priority-task-card .task-title { font-size: 13px; }
 .todo-app .planning-workspace .task-buttons-container {
   gap: 2px; flex-wrap: nowrap; justify-content: flex-end; width: auto; min-width: 0; flex: 0 0 auto;

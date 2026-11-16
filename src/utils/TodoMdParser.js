@@ -1,16 +1,50 @@
 import { getStrippedDisplayText } from './taskTextHelpers';
 
+// Explicit, one-time migration. Preserve all source bytes outside the converted sections.
+// Reject nested/unsupported content rather than guessing how to flatten it.
+export function migrateProjectSections(source) {
+  const lines = source.split('\n');
+  const converted = [];
+  let inProjects = false;
+  for (let index = 0; index < lines.length; index++) {
+    if (/^# /.test(lines[index])) inProjects = /^# PROJECTS\s*$/i.test(lines[index]);
+    if (!inProjects || !/^#{2,3} /.test(lines[index])) continue;
+    let end = index + 1;
+    while (end < lines.length && !/^#{1,3} /.test(lines[end])) end++;
+    const body = lines.slice(index + 1, end);
+    const tasks = body.filter(line => /^[*+-] \[[ x~!-]\] /.test(line));
+    if (!tasks.length) continue;
+    // Already converted project sections must not be nested again on a second run.
+    if (tasks.every(line => line.startsWith('+ '))) continue;
+    if (body.some(line => line.trim() && !/^[*+-] \[[ x~!-]\] /.test(line))) {
+      throw new Error(`Cannot safely convert ${lines[index]}: nested or unsupported content`);
+    }
+    if (tasks.some(line => !line.startsWith('* '))) {
+      throw new Error(`Cannot safely convert ${lines[index]}: child priority would be lost`);
+    }
+    const title = lines[index].replace(/^#{2,3} /, '').trim();
+    // Keep a section heading so the paper format and parser retain an explicit container.
+    lines[index] = `### ${title}\n+ [ ] ${title}`;
+    for (let child = index + 1; child < end; child++) {
+      if (lines[child].trim()) lines[child] = `  -${lines[child].slice(1)}`;
+    }
+    converted.push({ title, tasks: tasks.length });
+    index = end - 1;
+  }
+  return { content: lines.join('\n'), converted };
+}
+
 // ColumnStack categories - determines which UI stack a column belongs to
 const COLUMNSTACK_CATEGORIES = {
   TODO: ['TODO', 'BACKLOG', 'INBOX', 'LATER', 'SOMEDAY', 'IDEAS', 'ICE'],
-  PROJECTS: ['PROJECTS', 'PROJECT'],
-  SELECTED: ['SELECTED', 'HOLD', 'ONGOING'],
+  // Legacy project headings remain readable, but no longer define a separate column type.
+  SELECTED: ['SELECTED', 'HOLD', 'ONGOING', 'PROJECTS', 'PROJECT'],
   WIP: ['WIP', 'SCHEDULED', 'IN PROGRESS', 'IN-PROGRESS', 'DOING', 'CURRENT', 'ACTIVE'],
   DONE: ['DONE', 'COMPLETE', 'COMPLETED', 'ARCHIVE', 'FINISHED', 'RESOLVED']
 };
 
 // Helper to map H1 column names to columnStack categories (TODO/WIP/DONE)
-function mapColumnToColumnStack(columnName) {
+export function mapColumnToColumnStack(columnName) {
   const upperName = columnName.toUpperCase();
   
   // Check each columnStack category
@@ -194,6 +228,11 @@ export function parseTodoMdFile(fileContent) {
     if (/^[*+-] \[/.test(line)) {
       const statusMatch = trimmedLine.match(/^([*+-]) \[([ x~!-])\]/);
 
+      // A headerless section is an internal container only: render it directly under H1.
+      // Do not invent a heading in the user's Markdown.
+      if (statusMatch && currentColumn && !currentSection) {
+        currentSection = createSection('', 'NONE');
+      }
       if (statusMatch && currentSection) {
         const listMarker = statusMatch[1];
         const statusChar = statusMatch[2];

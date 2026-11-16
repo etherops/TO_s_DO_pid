@@ -1,12 +1,12 @@
 <template>
   <button v-if="subtasks.length" type="button" class="subtask-indicator" :title="summary"
           :aria-label="`Edit subtasks: ${summary}`" @click.stop="$emit('edit')">
-    <span class="subtask-total" aria-hidden="true">{{ subtasks.length }} {{ subtasks.length === 1 ? 'subtask' : 'subtasks' }}</span>
+    <span class="subtask-total" aria-hidden="true">{{ compact ? subtasks.length : `${subtasks.length} ${subtasks.length === 1 ? 'subtask' : 'subtasks'}` }}</span>
   </button>
 </template>
 <script setup>
 import { computed } from 'vue';
-const props = defineProps({ task: { type: Object, required: true } });
+const props = defineProps({ task: { type: Object, required: true }, compact: Boolean });
 defineEmits(['edit']);
 const states = [
   { status: 'x', kind: 'checked', label: 'done' },

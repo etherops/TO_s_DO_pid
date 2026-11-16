@@ -168,7 +168,7 @@ const otherColumns = computed(() => {
 });
 
 const isCurrentSection = (section) => 
-  section.columnName === props.currentColumn && section.sectionName === props.currentSection;
+  section.columnName === props.currentColumn && section.section.name === props.currentSection;
 
 const handleSectionClick = (section) => {
   emit('move-to-section', section);

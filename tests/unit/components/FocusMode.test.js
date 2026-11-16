@@ -17,23 +17,25 @@ const mountWeeklyTasks = (tasks) => mount(FocusMode, {
   props: { todoData: parseTodoMdFile(`# SELECTED\n### Weekly plans\n${tasks.join('\n')}\n`), theme: 'light' }
 });
 
-describe('FocusMode NOW weekly priority groups', () => {
-  it('puts low-priority whole-week tasks after normal weekly tasks, before Today', () => {
+describe('FocusMode weekly priority display', () => {
+  it('keeps all whole-week priorities left and Today in the center', () => {
     const wrapper = mountWeeklyTasks([
       `* [ ] Normal weekly task ${weekDue}`,
       `- [ ] Low weekly task one ${weekDue}`,
       `- [ ] Low weekly task two ${weekDue}`,
+      `* [ ] Later normal weekly task ${weekDue}`,
       `* [ ] Today task ${todayDue}`
     ]);
 
     expect(wrapper.findAll('.panel-now .focus-day-header').map(header => header.text())).toEqual([
-      'This week3', 'Low Priority2', 'Today1'
+      'MAIN1', 'LOW PRIO0', 'BLOCKED/WAITING0'
     ]);
-    expect(wrapper.find('.panel-now .day-this-week-low-priority').exists()).toBe(true);
-    expect(wrapper.findAll('.panel-now .focus-task-row').map(row => row.find('.focus-row-title').text())).toEqual([
-      'Normal weekly task', 'Low weekly task one', 'Low weekly task two', 'Today task'
+    expect(wrapper.get('.panel-upnext .upnext-group-header').text()).toContain('4');
+    expect(wrapper.get('.panel-upnext .day-low-priority').text()).toBe('LOW PRIO2');
+    expect(wrapper.findAll('.panel-upnext .focus-task-row').map(row => row.find('.focus-row-title').text())).toEqual([
+      'Normal weekly task', 'Later normal weekly task', 'Low weekly task one', 'Low weekly task two'
     ]);
-    expect(wrapper.findAll('.panel-now .focus-task-row.low-priority-row')).toHaveLength(2);
+    expect(wrapper.findAll('.panel-upnext .focus-task-row.low-priority-row')).toHaveLength(2);
     wrapper.unmount();
   });
 
@@ -44,11 +46,13 @@ describe('FocusMode NOW weekly priority groups', () => {
     ]);
 
     expect(wrapper.findAll('.panel-now .focus-day-header').map(header => header.text())).toEqual([
-      'This week1', 'Low Priority1', 'Today1'
+      'MAIN1', 'LOW PRIO0', 'BLOCKED/WAITING0'
     ]);
-    expect(wrapper.findAll('.panel-now .focus-task-row').map(row => row.find('.focus-row-title').text())).toEqual([
-      'Low weekly task', 'Today task'
+    expect(wrapper.findAll('.panel-upnext .focus-task-row').map(row => row.find('.focus-row-title').text())).toEqual([
+      'Low weekly task'
     ]);
+    expect(wrapper.findAll('.panel-upnext .upnext-group-header')).toHaveLength(4);
+    expect(wrapper.get('.panel-upnext .day-low-priority').text()).toBe('LOW PRIO1');
     wrapper.unmount();
   });
 });
@@ -82,14 +86,14 @@ describe('FocusMode overdue rollover', () => {
       .flatMap(section => section.items)
       .find(task => task.text?.startsWith(name));
 
-    expect(wrapper.get('.focus-overdue-btn').text()).toContain('3');
+    expect(wrapper.get('.focus-overdue-btn').text()).toContain('4');
     await wrapper.get('.focus-overdue-btn').trigger('click');
 
     expect(findTask('Old day').text).toBe(`Old day (keep this note) ${todayDue}`);
     expect(findTask('Old week').text).toBe(`Old week ${todayDue}`);
     expect(findTask('Old month').text).toBe(`Old month ${todayDue}`);
     expect(findTask('Old week').listMarker).toBe('-');
-    expect(findTask('Other-column overdue').text).toBe(`Other-column overdue ${yesterdayDue}`);
+    expect(findTask('Other-column overdue').text).toBe(`Other-column overdue ${todayDue}`);
     expect(findTask('Due today').text).toBe(`Due today ${todayDue}`);
     expect(findTask('Current week').text).toBe(`Current week ${weekDue}`);
     expect(findTask('Already completed').text).toContain(' | ');

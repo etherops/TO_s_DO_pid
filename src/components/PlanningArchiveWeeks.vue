@@ -6,19 +6,20 @@
     <section v-for="group in groups" :key="group.name" class="planning-archive-week"
              :aria-label="`Ready to archive: ${group.name}`">
       <div class="archive-week-heading">
-        <button class="archive-week-toggle" :aria-expanded="expanded.has(group.name)"
+        <button class="archive-week-toggle" :aria-expanded="!collapsed.has(group.name)"
                 @click="toggle(group.name)">
-          <span aria-hidden="true">{{ expanded.has(group.name) ? '▾' : '▸' }}</span>
-          <span>{{ group.name }}<small>{{ group.closed ? 'Closed week' : 'Open / upcoming week' }}</small></span>
+          <span aria-hidden="true">{{ collapsed.has(group.name) ? '▸' : '▾' }}</span>
+          <span>{{ group.name }}</span>
           <span class="archive-week-count">{{ group.tasks.length }}</span>
         </button>
         <button class="archive-week-action" :aria-label="`Archive ${group.name}`"
+                :disabled="group.tasks.some(task => statusChanges?.pending.has(task.id))"
                 @click="$emit('archive-week', group.name)">Archive week</button>
       </div>
       <p v-if="group.undatedCount" class="archive-week-note">
         {{ group.undatedCount }} without a completion date; included in this week.
       </p>
-      <ul v-if="expanded.has(group.name)" class="archive-week-tasks">
+      <ul v-if="!collapsed.has(group.name)" class="archive-week-tasks">
         <li v-for="task in group.tasks" :key="task.id">
           <span class="archive-task-status" :class="{ done: task.statusChar === 'x' }"
                 :aria-label="task.statusChar === 'x' ? 'Done' : 'Will not do'">
@@ -32,19 +33,24 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, inject } from 'vue';
 import { groupTasksForArchive, wipArchiveSections } from '../utils/archiveHelpers';
 import { getStrippedDisplayText } from '../utils/taskTextHelpers';
 
-const props = defineProps({ todoData: { type: Object, required: true } });
+const props = defineProps({ todoData: { type: Object, required: true }, sections: { type: Array, default: null } });
 defineEmits(['archive-week', 'view-archive']);
-const expanded = ref(new Set());
+const collapsed = ref(new Set());
+const statusChanges = inject('planningStatusChanges', null);
 const groups = computed(() => groupTasksForArchive(
-  wipArchiveSections(props.todoData).flatMap(section => section.items || [])
-));
+  (props.sections || wipArchiveSections(props.todoData)).flatMap(section => section.items || [])
+    .map(task => {
+      const held = statusChanges?.pending.get(task.id);
+      return held ? { ...task, statusChar: held.status, text: held.text } : task;
+    })
+).filter(group => group.closed));
 const toggle = name => {
-  if (expanded.value.has(name)) expanded.value.delete(name);
-  else expanded.value.add(name);
+  if (collapsed.value.has(name)) collapsed.value.delete(name);
+  else collapsed.value.add(name);
 };
 </script>
 
@@ -53,18 +59,18 @@ const toggle = name => {
 header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 10px; margin-bottom: 5px; }
 h2 { margin: 0; font-size: 13px; }
 header > span, small, .archive-week-note { color: var(--ui-muted); font-size: 11px; }
-.planning-archive-week {
-  border: 1px solid var(--ui-border); border-radius: var(--ui-radius-sm); padding: 6px;
-  margin-bottom: 10px; background: var(--ui-surface); color: var(--ui-text);
-}
+.planning-archive-week { padding: 0 3px 3px; margin-bottom: 12px;
+  border-bottom: 1px solid var(--ui-border); color: var(--ui-text); }
 .archive-week-heading { display: flex; align-items: center; gap: 8px; }
 .archive-week-toggle { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; text-align: left;
-  border: 0; background: transparent; color: var(--ui-text); padding: 3px 0; font-size: 12px; cursor: pointer; }
-small { display: block; margin-top: 2px; font-weight: 400; }
+  border: 0; background: transparent; color: var(--ui-text); padding: 6px 0; font-size: 12px;
+  font-weight: 700; cursor: pointer; }
+small { font-weight: 400; }
 .archive-week-count { margin-left: auto; font-size: 11px; color: var(--ui-muted); }
 .archive-week-action { border: 1px solid var(--ui-border); border-radius: 6px; padding: 4px 7px;
   background: var(--ui-surface-soft); color: var(--ui-text); font-size: 11px; cursor: pointer; flex-shrink: 0; }
 .archive-week-action:hover { border-color: var(--ui-green); }
+.archive-week-action:disabled { opacity: .5; cursor: default; }
 .archive-week-note { margin: 3px 0 3px 16px; }
 .archive-week-tasks { list-style: none; margin: 4px 0 0; padding: 0; }
 li { display: flex; align-items: center; gap: 7px; border: 1px solid var(--ui-border); border-radius: 6px;

@@ -27,7 +27,7 @@ describe('Blocked tasks', () => {
     cy.get('.panel-in-progress-queued .day-low-priority').should('exist');
     cy.get('.panel-now').should('contain', 'Active weekly').and('contain', 'Queued weekly');
     cy.contains('.panel-now .focus-task-row', 'Active weekly').should('have.class', 'this-week-row');
-    cy.get('.focus-initiatives').should('not.exist');
+    cy.get('.initiative-row').should('not.exist');
     cy.get('.panel-in-progress-queued .status-blocked').first().then(($control) => {
       const style = getComputedStyle($control[0]);
       const inner = getComputedStyle($control[0], '::after');

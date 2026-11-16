@@ -1,20 +1,6 @@
-// utils/focusModeHelpers.js
-// Derives the Focus (execution) model from parsed todo data.
-// Focus mode pulls only from SELECTED and WIP columns - the staged, committed
-// work. What lands on deck for the week is either staged into WIP or carries a
-// due date falling on or before the Saturday that closes this week. Four
-// buckets: IN PROGRESS / PARKED (work already underway), NOW
-// (overdue and due-today work), UP NEXT (scheduled future work and undated
-// queued work), and DONE. Work completed or cancelled today stays in NOW;
-// its completion date is authoritative because terminal tasks no longer retain
-// a due date.
-
-import { extractDuePeriod, majorityMonthForWeek } from './dateHelpers';
+// Focus derives scheduled task/child projections without changing Markdown or parent ownership.
+import { extractDuePeriod } from './dateHelpers';
 import { extractCompletionDateValue, isCompletedToday } from './completionDateHelpers';
-
-export const UP_NEXT_GROUP_ORDER = ['month', 'week', 'day', 'unscheduled'];
-
-const isLowPriorityEntry = (entry) => entry.task.isLowPriority || entry.task.listMarker === '-';
 
 export const orderEntriesBySourcePosition = (entries) => {
   const sectionGroups = new Map();
@@ -34,58 +20,26 @@ export const orderEntriesBySourcePosition = (entries) => {
   });
 };
 
-export const groupInProgressQueuedEntries = (entries) => {
-  const lowPriority = entries.filter(isLowPriorityEntry);
-  const normalPriority = entries.filter(entry => !isLowPriorityEntry(entry));
-  const blocked = normalPriority.filter(entry => entry.task.statusChar === '!');
-  const unblocked = normalPriority.filter(entry => entry.task.statusChar !== '!');
-  const thisWeek = unblocked.filter(entry => entry.dueGroup === 'this-week');
-  const remaining = unblocked.filter(entry => entry.dueGroup !== 'this-week');
-  const active = remaining.filter(entry => entry.group !== 'waiting');
-  const parked = remaining.filter(entry => entry.group === 'waiting');
-
-  return [
-    { key: 'blocked', label: 'Blocked', entries: orderEntriesBySourcePosition(blocked) },
-    { key: 'this-week', label: 'This Week', entries: orderEntriesBySourcePosition(thisWeek) },
-    { key: 'this-month-active', label: 'This Month - Active', entries: orderEntriesBySourcePosition(active) },
-    { key: 'this-month-parked', label: 'Parked', entries: orderEntriesBySourcePosition(parked) },
-    { key: 'low-priority', label: 'Low Priority', entries: orderEntriesBySourcePosition(lowPriority) }
-  ].filter(group => group.entries.length);
-};
-
 export const reorderTaskSubsetInSection = (
-  sectionItems,
-  eligibleTaskIds,
-  sourceTaskId,
-  targetTaskId,
-  placeAfter = false
+  sectionItems, eligibleTaskIds, sourceTaskId, targetTaskId, placeAfter = false
 ) => {
   if (!Array.isArray(sectionItems) || sourceTaskId === targetTaskId) return false;
-
   const eligibleIds = new Set(eligibleTaskIds);
   if (!eligibleIds.has(sourceTaskId) || !eligibleIds.has(targetTaskId)) return false;
-
   const slots = sectionItems
     .map((item, index) => eligibleIds.has(item.id) ? index : -1)
     .filter(index => index !== -1);
   const orderedItems = slots.map(index => sectionItems[index]);
   const sourceIndex = orderedItems.findIndex(item => item.id === sourceTaskId);
   if (sourceIndex === -1) return false;
-
   const [sourceItem] = orderedItems.splice(sourceIndex, 1);
   const targetIndex = orderedItems.findIndex(item => item.id === targetTaskId);
   if (targetIndex === -1) return false;
   orderedItems.splice(targetIndex + (placeAfter ? 1 : 0), 0, sourceItem);
-
-  const changed = slots.some((slot, index) => sectionItems[slot] !== orderedItems[index]);
-  if (!changed) return false;
-  slots.forEach((slot, index) => {
-    sectionItems[slot] = orderedItems[index];
-  });
+  if (!slots.some((slot, index) => sectionItems[slot] !== orderedItems[index])) return false;
+  slots.forEach((slot, index) => { sectionItems[slot] = orderedItems[index]; });
   return true;
 };
-
-const FOCUS_STACKS = ['WIP', 'SELECTED'];
 
 const isIceColumn = (columnName) => columnName.toUpperCase().includes('ICE');
 
@@ -143,26 +97,14 @@ const byDueDate = (a, b) => a.dueRank - b.dueRank || a.dueTime - b.dueTime;
 // already underway leads, then dated work by date, then everything undated
 const dueTimeOf = (entry) => extractDuePeriod(entry.task.text)?.start.getTime() ?? Number.MAX_SAFE_INTEGER;
 
-const isDueNextMonthOrLater = (period, today = new Date()) => {
-  if (!period) return false;
-  const owner = period.kind === 'week'
-    ? majorityMonthForWeek(period.start)
-    : { year: period.start.getFullYear(), monthIndex: period.start.getMonth() };
-  const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-  return new Date(owner.year, owner.monthIndex, 1) >= nextMonth;
-};
-
-const isDueAfterCurrentWeek = (period, today = new Date()) =>
-  period?.kind !== 'month' && period?.start > endOfCurrentWeek(today);
-
 const eachFocusTask = (todoData, visit) => {
   (todoData?.columnOrder || []).forEach(columnName => {
     const column = todoData.columnStacks?.[columnName];
     if (!column || column.type === 'raw-text' || isIceColumn(columnName)) return;
-    if (!FOCUS_STACKS.includes(column.name)) return;
+    if (column.name === 'DONE' || column.on_ice) return;
 
     (column.sections || []).forEach(section => {
-      if (section.type === 'raw-text') return;
+      if (section.type === 'raw-text' || section.on_ice) return;
       (section.items || []).filter(isTaskItem).forEach(task => {
         visit({ task, columnName, stackName: column.name, sectionName: section.name, section });
         (task.children || []).filter(child => child.type === 'subtask'
@@ -177,24 +119,23 @@ const eachFocusTask = (todoData, visit) => {
 
 /**
  * Build the focus model from SELECTED and WIP columns.
- * On deck = staged into WIP, or due on or before the end of this week from
- * anywhere. IN PROGRESS / PARKED holds non-urgent in-progress work. NOW holds
- * overdue and due-today work and terminal work completed today. UP NEXT keeps
- * future or unstarted work and DONE keeps earlier terminal work.
+ * Whole-week work goes left, today/overdue stays central, and exact future days go right.
+ * Earlier completed work is represented only by the read-only calendar.
  * @param {Object} todoData - { columnOrder, columnStacks }
  * @returns {{ inProgressQueued: Array, now: Array, upNext: Array, done: Array }}
  *          entries of shape { task, columnName, sectionName, section, dueGroup?, group? }
  */
-export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOverdue = false } = {}) => {
+export const deriveFocusModel = (todoData, referenceDate = new Date(), {
+  hideOverdue = false
+} = {}) => {
   const today = new Date(referenceDate);
   today.setHours(0, 0, 0, 0);
   const inProgressQueued = [];
   const now = [];
-  const done = [];
   const upNextGroups = { month: [], week: [], day: [], unscheduled: [] };
 
   eachFocusTask(todoData, (entry) => {
-    const { task, stackName } = entry;
+    const { task } = entry;
 
     const isTerminal = task.statusChar === 'x' || task.statusChar === '-';
     // Terminal tasks have a completion day instead of a due period.
@@ -209,88 +150,18 @@ export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOve
       });
       return;
     }
-    if (isTerminal) {
-      done.push(entry);
-      return;
-    }
+    if (isTerminal) return;
     if (![' ', '~', '!'].includes(task.statusChar)) return;
 
     const routedEntry = { ...entry, ...dueGrouping(task, today) };
     if (hideOverdue && routedEntry.dueGroup === 'overdue') return;
-    // A blocker is actionable in the right pane regardless of its due period.
-    if (task.statusChar === '!') {
-      inProgressQueued.push({ ...routedEntry, group: 'blocked' });
-      return;
-    }
     const period = extractDuePeriod(task.text);
-    const wasOnDeck = stackName === 'WIP' || isOnDeckThisWeek(task.text, today);
-
-    // Current-week commitments use NOW; other nonurgent SELECTED work stays parked.
-    if (stackName === 'SELECTED' && task.statusChar === '~' && !entry.parentTask
-        && !isCurrentWholeWeek(period, today)) {
-      if (routedEntry.dueGroup === 'today' || routedEntry.dueGroup === 'overdue') {
-        now.push(routedEntry);
-        return;
-      }
-      inProgressQueued.push({
-        ...routedEntry,
-        group: 'waiting'
-      });
-      return;
+    if (['today', 'overdue'].includes(routedEntry.dueGroup)) now.push(routedEntry);
+    else if (isCurrentWholeWeek(period, today)) {
+      upNextGroups.week.push({ ...routedEntry, dueGroup: 'this-week', group: 'week' });
+    } else if (period?.kind === 'day' && period.start <= endOfCurrentWeek(today)) {
+      inProgressQueued.push(routedEntry);
     }
-
-    // Whole-current-week commitments share NOW regardless of active status.
-    if (isCurrentWholeWeek(period, today)) {
-      const wholeWeekEntry = {
-        ...routedEntry,
-        dueGroup: 'this-week',
-        dueRank: DUE_RANK.thisWeek,
-        dueTime: period.start.getTime()
-      };
-      now.push(wholeWeekEntry);
-      return;
-    }
-
-    // Anything beyond the current week is planning context even when already
-    // in progress. Month-level commitments stay active through their owner month.
-    if (task.statusChar === '~' && period
-        && (isDueAfterCurrentWeek(period, today) || isDueNextMonthOrLater(period, today))) {
-      upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
-      return;
-    }
-
-    if (wasOnDeck) {
-      if (routedEntry.dueGroup === 'today' || routedEntry.dueGroup === 'overdue') {
-        now.push(routedEntry);
-        return;
-      }
-
-      // A future exact day this week is already represented in Week at a
-      // glance. Keep it in the source model for that strip, but the upper Up
-      // Next display intentionally filters current-week dates out.
-      if (task.statusChar === '~' && period?.kind === 'day' && period.start <= endOfCurrentWeek(today)) {
-        upNextGroups.day.push({ ...routedEntry, group: 'day' });
-        return;
-      }
-
-      // Status owns execution routing through the current calendar month.
-      if (task.statusChar === '~') {
-        const group = stackName === 'WIP' ? 'inProgress' : 'waiting';
-        inProgressQueued.push({ ...routedEntry, group });
-        return;
-      }
-
-      if (period) upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
-      else upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
-      return;
-    }
-
-    // Starting anything in Up Next moves it into Waiting / Blocked. Its due
-    // period remains intact and continues to appear in Week at a glance when
-    // applicable; only urgent work is promoted to NOW instead.
-    if (task.statusChar === '~') inProgressQueued.push({ ...routedEntry, group: 'waiting' });
-    else if (period) upNextGroups[period.kind].push({ ...routedEntry, group: period.kind });
-    else upNextGroups.unscheduled.push({ ...routedEntry, group: 'unscheduled' });
   });
 
   inProgressQueued.sort(byDueDate);
@@ -300,8 +171,8 @@ export const deriveFocusModel = (todoData, referenceDate = new Date(), { hideOve
   return {
     inProgressQueued,
     now,
-    upNext: UP_NEXT_GROUP_ORDER.flatMap(group => upNextGroups[group]).filter(entry => !entry.parentTask),
-    done: done.filter(entry => !entry.parentTask)
+    upNext: upNextGroups.week,
+    done: []
   };
 };
 

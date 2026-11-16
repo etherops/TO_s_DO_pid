@@ -58,7 +58,8 @@ Cypress.Commands.add('switchToFile', (fileName) => {
     const baseFileName = fileName.replace('.todo.md', '')
 
     // Open the custom file selector and choose the requested source.
-    cy.get('.file-selector-trigger', { timeout: 8000 }).should('be.visible').click()
+    cy.get('.file-selector-trigger', { timeout: 8000 }).should('be.visible')
+        .and('not.contain', 'Select TODO List').click()
     cy.contains('.file-selector-option', baseFileName, { timeout: 8000 })
         .scrollIntoView()
         .should('be.visible')
@@ -67,7 +68,7 @@ Cypress.Commands.add('switchToFile', (fileName) => {
     cy.get('.file-selector-trigger').should('contain', baseFileName)
     
     // Wait for file to load by checking for content
-    cy.get('.kanban-column', { timeout: 6000 }).should('exist')
+    cy.get('.planning-lane, .kanban-column', { timeout: 6000 }).should('exist')
     
     // Wait for tasks to load as well
     cy.get('.task-card', { timeout: 4000 }).should('exist')

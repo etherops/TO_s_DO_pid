@@ -1,6 +1,10 @@
-import { getStrippedDisplayText } from './taskTextHelpers';
+import { extractNoteFromText, getStrippedDisplayText, updateNoteInText } from './taskTextHelpers';
 import { removeDueDate } from './dateHelpers';
 import { removeCompletionDate } from './completionDateHelpers';
+
+export const createSubtask = (text = '') => ({
+  id: `subtask-${crypto.randomUUID()}`, type: 'subtask', indent: '  ', statusChar: ' ', text
+});
 
 export const saveSubtaskEdits = (parent, rows) => {
   const children = rows.filter(row => row.type !== 'subtask' || row.text.trim()).map(row => ({ ...row }));
@@ -24,6 +28,11 @@ export const detachAllSubtasks = (parent, section) => {
 
 // Edit only the visible title. Keep hidden notes and lifecycle suffixes verbatim.
 export const updateSubtaskTitle = (text, title) => {
+  const typedNote = extractNoteFromText(title);
+  if (typedNote !== null) {
+    const renamed = updateSubtaskTitle(text, getStrippedDisplayText(title));
+    return updateNoteInText(renamed, typedNote);
+  }
   if (title === getStrippedDisplayText(text)) return text;
   const body = removeDueDate(removeCompletionDate(text));
   const suffix = text.slice(body.length);

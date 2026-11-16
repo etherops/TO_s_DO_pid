@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { parseTodoMdFile, renderTodoMdFile } from '../../../src/utils/TodoMdParser';
-import { deriveFocusModel, groupInProgressQueuedEntries } from '../../../src/utils/focusModeHelpers';
+import { deriveFocusModel } from '../../../src/utils/focusModeHelpers';
 import { groupTasksForArchive } from '../../../src/utils/archiveHelpers';
 import { reconcileLifecycleDateForStatus } from '../../../src/utils/completionDateHelpers';
 import FocusMode from '../../../src/components/FocusMode.vue';
@@ -35,33 +35,28 @@ describe('Blocked status', () => {
     expect(groupTasksForArchive(data.columnStacks.SELECTED.sections[0].items)).toEqual([]);
   });
 
-  it('routes blocked work right regardless of date and active weekly work to NOW', () => {
+  it('routes blocked work by date, just like other unfinished statuses', () => {
     const result = deriveFocusModel(parseTodoMdFile(source), new Date(2026, 9, 21));
-    expect(result.inProgressQueued).toHaveLength(8);
-    expect(result.inProgressQueued.every(entry => entry.task.statusChar === '!')).toBe(true);
-    expect(result.now.map(entry => entry.task.displayText)).toEqual(['Active week']);
-    expect(result.now[0].dueGroup).toBe('this-week');
-    expect(result.upNext).toEqual([]);
+    expect(result.inProgressQueued).toEqual([]);
+    expect(result.now.map(entry => entry.task.displayText)).toEqual(['Blocked overdue', 'Blocked today']);
+    expect(result.upNext.map(entry => entry.task.displayText)).toEqual(['Blocked week', 'Active week']);
     expect(result.done).toEqual([]);
-    const groups = groupInProgressQueuedEntries(result.inProgressQueued);
-    expect(groups.map(group => group.label)).toEqual(['Blocked', 'Low Priority']);
-    expect(groups[0].entries).toHaveLength(7);
   });
 
   it('keeps future-view overdue suppression for blocked work', () => {
     const result = deriveFocusModel(parseTodoMdFile(source), new Date(2026, 10, 1), { hideOverdue: true });
     expect(result.inProgressQueued.some(entry => entry.task.text.includes('Blocked overdue'))).toBe(false);
-    expect(result.inProgressQueued.some(entry => entry.task.text.includes('Blocked later'))).toBe(true);
+    expect(result.inProgressQueued.some(entry => entry.task.text.includes('Blocked later'))).toBe(false);
   });
 
-  it('shows blocked initiatives on the right instead of the exclusive initiative panel', () => {
+  it('shows blocked date assignments without a separate initiative panel', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 9, 21));
     const wrapper = mount(FocusMode, { props: { todoData: parseTodoMdFile(source) } });
     try {
-      expect(wrapper.find('.focus-initiatives').exists()).toBe(false);
-      expect(wrapper.get('.panel-in-progress-queued').text()).toContain('Blocked initiative');
-      expect(wrapper.findAll('.panel-in-progress-queued .status-blocked')).toHaveLength(8);
+      expect(wrapper.find('.initiative-row').exists()).toBe(false);
+      expect(wrapper.get('.panel-now').text()).toContain('Blocked today');
+      expect(wrapper.findAll('.panel-now .status-blocked')).toHaveLength(2);
     } finally { wrapper.unmount(); vi.useRealTimers(); }
   });
 

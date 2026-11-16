@@ -19,8 +19,8 @@ describe('Focus date navigation', () => {
     expect(deriveFocusModel(data, date).now).toHaveLength(3);
     const preview = deriveFocusModel(data, date, { hideOverdue: true });
     expect(preview.now).toHaveLength(0);
-    expect(preview.inProgressQueued).toHaveLength(1);
-    expect(preview.upNext).toHaveLength(1);
+    expect(preview.inProgressQueued).toHaveLength(0);
+    expect(preview.upNext).toHaveLength(0);
   });
 
   it('routes day, week, month and completion dates against the selected date', () => {
@@ -30,11 +30,11 @@ describe('Focus date navigation', () => {
     expect(model.now.map(e => e.task.text)).toEqual(expect.arrayContaining([
       expect.stringContaining('Future day'), expect.stringContaining('Completed then')
     ]));
-    expect(model.now.some(e => e.task.text.includes('Future week'))).toBe(true);
+    expect(model.upNext.some(e => e.task.text.includes('Future week'))).toBe(true);
     expect(model.inProgressQueued.some(e => e.task.text.includes('Future week'))).toBe(false);
-    expect(model.upNext.some(e => e.task.text.includes('Future month'))).toBe(true);
+    expect(model.upNext.some(e => e.task.text.includes('Future month'))).toBe(false);
     const october = deriveFocusModel(data, new Date(2026, 9, 3));
-    expect(october.inProgressQueued.some(e => e.task.text.includes('Future month'))).toBe(true);
+    expect(october.inProgressQueued.some(e => e.task.text.includes('Future month'))).toBe(false);
     expect(renderTodoMdFile(data)).toBe(before);
   });
 
@@ -77,7 +77,7 @@ describe('Focus date navigation', () => {
     await wrapper.findAll('.focus-as-of button').find(b => b.text() === 'Back to today').trigger('click');
     expect(wrapper.find('.focus-preview-label').exists()).toBe(false);
     expect(wrapper.find('.focus-quick-add-btn').exists()).toBe(true);
-    expect(wrapper.get('button.focus-row-check').attributes('disabled')).toBeUndefined();
+    expect(wrapper.findAll('[data-schedule-date]')).toHaveLength(7);
     wrapper.unmount();
   });
 });

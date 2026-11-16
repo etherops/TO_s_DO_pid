@@ -4,11 +4,12 @@
       <span>Subtasks</span>
     </div>
     <template v-for="(child, index) in displayedRows" :key="child.id ?? `raw-${index}`">
-      <div v-if="child.type === 'subtask'" class="subtask-edit-row"
+      <div v-if="child.type === 'subtask'" class="subtask-edit-row" :data-subtask-id="child.id"
            :class="{ 'drop-before': dropTarget?.index === index && !dropTarget.after,
                      'drop-after': dropTarget?.index === index && dropTarget.after }"
            @dragover.stop="hoverRow(index, $event)" @drop.stop="dropRow(index, $event)"
-           @contextmenu.prevent.stop="openContextMenu(child, $event)">
+           @contextmenu.prevent.stop="openContextMenu(child, $event)"
+           @keydown.shift.f10.prevent.stop="openContextMenu(child, $event)">
         <button v-if="child.text.trim()" type="button" class="subtask-drag-handle" draggable="true"
                 aria-label="Reorder subtask" title="Drag to reorder; arrow keys move up/down"
                 @dragstart.stop="startDrag(index, $event)" @dragend.stop="clearDrag"
@@ -48,7 +49,7 @@
   </div>
 </template>
 <script setup>
-import { ref, nextTick, computed } from 'vue';
+import { ref, nextTick, computed, inject } from 'vue';
 import { nextTaskStatus } from '../utils/statusHelpers';
 import {
   reconcileLifecycleDateForStatus, extractCompletionDate, extractCompletionDateValue, setCompletionDate
@@ -56,17 +57,29 @@ import {
 import SubtaskDatePicker from './SubtaskDatePicker.vue';
 import SubtaskDeleteMenu from './SubtaskDeleteMenu.vue';
 import { getStrippedDisplayText } from '../utils/taskTextHelpers';
-import { updateSubtaskTitle } from '../utils/subtaskHelpers';
+import { createSubtask, updateSubtaskTitle } from '../utils/subtaskHelpers';
 import { extractDuePeriod, formatDuePeriodValue, getDuePeriodLabel, setDuePeriod } from '../utils/dateHelpers';
 const props = defineProps({ modelValue: { type: Array, default: () => [] }, allowAdd: { type: Boolean, default: true } });
 const emit = defineEmits(['update:modelValue', 'commit']);
 const commit = (rows = props.modelValue) => emit('commit', rows);
 const editorRoot = ref(null);
 const contextMenu = ref(null);
-const openContextMenu = (child, event) => {
+const openSubtaskActions = inject('openSubtaskActions', null);
+const openContextMenu = async (child, event) => {
   contextMenu.value = null;
   if (!child.text.trim() || !props.modelValue.some(row => row.id === child.id)) return;
   dateIndex.value = null;
+  if (openSubtaskActions) {
+    commit();
+    const target = event.target;
+    await nextTick();
+    openSubtaskActions(child.id, event, {
+      edit: () => target.closest('.subtask-edit-row')?.querySelector('input')?.focus(),
+      date: () => toggleDate(props.modelValue.findIndex(row => row.id === child.id)),
+      afterChange: source => emit('update:modelValue', source.parent.children.map(row => ({ ...row })))
+    });
+    return;
+  }
   contextMenu.value = {
     child, position: { x: event.clientX, y: event.clientY },
     theme: editorRoot.value?.closest('.theme-dark') ? 'dark' : 'light'
@@ -147,7 +160,7 @@ const moveBy = (index, direction) => {
   const target = indexes[indexes.indexOf(index) + direction];
   if (target !== undefined) reorder(index, target, direction > 0);
 };
-const newRow = () => ({ id: `subtask-${crypto.randomUUID()}`, type: 'subtask', indent: '  ', statusChar: ' ', text: '' });
+const newRow = () => createSubtask();
 const displayedRows = computed(() => {
   if (!props.allowAdd) return props.modelValue;
   const last = props.modelValue.at(-1);

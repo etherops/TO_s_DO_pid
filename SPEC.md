@@ -2,42 +2,168 @@
 
 This file records the current product contracts that are easy to regress during maintenance. The detailed Focus Mode layout and routing rules are in [`docs/focus-mode-spec.md`](docs/focus-mode-spec.md).
 
+Paper placement and date projections follow [`docs/paper-workflow.md`](docs/paper-workflow.md).
+Tasks may live directly under H1. Projects are `+` tasks in SELECTED, not a separate column type.
+
 ## Plan outline workspace and Raw source
 
-The navigation is Plan, Focus, Calendar, Raw. Plan replaces both the old Triage and Plan modes; legacy
+The navigation is Plan, Focus, Calendar, Raw. Focus is the weekly execution view documented in
+`docs/focus-mode-spec.md`; saved Focus2 preferences migrate to Focus. Archive opens in a right-side drawer within Plan. Plan replaces both the old Triage and Plan modes; legacy
 normal/triage preferences resolve to Plan. Clicking the active tab does not exit into an unnamed mode.
-There is no legacy Board layout switch. Plan opens SELECTED and WIP category groups side by side;
-the workspace starts directly beneath the app toolbar without a repeated Plan heading or subtitle row.
-The sidebar has no visible File Outline heading; its navigation landmark retains the accessible name File outline.
-Each group retains all of its actual Markdown H1 headings and sections in source order. The file outline
-defaults to the backlog overview or first available heading if SELECTED/WIP are absent, without creating them. It
-also exposes TODO, PROJECTS, archive and other headings, with task counts on both headings and sections.
-Counts follow existing board semantics: parent task rows, all statuses, not additional subtask counts.
-The Todo + Projects overview serves backlog triage inside Plan, not as a separate application mode.
-An always-visible Archive shortcut in the outline and View archive beside the week previews open all
-archive headings with task rows expanded. Clicking an archived section in the outline reveals and expands
-that section. Archive navigation never writes task data or creates headings; missing archives show an empty state.
+There is no legacy Board layout switch. The main workspace shows PROJECTS, TASKS and three SCHEDULED columns left to right.
+A shared SELECTED heading spans PROJECTS and TASKS; SCHEDULED has its own peer heading across all three schedule columns,
+with the combined total and Add/Archive controls alongside it. Each schedule column has a compact period header and count.
+TASKS is the display name of the SELECTED source pane;
+the Markdown heading, task ownership and mutation targets remain unchanged. TASKS shows individual tasks only,
+excluding plus-marked projects already indexed in PROJECTS. Normal tasks with children remain individual tasks.
+There is no vertical SELECTED/PROJECTS divider or separate future-schedule sidebar.
 
-Existing task/section editors, sorting, drag/drop, multi-selection, context menus and archive confirmation
-remain in use. Ordinary task cards remain compact single-line rows. Navigation never saves, creates,
-reorders or migrates data. No section-level due-date inheritance or Focus routing changes are introduced.
-The schedule sidebar summarizes open explicitly dated tasks and subtasks in all live non-archive/non-ice
-headings. It is not a second copy of the data or the Focus routing model; clicking an entry reveals its
-source section. Closed parents and their children, raw lines and undated items are excluded.
+The entire backlog, including its ToC and editable source cards, lives in one left slide-out drawer.
+The closed drawer leaves 44px peeking out with an integrated edge grip and vertical BACKLOG label,
+not a separate tab; its contents are inert. Main-column stacking is isolated so raised cards stay behind the drawer.
+Hover, focus or click opens the drawer over the main columns without resizing them. It is up to 840px wide,
+capped to the viewport. The ToC and cards scroll independently. Choosing a ToC entry scrolls the backlog cards
+without closing the drawer or hiding other source sections. The drawer stays open during editing and dragging;
+Close or Escape retracts it, returning focus to the grip when needed. Reduced-motion disables the animation.
+The Backlog heading spans its ToC and source cards. +Add and Archive remain together above Scheduled.
 
-Inside the first visible WIP column, below its column header, compact expandable archive-week sections
-sit above and at the same visual level as the regular sections. They combine terminal parent tasks
-across WIP source headings/sections and appear only once, not above the column or in a separate panel.
-Preview sections stay outside the source-section drag list so navigation never reorders Markdown.
+PROJECTS and TASKS retain their existing editors, counts and paper ownership.
+Low-priority tasks appear under a separate LOW PRIO heading at the bottom of each source section and scheduled
+date/completion group. Rendering does not rewrite paper order; explicit source dragging writes a complete list,
+preserving hidden projects and raw metadata. Subtask bullet markers do not make subtasks low-priority.
+Each Scheduled column has one PROJECTS group at its top, collecting its open plus-marked parents across dates.
+Projects retain date labels and appear only once in that column, never again under its date headers.
+Individual tasks and surfaced subtasks stay grouped by date below, with LOW PRIO last within each date.
+Completed items retain their completion-day groups. This display-only grouping does not detach children,
+change column totals or rewrite the file.
+Compact source headers keep actions inline, truncate long section labels with a title tooltip, and retain
+section collapse controls. Each main column scrolls independently.
+SCHEDULED uses three independently scrolling columns in the existing editable card layout:
+This week (archive-ready weeks, Overdue, Today and Rest of this week), Rest of this month, and After.
+Only one schedule column is active at a time, initially This week. Clicking a column or activating its header
+widens it; the other two stay narrower with dimmed contents. Their existing groups and cards remain visible
+and usable. Schedule cards use clock-only date-picker buttons with the full date on hover; Projects and Tasks
+retain their date labels. Switching the active column never changes task data.
+The three schedule panes join edge-to-edge with shared dividers and rounded corners only on the outside.
+Their headers stay at a single fixed height; long labels ellipsize instead of wrapping, and counts remain visible.
+Column widths ease between states while dimming and background colors fade; reduced-motion preferences disable transitions.
+Inactive columns are readable compact previews: narrower, smaller single-line ellipsized titles, tighter padding,
+and no drag handles, date/action buttons, parent links or subtask counts. A first click only activates the column
+and restores its controls; it must not also edit a task or change its status. The active column retains the larger share of width.
+Current-week assignments stay in the first column even when the week crosses into the next month;
+month-only commitments keep their own month precision. Week-only assignments lead the remaining-week group,
+followed by exact-day subheadings. Later day/week assignments sit under their canonical Sunday–Saturday week;
+whole-week tasks precede chronological day subgroups with weekday/date labels. Month-only assignments retain
+separate month groups. Grouping is display-only and preserves source order within each exact date.
+Week and day headers accept scheduling drops for their own precision without bubbling to an outer group.
+Task rows prioritize the title beside the status, compact subtask count, date, and an always-available actions button.
+Expanded Plan project checklists end with an empty Subtask row that saves on Enter or blur and stays ready
+for the next addition. No parent Save is required; adding a child preserves the parent's source section,
+status, dates and existing child metadata. Frozen and low-priority parents do not offer this add row.
+In Plan, a plain individual-task title click opens the editor with the title focused; Enter/Space also activate it.
+For PROJECTS, the first title activation expands its checklist; the next title activation opens the editor.
+There is no disclosure caret. An expanded project has a small Close control, including an empty project with its add row.
+Modifier-clicks retain task selection, frozen tasks remain read-only, and status/date/action controls stay independent.
+Priority, notes, edit, and confirmed deletion live in that keyboard-accessible overflow; source sections and note previews
+do not compete with the title. Subtask parent links use a compact marker with the full parent name on hover.
+Each pane scrolls independently. The sidebar is a table of contents with per-section counts;
+The sidebar excludes SELECTED, PROJECTS and WIP. Clicking a heading scrolls only the backlog column to that source or section;
+it never hides other sources or moves the surrounding page. Normal section-collapse controls remain available.
+SELECTED retains its source sections, direct H1 tasks, ordering and controls. Scheduled views group
+dated tasks and subtasks from all non-frozen, non-archived sources, independently of paper placement.
+Plan's source-column and section headers use compact controls and minimal vertical padding.
+Empty schedule groups show their heading, empty-state message and zero count on one line, retaining the separator below.
+Rest of this week is subheaded by exact due day. Its week-only group appears first, immediately after Today and before
+the upcoming dated days. Completed / will not do stays expanded, with completion-day headers newest first and a final
+No completion date group for undated terminal tasks; merely viewing these groups does not assign completion dates.
+The first SCHEDULED column also retains Needs a date, closed-week archive previews and completed groups.
+The columns keep usable minimum widths; smaller screens scroll horizontally with their headers aligned.
+The Markdown WIP heading is not renamed; scheduled projections remain independent of source buckets.
+PROJECTS indexes every plus-marked parent outside the archive, regardless of its source column or status.
+This index shares original task objects with source panes; merely viewing it never moves or copies tasks in Markdown.
+Projects start collapsed. The column's Expand all / Collapse all control opens or closes every project;
+mixed state offers Expand all. Dragging a project's dot handle above or below another project reorders the original
+parent and its entire subtree in Markdown; dropping across source sections places it in the target's section.
+The drop line previews placement, and saved order survives reload. Frozen projects cannot be moved or targeted.
+There is no Sort button or automatic project sorting; completed projects can also be manually reordered.
+Expanded rows show all supported
+subtasks in source order, including undated and completed tasks, with their status and due/completion date.
+Expanded subtasks use a compact, borderless checklist rather than nested cards: smaller status marks,
+wrapping titles, quiet inline dates, and a row highlight only on hover or keyboard focus.
+Subtask titles open the parent editor; dates on open, unfrozen subtasks open scheduling. Expanded subtask status buttons
+cycle and save immediately, including completion dates. Their scheduled copies retain their original group through
+the shared 1.5-second status pause, and reopening restores the original due precision during that cycle.
+Frozen subtasks remain read-only. Disclosure state is view-only
+and resets when switching files. Unsupported child syntax remains untouched in the source.
+Legacy PROJECTS headings are read as SELECTED-category sources until explicitly migrated.
+User-facing high-priority terminology is Project, not Initiative; the `+` marker and Focus routing stay unchanged.
+Explicit project-section migration creates one plus-marked parent per populated PROJECTS section and indents its
+normal tasks as minus-marked subtasks. A timestamped exact-source backup must precede migration; nested or unsupported
+content and non-normal child priorities are rejected rather than flattened or discarded. Other columns are untouched.
+
+| Application view | Markdown relationship |
+| --- | --- |
+| Backlog | Live tasks in TODO and other backlog headings, in source section/order, including already dated work; frozen work stays here unchanged |
+| PROJECTS | A derived index of live `+` parents, using original objects and source metadata; not a column type |
+| TASKS (SELECTED) | Original source sections and individual tasks, including completed and undated work |
+| Scheduled | Open dated tasks and subtasks from any non-frozen, non-archived source; children stay attached |
+| Needs a date | Undated WIP commitments, retained visibly without guessing dates |
+| Completed / will not do | Terminal top-level tasks, expanded by completion day |
+
+Scheduled groups are Overdue, Today, Rest of this week, then explicit future weeks/months. Whole-week and whole-month
+assignments retain their precision and are overdue only after the period ends. Current-week periods stay with this
+week even across month/year boundaries. Within each group, earlier period end dates come first, with day before
+week before month on ties. Source section labels are compact secondary metadata; subtasks include their parent label.
+Children have no inherited date; their own status and date control their projection independently of the parent.
+Counts refer to the visible rows. Expanded projects always retain their complete child list.
+Backlog and SELECTED retain existing section/card controls. +Add opens a task-title and destination-section form;
+Cancel writes nothing, and confirmation adds exactly one normal-priority task. Cards use the existing task editor,
+priority/status controls, selection and context menus. Dated child rows open their parent's subtask editor.
+
+Explicit date edits put normal/low top-level tasks directly under WIP, or SELECTED when the date is cleared.
+Projects move to or stay in SELECTED, even when dated. No date-named paper sections are generated.
+Subtasks never detach or move their parent when scheduled or cleared; their date is updated in place.
+Moving a parent retains its original object, children, notes and unsupported metadata. Empty source sections stay intact.
+Within Scheduled, task and subtask grips allow rescheduling across current and future day/week/month groups.
+Drops on a day subgroup use that day, never its enclosing week's date. Overdue is not an assignment target;
+dropping there changes nothing. Every card date badge opens a compact chooser beside the clicked badge.
+Shortcuts and explicit day/week/month selections save immediately without a second confirmation. Switching precision tabs,
+opening or dismissing the chooser does not save. Backlog and SELECTED keep their original source editors.
+
+Navigation, rendering, clock passage, unrelated edits and status changes never bulk-migrate files or synthesize dates.
+This is a projection over original objects, not filtered writable copies of sections. Plan persists lifecycle dates
+immediately, preserving the original due period during rapid status cycling, and defers regrouping until the status
+debounce settles. Leaving Plan cannot cancel a completion timestamp. Focus routing is unchanged.
+Plan shares one 1.5-second status debounce per task across its source card and Projects/scheduled copies. Every click
+restarts the pause and continues the same status cycle, even when switching between copies. Status glyphs and persisted
+lifecycle dates update immediately; source ordering, collapsed-stack membership, due groups and completion-day groups
+remain at their pre-cycle positions until the final click settles. Changing files or leaving Plan clears pending timers
+without losing the latest status/date. Sorting at settlement does not run the legacy floating-card animation.
+Trade-off: canonical time sections are maintained only for explicitly rescheduled parents, not existing paper arrangements.
+Revisit source-section restoration after unscheduling if paper organization later needs richer provenance; do not add hidden
+metadata or a second database for this first version.
+
+Archive is a slide-out drawer on the right, opened from the Planning heading or View archive beside the week previews.
+The Plan columns remain mounted beneath it, preserving selection and edits. Close or Escape returns to Plan.
+The drawer opens archive headings with task rows expanded. It starts closed after reload; legacy archive-tab preferences
+resolve to Plan. Archive navigation never writes task data or creates headings; missing archives show an empty state.
+Compact ready-to-archive week sections sit above the date groups inside WIP, expanded by default and collapsible.
+Only closed Sunday–Saturday weeks appear: current and future weeks are excluded. Hide the heading entirely
+when no closed weeks are ready.
+They continue to combine
+terminal parent tasks across SELECTED and WIP source headings/sections, appearing once. This covers work scheduled
+through either status path; frozen sections remain excluded. Preview sections are derived, not stored.
 Batches use completion dates, not due dates, and the exact archive
 section names. Original task rows remain in their source sections until archived. Every week requires
 confirmation, showing the destination, task count, and whether a section will be created or reused.
 ARCHIVE is created only on confirmation if none exists. Repeated confirmation is ignored.
-Undated terminal tasks are visibly assigned to the
-current week. Each action moves only that week's terminal parents, with all children/metadata intact;
+Undated terminal tasks fall back to the current week and therefore do not appear in Ready to archive;
+they remain accessible in the completed list. Each action moves only that week's terminal parents, with all children/metadata intact;
 existing same-named archive sections are reused, ignoring case and extra whitespace. Legacy yearless
-headings are reused only when their dated contents identify the exact target week/year. Existing duplicate
-sections are reported in the confirmation, not silently merged or deleted. Other weeks, unfinished tasks
+headings recognize Week/Wek/Wk and omitted Week, plus full/abbreviated month names. Yearless headings require
+an exact-week dated anchor and consistent year evidence; adjacent-week spillover does not disqualify a paper bucket.
+Empty, undated-only or mixed-year headings are not guessed. Existing duplicate matching week sections are
+listed in the confirmation and merged only on confirmation, preserving every item and nested child. Other weeks, unfinished tasks
 and source sections stay put.
 
 Raw reads the exact source from disk, not parser-rendered output. It starts read-only on every entry/file
@@ -47,12 +173,20 @@ Saving preserves source characters and unsupported syntax without parse/render n
 existing backup endpoint, and rejects a stale expected source with HTTP 409 before writing. Failed saves
 retain the draft. Empty-file saves are disabled. Successful saves reload the normal app model and reset
 board undo history; Raw editing uses textarea undo, not the board's parser-based undo stack.
+Raw has an always-visible, independently scrolling ToC sidebar. It lists Markdown hash headings by level and source line,
+ignoring fenced code. Selecting a heading scrolls to and selects its exact source line without editing or saving.
+The outline follows the current draft, including duplicate titles, in both read-only and edit mode.
+ToC headings and source headings share a column-category color: TODO blue, PROJECTS purple,
+SELECTED amber, WIP green, and ARCHIVE/DONE rose. Subsections inherit their parent column's color.
+The source pane adds a matching section gutter and lightly tinted heading rows; task text stays neutral.
+Highlighting follows draft edits and scrolling without interpreting HTML or modifying saved source.
+Dark mode uses lighter variants; forced-colors mode retains native readable editor text.
 
 ## Board task sorting
 
 Plan/Triage section sorting and automatic sorting after parent-status changes or column moves use this order:
 completed, will-not-do, active (in-progress or blocked), then unstarted. An unstarted parent with at least one
-subtask in progress, blocked, done, or will-not-do sorts with active tasks, for both normal tasks and initiatives.
+subtask in progress, blocked, done, or will-not-do sorts with active tasks, for both normal tasks and projects.
 Explicit parent statuses take precedence. All-unstarted children and unsupported raw child lines do not imply progress.
 Even if every child is terminal, the parent stays in the active sort group until explicitly completed or cancelled.
 Equal-ranked tasks retain their relative order. Sorting moves the whole parent with its children, without changing
@@ -118,20 +252,25 @@ storage and never automatically change their parent's status. Subtask `-` is
 a nesting marker, not a low-priority designation.
 Subtask notes have no visual fields or tooltips. Hidden notes and unsupported source content survive
 parse/render and title/date changes; the child title field omits notes and lifecycle suffixes.
-Initiatives and normal `*` tasks accept new subtasks. Existing children under low-priority tasks remain editable and preserved.
+Projects and normal `*` tasks accept new subtasks. Existing children under low-priority tasks remain editable and preserved.
 Normal tasks without children retain their note-first editor with a small "Add subtasks" action instead of an empty
-subtask pane. Initiatives and tasks with existing subtasks display the subtask editor directly.
-Changing between initiative and normal priority keeps children attached. Moving a normal parent to low priority
+subtask pane. Projects and tasks with existing subtasks display the subtask editor directly.
+Changing between project and normal priority keeps children attached. Moving a normal parent to low priority
 opens a themed in-app modal. It shows the parent title, subtask count, read-only cards with statuses and dates,
 Cancel and "Detach subtasks & make low".
 Cancel is focused initially; Escape or backdrop click cancels.
 Cancel changes nothing;
 confirm detaches all subtasks as normal-priority tasks immediately after the parent in its original section,
 preserving their order, statuses, notes, and dates. Unsupported attached content stays with the parent.
-Focus offers Convert to subtask with initiatives presented first and a "Choose a regular task" option.
+Focus offers Convert to subtask with projects presented first and a "Choose a regular task" option.
 The regular-task view lists open, editable normal tasks across columns in a compact scrollable list filtered by title.
 Closed tasks, low-priority tasks, subtasks, and the source task are excluded. Parents with children cannot be converted.
-Detach remains available from the subtask editor.
+Subtasks have a shared right-click menu on Plan checklist rows, scheduled rows/sidebar, Focus cards and nested editors.
+It offers editing, moving to another parent, detaching as a regular task and confirmed deletion.
+Parent selection defaults to searchable open projects, with a searchable regular-task option; current, low-priority,
+closed, archived and frozen parents are excluded. Moving appends the child to the destination; detaching places it
+immediately after its source parent in the same section. Both preserve status, notes, dates and unsupported metadata.
+Deletion removes only the selected child. Actions save immediately, independently of unsaved parent fields.
 The parent editor always shows a trailing empty row instead of an Add button. Typing fills that row and reveals
 the next empty row; Enter advances to the next row. Unused new blank rows
 are excluded from sorting. Drag handles reorder subtasks within their parent; focused handles also support
@@ -145,7 +284,7 @@ Empty note fields stay one line and expand when they contain text.
 - `* [ ]` and `* [~]` are normal queued and in-progress tasks.
 - `* [x]` is completed; `* [-]` is explicitly will-not-do.
 - `- [status]` is the low-priority equivalent of the same status.
-- `+ [status]` marks a high-priority task or initiative. Priority controls cycle normal (`*`), low (`-`),
+- `+ [status]` marks a high-priority task or project. Priority controls cycle normal (`*`), low (`-`),
   high (`+`), then normal. Status, dates, notes, and source section do not change. High tasks display HIGH
   on the board; they keep normal-sized cards. Parsing and saving preserve all three Markdown list markers.
 - A nonterminal task has one trailing due marker: `! Aug 13 2026`, `! Aug Week #2 2026`, or `! Aug 2026`.

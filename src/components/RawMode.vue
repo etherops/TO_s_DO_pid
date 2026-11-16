@@ -16,9 +16,28 @@
     <div v-if="error" class="raw-error" role="alert">{{ error }}</div>
     <p v-if="editing && !draft.trim()" class="raw-error">An empty file cannot be saved here.</p>
     <p v-if="loading" class="raw-loading">Loading source…</p>
-    <textarea v-else v-model="draft" class="raw-source" :readonly="!editing || saving"
-              aria-label="Raw Markdown" spellcheck="false" autocapitalize="off" autocomplete="off"
-              @keydown.meta.s.prevent="save" @keydown.ctrl.s.prevent="save" />
+    <div v-else class="raw-workspace">
+      <aside class="raw-toc">
+        <nav class="raw-outline" aria-label="Markdown headings">
+          <button v-for="heading in headings" :key="heading.start" class="raw-outline-link"
+                  :class="[{ 'raw-outline-column': heading.level === 1 }, `raw-tone-${heading.tone}`]"
+                  :style="{ paddingLeft: `${8 + (heading.level - 1) * 12}px` }"
+                  :title="`${heading.title} · Line ${heading.line + 1}`" @click="jumpToHeading(heading)">
+            <span>{{ heading.title }}</span><small>{{ heading.line + 1 }}</small>
+          </button>
+          <p v-if="!headings.length" class="raw-outline-empty">No headings.</p>
+        </nav>
+      </aside>
+      <div class="raw-editor" :class="{ 'raw-editor-readonly': !editing || saving }">
+        <pre ref="sourceHighlight" class="raw-source-highlight" aria-hidden="true"><span
+          v-for="(line, index) in sourceLines" :key="index" class="raw-source-line"
+          :class="[line.tone && `raw-tone-${line.tone}`, { 'raw-source-heading': line.heading }]"
+          >{{ line.text || '\u200b' }}</span></pre>
+        <textarea ref="sourceEditor" v-model="draft" class="raw-source" :readonly="!editing || saving" wrap="off"
+                aria-label="Raw Markdown" spellcheck="false" autocapitalize="off" autocomplete="off"
+                @scroll="syncSourceScroll" @keydown.meta.s.prevent="save" @keydown.ctrl.s.prevent="save" />
+      </div>
+    </div>
     <footer>Exact source text · No formatting changes on save</footer>
     <div v-if="leaveResolver" class="raw-modal-overlay">
       <section class="raw-modal" role="dialog" aria-modal="true" aria-labelledby="raw-leave-title"
@@ -37,6 +56,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import axios from 'axios';
+import { rawOutline } from '../utils/rawOutline';
 
 const props = defineProps({ filePath: { type: String, required: true }, fileLabel: String, revision: Object });
 const emit = defineEmits(['saved']);
@@ -48,6 +68,47 @@ const loading = ref(false);
 const sourceLoaded = ref(false);
 const saving = ref(false);
 const error = ref('');
+const sourceEditor = ref(null);
+const sourceHighlight = ref(null);
+const headings = computed(() => rawOutline(draft.value));
+const sourceLines = computed(() => {
+  const byLine = new Map(headings.value.map(heading => [heading.line, heading]));
+  let tone = null;
+  return draft.value.split('\n').map((text, index) => {
+    const heading = byLine.get(index);
+    if (heading) tone = heading.tone;
+    return { text: text.replace(/\r$/, ''), tone, heading: Boolean(heading) };
+  });
+});
+const syncSourceScroll = () => {
+  if (!sourceEditor.value || !sourceHighlight.value) return;
+  sourceHighlight.value.style.width = `${sourceEditor.value.clientWidth}px`;
+  sourceHighlight.value.style.height = `${sourceEditor.value.clientHeight}px`;
+  sourceHighlight.value.scrollTop = sourceEditor.value.scrollTop;
+  sourceHighlight.value.scrollLeft = sourceEditor.value.scrollLeft;
+};
+watch(draft, () => nextTick(syncSourceScroll));
+let sourceObserver;
+watch(sourceEditor, editor => {
+  sourceObserver?.disconnect();
+  if (!editor) return;
+  sourceObserver = new ResizeObserver(syncSourceScroll);
+  sourceObserver.observe(editor);
+  syncSourceScroll();
+}, { flush: 'post' });
+const jumpToHeading = heading => {
+  const editor = sourceEditor.value;
+  if (!editor) return;
+  editor.focus({ preventScroll: true });
+  // Textarea selection offsets normalize CRLF, while the saved source does not.
+  const start = draft.value.slice(0, heading.start).replace(/\r\n/g, '\n').length;
+  const end = draft.value.slice(0, heading.end).replace(/\r\n/g, '\n').length;
+  editor.setSelectionRange(start, end);
+  const lineHeight = parseFloat(getComputedStyle(editor).lineHeight);
+  editor.scrollTop = heading.line * lineHeight;
+  editor.scrollLeft = 0;
+  syncSourceScroll();
+};
 const dirty = computed(() => editing.value && draft.value !== original.value);
 const leaveResolver = shallowRef(null);
 const keepEditingButton = ref(null);
@@ -123,6 +184,7 @@ const beforeUnload = event => {
 };
 window.addEventListener('beforeunload', beforeUnload);
 onBeforeUnmount(() => {
+  sourceObserver?.disconnect();
   loadSequence++;
   resolveLeave(false);
   window.removeEventListener('beforeunload', beforeUnload);
@@ -139,8 +201,53 @@ defineExpose({ confirmLeave });
 button { background: var(--ui-surface); border: 1px solid var(--ui-border-strong); color: var(--ui-text); border-radius: 7px; padding: 7px 13px; cursor: pointer; }
 button:disabled { opacity: .5; cursor: default; }
 .raw-save { border-color: var(--ui-green); color: var(--ui-green); }
-.raw-source { flex: 1; min-height: 200px; resize: none; padding: 18px; border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-surface); color: var(--ui-text); font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; tab-size: 2; white-space: pre; overflow: auto; }
-.raw-source[readonly] { background: var(--ui-surface-soft); }
+.raw-workspace { display: flex; gap: 10px; flex: 1; min-height: 0; }
+.raw-toc { flex: 0 0 clamp(140px, 18vw, 240px); min-height: 0; overflow-y: auto;
+  background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 10px; }
+.raw-outline { padding: 8px; }
+.raw-outline-link { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; padding: 5px 8px;
+  background: transparent; font: 400 12px var(--ui-font); text-align: left; }
+.raw-outline-link > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.raw-outline-link small { margin-left: auto; color: var(--ui-muted); flex: none; }
+.raw-outline-column { font-weight: 700; margin-top: 8px; }
+.raw-outline-link:hover { background: var(--ui-surface-soft); }
+.raw-outline-link { color: var(--raw-section-color); }
+.raw-outline-column { border-left: 3px solid var(--raw-section-color);
+  background: color-mix(in srgb, var(--raw-section-color) 9%, transparent); }
+.raw-tone-TODO { --raw-section-color: #586bb0; }
+.raw-tone-PROJECTS { --raw-section-color: #9368ad; }
+.raw-tone-SELECTED { --raw-section-color: #ab641d; }
+.raw-tone-WIP { --raw-section-color: #2f7d51; }
+.raw-tone-DONE { --raw-section-color: #a35470; }
+:global(.theme-dark) .raw-tone-TODO { --raw-section-color: #a6b5ef; }
+:global(.theme-dark) .raw-tone-PROJECTS { --raw-section-color: #c6a3df; }
+:global(.theme-dark) .raw-tone-SELECTED { --raw-section-color: #edb778; }
+:global(.theme-dark) .raw-tone-WIP { --raw-section-color: #86cfa5; }
+:global(.theme-dark) .raw-tone-DONE { --raw-section-color: #e6a2b9; }
+.raw-outline-empty { color: var(--ui-muted); font-size: 12px; }
+.raw-toc button:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: -2px; }
+.raw-editor { position: relative; flex: 1; min-width: 0; min-height: 200px; overflow: hidden;
+  border: 1px solid var(--ui-border); border-radius: 10px; background: var(--ui-surface); }
+.raw-editor-readonly { background: var(--ui-surface-soft); }
+.raw-source, .raw-source-highlight { position: absolute; inset: 0; width: 100%; height: 100%;
+  box-sizing: border-box; margin: 0; padding: 18px; border: 0; border-radius: 0;
+  font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: normal;
+  tab-size: 2; white-space: pre; overflow-wrap: normal; }
+.raw-source { resize: none; background: transparent; color: transparent; caret-color: var(--ui-text);
+  overflow: auto; }
+.raw-source::selection { color: transparent; background: #4d8fd640; }
+.raw-source:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: -2px; }
+.raw-source-highlight { pointer-events: none; overflow: hidden; color: var(--ui-text); }
+.raw-source-line { position: relative; display: block; min-height: 1.6em; width: max-content; min-width: 100%; }
+.raw-source-line::before { content: ''; position: absolute; top: 0; bottom: 0; left: -10px;
+  width: 2px; background: var(--raw-section-color, transparent); }
+.raw-source-heading { color: var(--raw-section-color);
+  background: color-mix(in srgb, var(--raw-section-color) 9%, transparent); }
+@media (forced-colors: active) {
+  .raw-source-highlight { display: none; }
+  .raw-source { color: CanvasText; caret-color: CanvasText; }
+  .raw-source::selection { color: HighlightText; background: Highlight; }
+}
 .raw-error { color: var(--ui-blocked); padding: 8px 12px; border: 1px solid var(--ui-border); border-radius: 6px; font-size: 13px; }
 .raw-modal-overlay { position: fixed; inset: 0; display: grid; place-items: center; background: #0006; z-index: 10000; padding: 20px; }
 .raw-modal { max-width: 480px; padding: 24px; background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: 14px; box-shadow: var(--ui-shadow-md); }

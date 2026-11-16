@@ -16,13 +16,10 @@
           <button v-if="columnType === 'TODO' && isDrawerExpanded === false" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Show Todo'">
             <span>→</span>
           </button>
-          <button v-if="columnType === 'PROJECTS' && isDrawerExpanded === false" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Show Projects'">
-            <span>→</span>
-          </button>
           <button v-if="columnType === 'WIP' && isDrawerExpanded === false" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Show WIP'">
             <span>→</span>
           </button>
-          {{ title }}
+          {{ headingLabel || title }}
           <div v-if="taskCounts.total > 0" class="column-counts">
             <span class="count-badge total-count">{{ taskCounts.total }}</span>
             <span v-if="taskCounts.todo > 0" class="count-badge todo-count">{{ taskCounts.todo }}</span>
@@ -41,6 +38,8 @@
           </div>
         </div>
         <div class="column-header-buttons">
+          <button v-if="columnType !== 'DONE' && !columnData.on_ice" class="add-task-btn"
+                  title="Add a task directly to this column" @click="addRootTask">+ Task</button>
           <button v-if="columnType === 'DONE' && !columnData.on_ice" class="expand-all-btn" @click="expandAll" title="Show all cards (▼)">
             <span class="expand-icon">▼</span> Expand
           </button>
@@ -65,9 +64,6 @@
           <button v-if="columnType === 'TODO' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Todo'">
             <span>←</span>
           </button>
-          <button v-if="columnType === 'PROJECTS' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide Projects'">
-            <span>←</span>
-          </button>
           <button v-if="columnType === 'WIP' && isDrawerExpanded === true" class="drawer-toggle-btn" @click="emit('toggle-drawer')" :title="'Hide WIP'">
             <span>←</span>
           </button>
@@ -87,6 +83,7 @@
             <KanbanSection
                 v-if="section.type !== 'raw-text'"
                 :section="section"
+                :hide-projects="hideProjects"
                 :data-planning-section="index"
                 :column-type="columnType"
                 :column="title"
@@ -111,8 +108,11 @@
 import { computed, ref } from 'vue';
 import draggable from 'vuedraggable';
 import KanbanSection from './KanbanSection.vue';
+import { ensureColumnRoot } from '../utils/columnRootHelpers';
 
 const props = defineProps({
+  headingLabel: { type: String, default: '' },
+  hideProjects: { type: Boolean, default: false },
   columnType: {
     type: String,
     required: true
@@ -163,6 +163,12 @@ const emit = defineEmits([
 
 // Template refs
 const columnRef = ref(null);
+const addRootTask = () => {
+  const root = ensureColumnRoot({ sections: props.sections });
+  root.items.push({ id: `task-${crypto.randomUUID()}`, type: 'task', text: '', displayText: '',
+    listMarker: '*', statusChar: ' ', isNew: true });
+  emit('task-updated');
+};
 
 // Computed properties
 const isRawTextColumn = computed(() => props.columnData?.type === 'raw-text');
@@ -175,6 +181,7 @@ const taskCounts = computed(() => {
     if (section.type === 'raw-text') continue;
     for (const item of (section.items || [])) {
       if (item.type !== 'task') continue;
+      if (props.hideProjects && item.listMarker === '+') continue;
       counts.total++;
       switch (item.statusChar) {
         case ' ': counts.todo++; break;

@@ -3,6 +3,7 @@ import { ref, onUnmounted } from 'vue';
 import axios from 'axios';
 import { parseTodoMdFile, renderTodoMdFile } from '../utils/TodoMdParser';
 import SparkMD5 from 'spark-md5';
+import { captureWorkflowState, reconcileWorkflowEdits } from '../utils/taskWorkflow';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 const WS_URL = 'ws://localhost:3001';
@@ -15,6 +16,7 @@ export function useTodoData() {
     const parsingError = ref('');
     const afterPersistCallbacks = new Set();
     const afterLoadCallbacks = new Set();
+    let workflowState = new Map();
     
     let ws = null;
     let reconnectTimeout = null;
@@ -30,6 +32,7 @@ export function useTodoData() {
     };
 
     const notifyAfterLoad = () => {
+        workflowState = captureWorkflowState(todoData.value);
         afterLoadCallbacks.forEach(callback => callback());
     };
 
@@ -144,9 +147,11 @@ export function useTodoData() {
     const persistTodoData = async (options = {}) => {
         try {
             const { skipHistory = false } = options;
+            if (!skipHistory) reconcileWorkflowEdits(todoData.value, workflowState);
 
             // Render using nested structure
             const content = renderTodoMdFile(todoData.value);
+            const nextWorkflowState = captureWorkflowState(todoData.value);
 
             if (!content) {
                 console.error('No content generated for saving');
@@ -164,6 +169,7 @@ export function useTodoData() {
                 path: selectedFile.value.path
             });
             updateSelectedFileCounts(content);
+            workflowState = nextWorkflowState;
 
             if (!skipHistory) {
                 await notifyAfterPersist(content);

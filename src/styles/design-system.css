@@ -135,7 +135,7 @@
 .todo-app .task-card.low-priority-task-card {
   margin-bottom: 2px;
   background: var(--ui-surface-soft);
-  border: 1px solid var(--ui-border);
+  border: 2px solid var(--ui-border);
   border-radius: 6px;
   box-shadow: none;
   color: var(--ui-text);

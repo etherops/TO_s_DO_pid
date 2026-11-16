@@ -17,6 +17,10 @@ describe('Subtask status counts', () => {
       .toEqual([...Array(3).fill(' '), ...Array(3).fill('-'), ...Array(3).fill('~'), ...Array(7).fill('x')]);
     expect(wrapper.get('button').attributes('aria-label'))
       .toBe('Edit subtasks: 5 total, 2 done, 1 in progress, 1 not started, 1 will not do');
+    await wrapper.setProps({ compact: true });
+    expect(wrapper.get('.subtask-total').text()).toBe('5');
+    expect(wrapper.get('button').attributes('aria-label')).toContain('Edit subtasks: 5 total');
+    await wrapper.setProps({ compact: false });
     await wrapper.get('button').trigger('click');
     expect(wrapper.emitted('edit')).toHaveLength(1);
     expect(task.statusChar).toBe('~');

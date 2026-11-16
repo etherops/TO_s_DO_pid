@@ -56,13 +56,17 @@
     <KanbanBoard
         v-else
         :todo-data="todoData"
+        @set-view-mode="setViewMode"
         @update="handleUpdate"
     />
+    <SubtaskActionsHost ref="subtaskActions" :todo-data="todoData" :theme="resolvedTheme"
+                        :view-mode="viewMode" @update="handleUpdate" />
   </div>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, computed, ref } from 'vue';
+import { onMounted, onUnmounted, computed, ref, provide } from 'vue';
+import SubtaskActionsHost from './components/SubtaskActionsHost.vue';
 import FileTabBar from './components/FileTabBar.vue';
 import KanbanBoard from './components/KanbanBoard.vue';
 import FocusMode from './components/FocusMode.vue';
@@ -87,12 +91,18 @@ const {
   registerAfterLoad
 } = useTodoData();
 
+const subtaskActions = ref(null);
+provide('openSubtaskActions', (...args) => subtaskActions.value?.open(...args));
+
 // Old normal/triage preferences now open the single outline-based Plan workspace.
 const savedViewMode = localStorage.getItem('viewMode');
-const viewMode = ref(['focus', 'review', 'raw'].includes(savedViewMode) ? savedViewMode : 'plan');
+const normalizeViewMode = (mode) => mode === 'focus2' ? 'focus'
+  : ['focus', 'review', 'raw'].includes(mode) ? mode : 'plan';
+const viewMode = ref(normalizeViewMode(savedViewMode));
+if (savedViewMode === 'focus2') localStorage.setItem('viewMode', 'focus');
 const rawMode = ref(null);
 const setViewMode = async (mode) => {
-  const nextMode = ['focus', 'review', 'raw'].includes(mode) ? mode : 'plan';
+  const nextMode = normalizeViewMode(mode);
   if (nextMode === viewMode.value) return;
   if (rawMode.value && !await rawMode.value.confirmLeave()) return;
   viewMode.value = nextMode;

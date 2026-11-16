@@ -78,8 +78,8 @@
               <strong>{{ summary.matches[0].name }}</strong> ({{ summary.existingCount }} already there).
               No new week section will be created.
               <span v-if="summary.matches.length > 1" class="archive-duplicate-warning">
-                {{ summary.matches.length }} matching sections already exist; tasks will go into the first.
-                Existing sections will not be merged or deleted.
+                Merge {{ summary.matches.length }} matching week sections into this section,
+                preserving all existing tasks, subtasks and notes.
               </span>
             </template>
             <template v-else>Create <strong>{{ summary.name }}</strong> with {{ summary.count }}
@@ -158,7 +158,7 @@ const destinationSummaries = computed(() => archiveGroups.value
     const matches = matchingArchiveSections(props.archiveColumns[selectedColumn.value]?.sections, group);
     return {
       name: group.name, count: group.tasks.length, matches,
-      existingCount: (matches[0]?.items || []).filter(item => item.type === 'task').length
+      existingCount: matches.flatMap(section => section.items || []).filter(item => item.type === 'task').length
     };
   }));
 

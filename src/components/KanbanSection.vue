@@ -5,11 +5,12 @@
       :class="['section', {
       'archivable-section': section.archivable,
       'on-ice-section': columnData.on_ice,
-      'raw-text-section': isRawTextSection
+      'raw-text-section': isRawTextSection,
+      'column-root-section': section.headerStyle === 'NONE'
     }]"
   >
     <div
-        v-if="!isRawTextSection"
+        v-if="!isRawTextSection && section.headerStyle !== 'NONE'"
         :class="['section-header', section.headerStyle === 'LARGE' ? 'large' : 'small', { 'fully-collapsed': isFullyCollapsed }]"
         @dblclick="section.archivable && startEditingSection()"
     >
@@ -32,7 +33,7 @@
         </div>
       </template>
       <template v-else>
-        <span class="section-title">{{ section.name }}</span>
+        <span class="section-title" :title="section.name">{{ section.name }}</span>
         <!-- Collapse/Expand link after title -->
         <span
           v-if="!columnData.on_ice && !isColumnCollapsed"
@@ -199,7 +200,7 @@
       <!-- All tasks in single draggable container (hidden when fully collapsed or summary collapsed) -->
       <draggable
           v-show="!isFullyCollapsed && !isSummaryCollapsed"
-          v-model="section.items"
+          v-model="displayItems"
           :group="'tasks'"
           item-key="id"
           class="task-list"
@@ -212,13 +213,18 @@
         <template #item="{ element: item, index }">
           <div
             v-if="item.type !== 'raw-text'"
+            :data-task-id="item.id"
             :class="['task-card-wrapper', {
               'collapsed-completed': isCompletedCollapsed && getContiguousCompletedTasks.includes(item),
               'collapsed-in-progress': isCompletedCollapsed && getContiguousInProgressTasks.includes(item)
             }]"
-            :style="getTaskCardStyle(item, index)"
+            :style="isItemVisible(item) ? getTaskCardStyle(item, index) : { display: 'none' }"
           >
+            <h4 v-if="inPlanningWorkspace && item === lowPriorityItems[0]" class="planning-low-priority-heading">
+              LOW PRIO <span>{{ lowPriorityItems.length }}</span>
+            </h4>
             <TaskCard
+                v-if="isItemVisible(item)"
                 :task="item"
                 :section="section"
                 :column="column"
@@ -245,15 +251,19 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue';
+import { ref, nextTick, onMounted, computed, inject } from 'vue';
 import draggable from 'vuedraggable';
 import TaskCard from './TaskCard.vue';
+const planningStatusChanges = inject('planningStatusChanges', null);
+const inPlanningWorkspace = inject('planningWorkspace', false);
+const layoutStatus = task => planningStatusChanges?.layoutStatus(task) ?? task.statusChar;
 import {
   getBoardTaskSortPriority,
   sortTaskToCorrectPosition
 } from '../utils/sortHelpers';
 
 const props = defineProps({
+  hideProjects: { type: Boolean, default: false },
   section: {
     type: Object,
     required: true
@@ -288,10 +298,25 @@ const emit = defineEmits(['task-updated', 'section-updated', 'task-click', 'task
 
 // Computed properties
 const isRawTextSection = computed(() => props.section.type === 'raw-text');
+const isItemVisible = item => !(props.hideProjects && item.listMarker === '+');
+// Keep draggable bound to the complete source array; only presentation excludes projects.
+const presentationItems = computed(() => (props.section.items || []).filter(isItemVisible));
+const isLowPriority = item => item.type === 'task' && (item.isLowPriority || item.listMarker === '-');
+const lowPriorityItems = computed(() => presentationItems.value.filter(isLowPriority));
+// Stable presentation grouping; preserve every original object, including hidden projects and raw lines.
+// Only an explicit drag writes the complete reordered array back to the paper section.
+const displayItems = computed({
+  get: () => inPlanningWorkspace
+    ? [...props.section.items.filter(item => !isLowPriority(item)), ...props.section.items.filter(isLowPriority)]
+    : props.section.items,
+  set: items => { props.section.items = items; }
+});
+const collapsibleItems = computed(() => presentationItems.value
+  .filter(item => !inPlanningWorkspace || !isLowPriority(item)));
 
 // Count visible items for empty section display
 const visibleItemsCount = computed(() => {
-  return (props.section.items || []).filter(item => item.type !== 'raw-text').length;
+  return presentationItems.value.filter(item => item.type !== 'raw-text').length;
 });
 
 
@@ -342,20 +367,20 @@ const sectionNameInput = ref(null);
 
 // Computed property to check if section has completed/cancelled tasks
 const hasCompletedTasks = computed(() => {
-  return (props.section.items || []).some(item => 
-    item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')
+  return presentationItems.value.some(item =>
+    item.type === 'task' && ['x', '-'].includes(layoutStatus(item))
   );
 });
 
 // Get contiguous completed/cancelled tasks from the top (x, -)
 const getContiguousCompletedTasks = computed(() => {
-  const items = props.section.items || [];
+  const items = collapsibleItems.value;
   const contiguousTasks = [];
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     // Only include completed (x) and cancelled (-) tasks
-    if (item.type === 'task' && (item.statusChar === 'x' || item.statusChar === '-')) {
+    if (item.type === 'task' && ['x', '-'].includes(layoutStatus(item))) {
       contiguousTasks.push(item);
     } else {
       // Stop at first non-completed task
@@ -368,7 +393,7 @@ const getContiguousCompletedTasks = computed(() => {
 
 // Get contiguous in-progress tasks that come after the completed tasks
 const getContiguousInProgressTasks = computed(() => {
-  const items = props.section.items || [];
+  const items = collapsibleItems.value;
   const completedCount = getContiguousCompletedTasks.value.length;
   const inProgressTasks = [];
 
@@ -376,7 +401,7 @@ const getContiguousInProgressTasks = computed(() => {
   for (let i = completedCount; i < items.length; i++) {
     const item = items[i];
     // Only include in-progress (~) tasks
-    if (item.type === 'task' && item.statusChar === '~') {
+    if (item.type === 'task' && layoutStatus(item) === '~') {
       inProgressTasks.push(item);
     } else {
       // Stop at first non-in-progress task
@@ -445,14 +470,14 @@ const handleSetCollapseState = (event) => {
 // Computed property to calculate counts for partial collapse summary card (only completed/cancelled)
 const collapsedSummary = computed(() => {
   const tasks = getContiguousCompletedTasks.value;
-  const completed = tasks.filter(task => task.statusChar === 'x').length;
-  const cancelled = tasks.filter(task => task.statusChar === '-').length;
+  const completed = tasks.filter(task => layoutStatus(task) === 'x').length;
+  const cancelled = tasks.filter(task => layoutStatus(task) === '-').length;
   return { completed, cancelled, total: completed + cancelled };
 });
 
 // Computed property for full collapse summary (ALL tasks)
 const fullCollapseSummary = computed(() => {
-  const allTasks = (props.section.items || []).filter(item => item.type === 'task');
+  const allTasks = presentationItems.value.filter(item => item.type === 'task');
   return {
     todo: allTasks.filter(task => task.statusChar === ' ').length,
     inProgress: allTasks.filter(task => task.statusChar === '~').length,
@@ -750,7 +775,8 @@ const isMultiSelected = (taskId) =>
 
 // Handle drag start - detect multi-drag, clone selected tasks into dragged element
 const onDragStart = (event) => {
-  const draggedItem = props.section.items[event.oldIndex];
+  const draggedItem = props.section.items.find(item => String(item.id) === event.item?.dataset.taskId)
+    || displayItems.value[event.oldIndex];
   if (!draggedItem) return;
 
   isMultiDragging = isMultiSelected(draggedItem.id);
@@ -779,7 +805,7 @@ const onDragEnd = (event) => {
 
   // For same-section reorder during multi-drag, emit completion
   if (isMultiDragging && event.from === event.to) {
-    const draggedItem = props.section.items[event.newIndex];
+    const draggedItem = props.section.items.find(item => String(item.id) === event.item?.dataset.taskId);
     if (draggedItem) {
       emit('multi-drag-complete', { draggedTaskId: draggedItem.id });
     }
@@ -791,7 +817,8 @@ const onDragEnd = (event) => {
 
 // Handle item added from another section (fires on TARGET section)
 const onDragAdd = async (event) => {
-  const newItem = props.section.items[event.newIndex];
+  const newItem = props.section.items.find(item => String(item.id) === event.item?.dataset.taskId)
+    || displayItems.value[event.newIndex];
   const isMultiDrop = isMultiSelected(newItem?.id);
 
   // Auto-sort single drops in collapsed sections (skip for multi-drag, board handles placement)

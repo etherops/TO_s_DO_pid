@@ -22,7 +22,7 @@ describe('Archive week selection', () => {
     } });
     expect(wrapper.get('[role="dialog"]').attributes('aria-modal')).toBe('true');
     expect(wrapper.get('.archive-destination-summary').text()).toContain('No new week section');
-    expect(wrapper.get('.archive-duplicate-warning').text()).toContain('2 matching sections already exist');
+    expect(wrapper.get('.archive-duplicate-warning').text()).toContain('Merge 2 matching week sections');
     await wrapper.get('.btn-confirm').trigger('click');
     await wrapper.get('.btn-confirm').trigger('click');
     expect(wrapper.emitted('confirm')).toHaveLength(1);

@@ -11,7 +11,8 @@ describe('Initiative demotion', () => {
   for (const surface of ['focus', 'board']) {
     it(`confirms and preserves detached child data in ${surface}`, async () => {
       vi.useFakeTimers();
-      const data = parseTodoMdFile('# WIP\n### Work\n* [~] Parent\n'
+      vi.setSystemTime(new Date(2026, 9, 1));
+      const data = parseTodoMdFile('# WIP\n### Work\n* [~] Parent ! Oct 1 2026\n'
         + '  - [~] Child (note) ! Oct 2026\n  * Unsupported\n  - [x] Finished | Sep 20 2026\n');
       const section = data.columnStacks.WIP.sections[0];
       const task = section.items[0];

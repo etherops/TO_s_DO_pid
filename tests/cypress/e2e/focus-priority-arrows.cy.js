@@ -22,6 +22,7 @@ describe('Focus priority arrows', () => {
     cy.readFile('fixture-focus-priority-arrows.todo.md').should('contain', '- [ ] Lower me');
     cy.contains('.panel-now .focus-task-row', 'Parent').find('[aria-label="Make high priority"]').click();
     cy.get('.detach-modal').should('not.exist');
+    cy.get('#focus-tab-projects').click();
     cy.contains('.focus-initiatives .focus-task-row', 'Parent').find('.priority-toggle').click();
     cy.contains('.panel-now .focus-task-row', 'Parent').find('[aria-label="Make low priority"]').click();
     cy.get('.detach-modal').should('be.visible');

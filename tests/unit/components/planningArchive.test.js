@@ -26,21 +26,20 @@ afterEach(() => {
 });
 
 describe('Plan inline archive weeks', () => {
-  it('places archive weeks inside WIP above source sections, once across multiple WIP headings', () => {
+  it('places archive weeks above the date groups, once across multiple WIP headings', () => {
     const data = parseTodoMdFile(source + '# DOING\n### Extra\n* [~] Another active task\n');
     const before = renderTodoMdFile(data);
     const wrapper = mount(KanbanBoard, {
       props: { todoData: data }, global: { stubs: { TaskCard: true } }
     });
-    const content = wrapper.get('[data-planning-column="WIP"] .column-content');
+    const content = wrapper.get('[data-planning-lane="WIP"] .planning-lane-body');
     const children = [...content.element.children];
     const archiveWeeks = children.filter(child => child.matches('.planning-archive-week'));
     expect(archiveWeeks.length).toBeGreaterThan(0);
     expect(children.indexOf(archiveWeeks.at(-1))).toBeLessThan(
-      children.findIndex(child => child.matches('.section-list'))
+      children.findIndex(child => child.matches('.planning-date-group'))
     );
     expect(wrapper.findAll('.planning-archive')).toHaveLength(1);
-    expect(wrapper.get('[data-planning-column="DOING"]').find('.planning-archive').exists()).toBe(false);
     expect(renderTodoMdFile(data)).toBe(before);
     wrapper.unmount();
   });
@@ -72,23 +71,41 @@ describe('Plan inline archive weeks', () => {
     localStorage.removeItem('section-collapse-Oct Week #3 2026');
   });
 
-  it('previews all WIP sections without changing source and labels undated work', async () => {
+  it('previews only closed WIP weeks without changing source or including undated work', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 10, 1));
     const data = parseTodoMdFile(source);
     const before = renderTodoMdFile(data);
     const wrapper = mount(PlanningArchiveWeeks, { props: { todoData: data } });
-    expect(wrapper.findAll('.planning-archive-week')).toHaveLength(4);
+    expect(wrapper.findAll('.planning-archive-week')).toHaveLength(3);
     const first = wrapper.findAll('.planning-archive-week')[0];
     expect(first.text()).toContain('Oct Week #3 2026');
     expect(first.get('.archive-week-count').text()).toBe('2');
-    await first.get('.archive-week-toggle').trigger('click');
     expect(first.get('ul').text()).toContain('Finished parent');
     expect(first.get('ul').text()).toContain('Cancelled');
+    await first.get('.archive-week-toggle').trigger('click');
+    expect(first.find('ul').exists()).toBe(false);
+    await first.get('.archive-week-toggle').trigger('click');
+    expect(first.get('ul').text()).toContain('Finished parent');
     expect(wrapper.text()).not.toContain('Selected done');
-    expect(wrapper.text()).toContain('1 without a completion date');
+    expect(wrapper.text()).not.toContain('without a completion date');
+    expect(wrapper.text()).not.toContain('Nov Week #1 2026');
     await first.get('.archive-week-action').trigger('click');
     expect(wrapper.emitted('archive-week')[0]).toEqual(['Oct Week #3 2026']);
+    expect(renderTodoMdFile(data)).toBe(before);
+    wrapper.unmount();
+  });
+
+  it('hides Ready to archive entirely when only current, future or undated completions exist', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 3));
+    const data = parseTodoMdFile('# WIP\n### Work\n* [x] Current | Nov 2 2026\n'
+      + '* [-] Future | Nov 12 2026\n* [x] Undated\n');
+    const before = renderTodoMdFile(data);
+    const wrapper = mount(PlanningArchiveWeeks, { props: { todoData: data } });
+    expect(wrapper.find('.planning-archive').exists()).toBe(false);
+    expect(wrapper.findAll('.planning-archive-week')).toHaveLength(0);
+    expect(wrapper.emitted('archive-week')).toBeUndefined();
     expect(renderTodoMdFile(data)).toBe(before);
     wrapper.unmount();
   });
@@ -173,5 +190,37 @@ describe('Plan inline archive weeks', () => {
     archiveTaskGroups(data, wipArchiveSections(data), 'ARCHIVE', ['Oct Week #3 2026']);
     expect(data.columnStacks.ARCHIVE.sections.some(section => section.name === 'Oct Week #3 2026')).toBe(true);
     expect(data.columnStacks.ARCHIVE.sections.find(section => section.name === 'Oct Week #3').items).toHaveLength(1);
+  });
+
+  it('recognizes legacy misspellings with adjacent-week spillover and merges confirmed duplicates losslessly', () => {
+    const data = parseTodoMdFile('# WIP\n### Work\n* [-] New arrival | Aug 6 2026\n'
+      + '# ARCHIVE\n### Aug Week #1 2026\n* [-] Teacher | Aug 6 2026\n'
+      + '### Aug Wek #1\n+ [x] Legacy parent | Aug 7 2026\n  - [x] Child | Aug 5 2026\n'
+      + '  * Unsupported nested text\n* [x] Spillover | Aug 11 2026\n* [x] Undated\n'
+      + '### Aug Week #1 2025\n* [x] Last year | Aug 6 2025\n');
+    const original = data.columnStacks.ARCHIVE.sections.filter(section => section.type === 'section');
+    const children = original[1].items[0].children;
+    expect(archiveTaskGroups(data, wipArchiveSections(data), 'ARCHIVE', ['Aug Week #1 2026'])).toBe(true);
+    const sections = data.columnStacks.ARCHIVE.sections.filter(section => section.type === 'section');
+    expect(sections).toHaveLength(2);
+    expect(sections[0].items).toHaveLength(5);
+    expect(sections[0].items[1].children).toBe(children);
+    expect(sections[1]).toBe(original[2]);
+    expect(renderTodoMdFile(data)).toContain('  * Unsupported nested text');
+    expect(archiveTaskGroups(data, wipArchiveSections(data), 'ARCHIVE', ['Aug Week #1 2026'])).toBe(false);
+  });
+
+  it('reuses a yearless Wek heading but rejects ambiguous or conflicting year evidence', () => {
+    for (const [dates, expected] of [
+      ['Aug 7 2026\n* [x] Spillover | Aug 11 2026', 1],
+      ['Aug 7 2025', 2],
+      ['Aug 7 2026\n* [x] Mixed year | Aug 7 2025', 2],
+      ['Aug 11 2026', 2]
+    ]) {
+      const data = parseTodoMdFile('# WIP\n### Work\n* [x] New | Aug 6 2026\n'
+        + `# ARCHIVE\n### Aug Wek #1\n* [x] Existing | ${dates}\n`);
+      archiveTaskGroups(data, wipArchiveSections(data), 'ARCHIVE', ['Aug Week #1 2026']);
+      expect(data.columnStacks.ARCHIVE.sections.filter(section => section.type === 'section')).toHaveLength(expected);
+    }
   });
 });

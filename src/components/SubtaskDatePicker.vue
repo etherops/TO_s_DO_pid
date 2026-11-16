@@ -1,19 +1,19 @@
 <template>
-  <div class="subtask-date-picker" :aria-label="completion ? 'Subtask completion date' : 'Subtask due date'"
+  <div class="subtask-date-picker" :aria-label="`${subjectLabel} ${completion ? 'completion' : 'due'} date`"
        @keydown.esc.stop="$emit('close')">
     <div class="shortcuts">
       <button v-for="option in shortcuts" :key="option.label" type="button"
               @pointerdown.stop.prevent="choose(option.value)"
               @click="!$event.detail && choose(option.value)">{{ option.label }}</button>
       <button type="button" @pointerdown.stop.prevent="choose('')"
-              @click="!$event.detail && choose('')">Clear</button>
-      <button type="button" aria-label="Close date picker" @click="$emit('close')">×</button>
+              @click="!$event.detail && choose('')">{{ clearLabel }}</button>
+      <button v-if="showClose" type="button" aria-label="Close date picker" @click="$emit('close')">×</button>
     </div>
     <div class="custom-date">
       <button v-for="option in (completion ? [] : ['day', 'week', 'month'])" :key="option" type="button"
               :class="{ active: kind === option }" @click="kind = option">{{ option }}</button>
       <input :type="kind === 'day' ? 'date' : kind" :value="inputValue"
-             :aria-label="completion ? 'Subtask completed on' : `Subtask due ${kind}`"
+             :aria-label="`${subjectLabel} ${completion ? 'completed on' : `due ${kind}`}`"
              @change="chooseInput($event.target.value)" />
     </div>
   </div>
@@ -22,7 +22,9 @@
 import { computed, ref } from 'vue';
 import { isoWeekInputFromSunday, sundayValueFromIsoWeekInput } from '../utils/dateHelpers';
 const props = defineProps({
-  modelValue: { type: String, default: '' }, completion: { type: Boolean, default: false }
+  modelValue: { type: String, default: '' }, completion: { type: Boolean, default: false },
+  subjectLabel: { type: String, default: 'Subtask' }, clearLabel: { type: String, default: 'Clear' },
+  showClose: { type: Boolean, default: true }
 });
 const emit = defineEmits(['update:modelValue', 'close']);
 const kind = ref(props.completion ? 'day' : props.modelValue.startsWith('week:') ? 'week'

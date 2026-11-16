@@ -147,7 +147,7 @@
             class="view-mode-btn"
             :class="{ active: viewMode === 'plan' }"
             @click="$emit('set-view-mode', 'plan')"
-            title="Plan: SELECTED and WIP side by side, with file outline and schedule"
+            title="Plan: Backlog, SELECTED and WIP, with date groups"
         >
           Plan
         </button>
@@ -155,7 +155,7 @@
             class="view-mode-btn"
             :class="{ active: viewMode === 'focus' }"
             @click="$emit('set-view-mode', 'focus')"
-            title="Focus Mode: Execute this week — NOW / UP NEXT / DONE pulled from SELECTED and WIP"
+            title="Focus: This week — unscheduled, today / overdue, and scheduled days"
         >
           Focus
         </button>
@@ -413,7 +413,7 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1400px) {
-  .selected-file-status-summary:has(.status-blocked) .header-status-label {
+  .selected-file-status-summary .header-status-label {
     display: none;
   }
 }

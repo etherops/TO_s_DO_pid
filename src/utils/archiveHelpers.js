@@ -1,5 +1,5 @@
 import { extractCompletionDateValue } from './completionDateHelpers';
-import { formatWeekPeriodLabel, startOfSundayWeek } from './dateHelpers';
+import { formatWeekPeriodLabel, MONTH_NAMES, startOfSundayWeek, weekIdentity } from './dateHelpers';
 
 export const groupTasksForArchive = (items, fallbackDate = new Date()) => {
   const groups = new Map();
@@ -25,16 +25,28 @@ export const wipArchiveSections = todoData => (todoData.columnOrder || [])
 
 const normalizeHeading = name => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
 
+const archiveHeadingIdentity = name => {
+  const match = normalizeHeading(name).match(/^([a-z]+)\s+(?:(?:week|wek|wk)\s*)?#?\s*(\d+)(?:\s+(\d{4}))?$/);
+  if (!match) return null;
+  const month = MONTH_NAMES.findIndex(value => value.toLowerCase() === match[1].slice(0, 3));
+  return month < 0 ? null : { month, number: Number(match[2]), year: match[3] ? Number(match[3]) : null };
+};
+
 export const matchingArchiveSections = (sections, group) => (sections || []).filter(section => {
   if (section.type !== 'section') return false;
   const heading = normalizeHeading(section.name);
   if (heading === normalizeHeading(group.name)) return true;
-  if (heading !== normalizeHeading(formatWeekPeriodLabel(group.weekStart))) return false;
-  // Legacy yearless headings are reused only when dated contents identify this exact week.
-  // Never guess the year of an empty/undated section or combine different years.
+  const identity = archiveHeadingIdentity(heading);
+  const target = weekIdentity(group.weekStart);
+  if (!identity || identity.month !== target.monthIndex || identity.number !== target.number) return false;
+  if (identity.year !== null) return identity.year === target.year;
+  // Paper buckets may contain spillover from adjacent weeks. The heading identifies
+  // the week; dated contents establish the year, with at least one exact-week anchor.
+  // Never guess the year of an empty/undated or mixed-year legacy section.
   const dates = (section.items || []).filter(item => item.type === 'task')
     .map(item => extractCompletionDateValue(item.text)).filter(Boolean);
-  return dates.length > 0 && dates.every(date => startOfSundayWeek(date).getTime() === group.weekStart.getTime());
+  return dates.some(date => startOfSundayWeek(date).getTime() === group.weekStart.getTime())
+    && dates.every(date => weekIdentity(date).year === target.year);
 });
 
 // Move the original objects, including children and unsupported Markdown metadata.
@@ -51,8 +63,11 @@ export const archiveTaskGroups = (todoData, sections, destination, weekNames, fa
   }
   const targetSections = todoData.columnStacks[destination].sections;
   for (const group of groups) {
-    const existing = matchingArchiveSections(targetSections, group)[0];
-    if (existing) existing.items.push(...group.tasks);
+    const [existing, ...duplicates] = matchingArchiveSections(targetSections, group);
+    if (existing) {
+      existing.items.push(...duplicates.flatMap(section => section.items || []), ...group.tasks);
+      for (const duplicate of duplicates) targetSections.splice(targetSections.indexOf(duplicate), 1);
+    }
     else targetSections.unshift({
       name: group.name, type: 'section', headerStyle: 'SMALL', archivable: false,
       on_ice: false, items: [...group.tasks]

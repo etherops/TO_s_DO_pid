@@ -43,9 +43,10 @@ describe('Subtask status counts', () => {
     cy.get('input[aria-label="Subtask title"]').should('be.visible');
     cy.contains('button', 'Cancel').click();
     cy.contains('.view-mode-btn', 'Focus').click();
+    cy.get('#focus-tab-projects').click();
     checkCounts();
     cy.get('.subtask-indicator').click();
-    cy.get('.focus-edit-name').should('have.value', 'Counted initiative');
+    cy.get('.focus-expanded-project-title').should('have.text', 'Counted initiative');
     cy.get('.focus-edit-cancel').click();
     cy.get('.focus-initiatives .focus-row-check').should('have.class', 'in-progress');
   });

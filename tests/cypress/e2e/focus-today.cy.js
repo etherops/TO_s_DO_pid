@@ -76,7 +76,7 @@ describe('Focus Mode (execution carousel)', () => {
       .should('contain', 'Inflight wip task')
       .find('.focus-section-badge').should('contain', 'CURRENT');
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .should('not.contain', 'Waiting for Alice')
+      .should('contain', 'Waiting for Alice')
       .and('not.have.attr', 'title')
       .find('.focus-row-title')
       .should('have.attr', 'title', 'Edit name: Inflight wip task')
@@ -87,7 +87,7 @@ describe('Focus Mode (execution carousel)', () => {
         expect(titleWidth, 'title edit hit area').to.be.lessThan(mainWidth);
       });
     cy.get('.panel-in-progress-queued .focus-task-row').contains('.focus-task-row', 'Inflight wip task')
-      .find('.focus-note-indicator').should('exist')
+      .find('.focus-row-note').should('have.text', 'Waiting for Alice')
       .and('have.attr', 'aria-label', 'Task note: Waiting for Alice')
       .and('not.have.attr', 'title').then(($indicator) => {
         const indicatorBottom = $indicator[0].getBoundingClientRect().bottom;
@@ -98,7 +98,7 @@ describe('Focus Mode (execution carousel)', () => {
             expect(parseFloat(getComputedStyle($tooltip[0]).maxWidth)).to.be.at.least(400);
           });
       });
-    cy.get('.focus-note-dot, .focus-row-note').should('not.exist');
+    cy.get('.focus-note-dot, .focus-note-indicator').should('not.exist');
     cy.get('.focus-panel.panel-now').should('have.class', 'is-focused')
       .should('contain', 'Now')
       .should('contain', 'Queued wip task');
@@ -1009,7 +1009,7 @@ describe('Focus Mode (execution carousel)', () => {
 
     cy.get('.focus-dot').should('not.exist');
     cy.get('.panel-now').should('have.class', 'is-focused');
-    cy.get('.panel-upnext .panel-header').click({ force: true });
+    cy.get('.panel-upnext').trigger('click');
     cy.get('.panel-upnext').should('have.class', 'is-magnified').and('have.class', 'is-focused');
     cy.get('.panel-in-progress-queued').should('not.have.class', 'is-magnified');
   });
@@ -1020,7 +1020,7 @@ describe('Focus Mode (execution carousel)', () => {
 
     cy.get('.panel-in-progress-queued').trigger('mouseenter');
     cy.tick(2500);
-    cy.get('.panel-in-progress-queued .focus-note-indicator').first().trigger('mouseenter');
+    cy.get('.panel-in-progress-queued .focus-row-note').first().trigger('mouseenter');
     cy.tick(3000);
 
     cy.get('.focus-note-tooltip').should('be.visible').and('have.text', 'Waiting for Alice');

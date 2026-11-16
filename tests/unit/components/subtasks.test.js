@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseTodoMdFile, renderTodoMdFile } from '../../../src/utils/TodoMdParser';
 import FocusMode from '../../../src/components/FocusMode.vue';
 import TaskCard from '../../../src/components/TaskCard.vue';
@@ -9,10 +9,12 @@ import { setDuePeriod } from '../../../src/utils/dateHelpers';
 import SubtaskDatePicker from '../../../src/components/SubtaskDatePicker.vue';
 import SubtaskEditor from '../../../src/components/SubtaskEditor.vue';
 
-const source = '# WIP\n### Work\n+ [~] Parent\n  - [ ] Child\n  * [ ] Keep star\n'
+const source = '# WIP\n### Work\n+ [~] Parent ! Sep 21 2026\n  - [ ] Child\n  * [ ] Keep star\n'
   + '  + [~] Keep plus\n  unrecognized content\n  - Plain child\n* [ ] Separate';
 
 describe('Nested subtasks', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 21)); });
+  afterEach(() => vi.useRealTimers());
   it.each([
     ['Focus', ' ', FocusMode], ['Focus', '~', FocusMode],
     ['Board', ' ', TaskCard], ['Board', '~', TaskCard]
@@ -27,7 +29,7 @@ describe('Nested subtasks', () => {
     const props = mode === 'Focus' ? { todoData: data } : { task, section, column: 'WIP' };
     const wrapper = mount(component, { props });
     try {
-      await wrapper.get(mode === 'Focus' ? '.focus-initiatives .focus-row-check' : '.custom-checkbox')
+      await wrapper.get(mode === 'Focus' ? '.panel-in-progress-queued .focus-row-check' : '.custom-checkbox')
         .trigger('click');
       expect(task.statusChar).toBe('x');
       await vi.advanceTimersByTimeAsync(1600);
@@ -66,12 +68,12 @@ describe('Nested subtasks', () => {
   it('deletes a surfaced subtask without deleting its parent or offering column movement', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 21));
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent\n'
+    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent ! Sep 21 2026\n'
       + '  - [ ] Delete me ! Sep 21 2026\n  * Keep raw\n  - [ ] Keep child');
     const parent = data.columnStacks.WIP.sections[0].items[0];
     const wrapper = mount(FocusMode, { props: { todoData: data }, global: { stubs: { teleport: true } } });
     try {
-      await wrapper.get('.panel-now .focus-task-row').trigger('contextmenu', { clientX: 100, clientY: 100 });
+      await wrapper.findAll('.panel-now .focus-task-row')[1].trigger('contextmenu', { clientX: 100, clientY: 100 });
       expect(wrapper.find('.focus-inline-editor').exists()).toBe(false);
       expect(wrapper.find('.focus-task-context-column').exists()).toBe(false);
       expect(wrapper.find('.focus-task-context-convert').exists()).toBe(false);
@@ -114,7 +116,7 @@ describe('Nested subtasks', () => {
     } finally { wrapper.unmount(); vi.useRealTimers(); }
   });
   it('keeps typed spaces in both existing and new child titles', async () => {
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent\n  - [ ] Child (keep)');
+    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent ! Sep 21 2026\n  - [ ] Child (keep)');
     const wrapper = mount(FocusMode, { props: { todoData: data } });
     try {
       await wrapper.get('.subtask-indicator').trigger('click');
@@ -122,10 +124,12 @@ describe('Nested subtasks', () => {
       await inputs[0].setValue('Child ');
       expect(wrapper.findAll('[aria-label="Subtask title"]')[0].element.value).toBe('Child ');
       await inputs[0].setValue('Child with spaces');
+      await inputs[0].trigger('blur');
       await inputs[1].setValue('New ');
       expect(wrapper.findAll('[aria-label="Subtask title"]')[1].element.value).toBe('New ');
       await wrapper.findAll('[aria-label="Subtask title"]')[1].setValue('New child');
-      await wrapper.get('.focus-edit-save').trigger('click');
+      await wrapper.findAll('[aria-label="Subtask title"]')[1].trigger('blur');
+      await wrapper.get('.focus-edit-cancel').trigger('click');
       expect(data.columnStacks.WIP.sections[0].items[0].children.map(child => child.text))
         .toEqual(['Child with spaces (keep)', 'New child']);
     } finally { wrapper.unmount(); }
@@ -153,7 +157,7 @@ describe('Nested subtasks', () => {
       const row = wrapper.findAll('.panel-now .focus-task-row')[0];
       await row.trigger('contextmenu', { clientX: 100, clientY: 100 });
       await wrapper.get('.focus-task-context-convert').trigger('click');
-      await wrapper.get('[aria-label="Search initiatives"]').setValue('Parent');
+      await wrapper.get('[aria-label="Search projects"]').setValue('Parent');
       await wrapper.get('.initiative-parent-options button').trigger('click');
       expect(section.items).toHaveLength(1);
       expect(section.items[0].children[0]).toMatchObject({ type: 'subtask', statusChar: ' ',
@@ -164,13 +168,13 @@ describe('Nested subtasks', () => {
   it('shows day-dated children in week-at-a-glance without drag or priority controls', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 21));
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent\n  - [ ] Tomorrow child ! Sep 22 2026\n  - [ ] Undated child');
+    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent ! Sep 21 2026\n  - [ ] Tomorrow child ! Sep 22 2026\n  - [ ] Undated child');
     const wrapper = mount(FocusMode, { props: { todoData: data } });
     try {
-      const row = wrapper.findAll('.focus-week-day-column .focus-task-row')
+      const row = wrapper.findAll('.focus-week-day-column .focus-week-readonly-row')
         .find(row => row.text().includes('Tomorrow child'));
       expect(row).toBeDefined();
-      expect(row.get('.focus-subtask-parent').text()).toContain('Parent');
+      expect(row.attributes('title')).toContain('Subtask of Parent');
       expect(row.find('.focus-drag-handle').exists()).toBe(false);
       expect(row.find('.focus-week-priority-badge').exists()).toBe(false);
       expect(wrapper.findAll('.focus-week-day-column .focus-task-row')
@@ -193,16 +197,16 @@ describe('Nested subtasks', () => {
   it('edits a surfaced child without dropping hidden notes or detaching it', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 21));
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent\n  - [ ] Child (keep) (also keep) ! Sep 21 2026');
+    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent ! Sep 21 2026\n  - [ ] Child (keep) (also keep) ! Sep 21 2026');
     const task = data.columnStacks.WIP.sections[0].items[0];
     const wrapper = mount(FocusMode, { props: { todoData: data } });
     try {
       expect(wrapper.get('.focus-subtask-parent').text()).toContain('Parent');
       expect(wrapper.findAll('.panel-now .focus-day-header').map(header => header.text()))
-        .toContain('Today · Subtasks1');
+        .toContain('MAIN2');
       const childTitle = wrapper.findAll('.focus-row-title').find(button => button.text() === 'Child');
       await childTitle.trigger('click');
-      expect(wrapper.find('.focus-edit-note').exists()).toBe(false);
+      expect(wrapper.get('.focus-edit-note').element.value).toBe('keep');
       expect(wrapper.get('.subtask-parent-header').text()).toContain('Subtask of Parent');
       await wrapper.get('.focus-edit-name').setValue('Renamed child');
       await wrapper.get('.focus-edit-save').trigger('click');
@@ -228,15 +232,27 @@ describe('Nested subtasks', () => {
     expect(dated).toBe('Call (keep this) vendor (and this) ! Sep 22 2026');
   });
 
+  it('replaces a title-entered note once without accumulating copies during input', () => {
+    let text = 'Child (Old note) ! Nov 14 2026';
+    const title = 'Renamed (New note)';
+    for (let index = 1; index <= title.length; index++) {
+      text = updateSubtaskTitle(text, title.slice(0, index));
+    }
+    expect(text).toBe('Renamed (New note) ! Nov 14 2026');
+    expect(updateSubtaskTitle(text, title)).toBe(text);
+    expect(updateSubtaskTitle('Done child (Old) | Nov 14 2026', 'Done child (New)'))
+      .toBe('Done child (New) | Nov 14 2026');
+  });
+
   it('routes only qualifying dated children into NOW and In Progress, retaining their parents', () => {
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent\n'
+    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent ! Sep 21 2026\n'
       + '  - [ ] Today child (hidden note) ! Sep 21 2026\n'
       + '  - [~] Month child ! Sep 2026\n'
       + '  - [ ] Future child ! Dec 2099\n  - [~] Undated child');
     const model = deriveFocusModel(data, new Date(2026, 8, 21));
-    expect(model.now.map(entry => entry.task.text)).toEqual(['Today child (hidden note) ! Sep 21 2026']);
-    expect(model.now[0].parentTask.text).toBe('Parent');
-    expect(model.inProgressQueued.some(entry => entry.task.text === 'Month child ! Sep 2026')).toBe(true);
+    expect(model.now.map(entry => entry.task.text)).toEqual(['Parent ! Sep 21 2026', 'Today child (hidden note) ! Sep 21 2026']);
+    expect(model.now[1].parentTask.text).toBe('Parent ! Sep 21 2026');
+    expect(model.inProgressQueued.some(entry => entry.task.text === 'Month child ! Sep 2026')).toBe(false);
     expect(Object.values(model).flat().some(entry => entry.task.text.startsWith('Future child'))).toBe(false);
     expect(Object.values(model).flat().some(entry => entry.task.text === 'Undated child')).toBe(false);
     expect(data.columnStacks.WIP.sections[0].items).toHaveLength(1);
@@ -250,7 +266,7 @@ describe('Nested subtasks', () => {
     await wrapper.findAll('.subtask-edit-row')[0].trigger('drop', { clientY: -1 });
     expect(wrapper.findAll('[aria-label="Subtask title"]')[0].element.value).toBe('Plain child');
     expect(task.children[0].text).toBe('Plain child');
-    await wrapper.get('.focus-edit-save').trigger('click');
+    await wrapper.get('.focus-edit-cancel').trigger('click');
     expect(task.children[0].text).toBe('Plain child');
     expect(task.children[1].text).toBe('  * [ ] Keep star');
     expect(task.children[4].text).toBe('Child');
@@ -293,7 +309,7 @@ describe('Nested subtasks', () => {
     expect(wrapper.findAll('.subtask-edit-row')).toHaveLength(3);
     await wrapper.findAll('[aria-label="Subtask title"]')[2].setValue('New child');
     await wrapper.findAll('[aria-label="Subtask title"]')[2].trigger('keydown', { key: 'Enter' });
-    await wrapper.get(mode === 'Focus' ? '.focus-edit-save' : '.confirm-edit-btn').trigger('click');
+    await wrapper.get(mode === 'Focus' ? '.focus-edit-cancel' : '.confirm-edit-btn').trigger('click');
     expect(task.children[0].text).toMatch(/^Changed child \| /);
     expect(task.children[0].statusChar).toBe('x');
     expect(renderTodoMdFile(data)).toContain('  - [ ] New child');

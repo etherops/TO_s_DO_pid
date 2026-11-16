@@ -115,9 +115,6 @@
       <div class="task-container" @click="handleTaskCardClick">
           <!-- Content area that can flex -->
           <div class="task-content-area">
-            <button v-if="task.isLowPriority || task.listMarker === '-'" class="low-priority-badge"
-                    title="Low priority — click to make high priority"
-                    aria-label="Make high priority" @click.stop="toggleTaskPriority">LOW</button>
             <span
                 :class="[
                 'task-title',
@@ -128,14 +125,23 @@
                 { 'due-soon': task.statusChar !== 'x' && task.statusChar !== '-' && isSoon(task.text) }
               ]"
                 :title="task.text"
+                :role="inPlanningWorkspace && (!isOnIce || beforeTitleEdit) ? 'button' : undefined"
+                :tabindex="inPlanningWorkspace && (!isOnIce || beforeTitleEdit) ? 0 : undefined"
+                @click="handleTitleEdit"
+                @keydown.enter.prevent="handleTitleEdit"
+                @keydown.space.prevent="handleTitleEdit"
                 @dblclick="isOnIce ? null : startEditingAll"
             >
               {{ task.displayText || task.text }}
             </span>
+            <button v-if="!inPlanningWorkspace && (task.isLowPriority || task.listMarker === '-')" class="low-priority-badge"
+                    title="Low priority — click to make high priority"
+                    aria-label="Make high priority" @click.stop="toggleTaskPriority">LOW</button>
 
-            <SubtaskIndicator :task="task" @edit="startEditingAll" />
+            <SubtaskIndicator :task="task" :compact="inPlanningWorkspace" @edit="startEditingAll" />
+            <slot v-if="!inPlanningWorkspace" name="source" />
             <!-- Inline note preview -->
-            <div v-if="hasNote(task.text) && !isEditing" 
+            <div v-if="!inPlanningWorkspace && hasNote(task.text) && !isEditing"
                  :class="['inline-note-preview', { 'cancelled-note': task.statusChar === '-' }]">
               {{ formatInlineNote(extractNoteFromText(task.text)) }}
             </div>
@@ -149,15 +155,15 @@
               :title="hasCompletionDate(task.text) ? `Change completion date: ${getCompletionBadgeFromText(task.text)}` : 'Set completion date'"
               @click.stop="toggleCompletionDateMenu"
           >
-            <span :class="task.statusChar === 'x' ? 'completion-checkmark' : 'completion-cancel-mark'"></span>
-            {{ getCompletionBadgeFromText(task.text) || 'Set date' }}
+            <span v-if="!clockOnly" :class="task.statusChar === 'x' ? 'completion-checkmark' : 'completion-cancel-mark'"></span>
+            {{ clockOnly ? '◷' : getCompletionBadgeFromText(task.text) || 'Set date' }}
           </button>
 
           <!-- Fixed buttons container -->
           <div v-if="!isArchiveColumn" class="task-buttons-container">
 
           <PriorityToggle
-              v-if="!isOnIce && !(task.isLowPriority || task.listMarker === '-')"
+              v-if="!inPlanningWorkspace && !isOnIce && !(task.isLowPriority || task.listMarker === '-')"
               class="priority-btn"
               :high="task.listMarker === '+'"
               @toggle="toggleTaskPriority"
@@ -165,18 +171,18 @@
 
           <!-- Clock button -->
           <button
-              v-if="!isOnIce"
+              v-if="!isOnIce && !(inPlanningWorkspace && isTerminalTask)"
               class="task-icon-btn clock-btn"
               :class="{ 'has-due-date': hasDueDate(task.text) || hasCompletionDate(task.text) }"
               @click.stop="handleDateClick"
               :title="isTerminalTask ? (hasCompletionDate(task.text) ? `Completed: ${getCompletionBadgeFromText(task.text)}` : 'Set completion date') : (hasDueDate(task.text) ? getDueDateTooltip(task.text) : 'Add due date')"
           >
-            {{ inPlanningWorkspace ? (isTerminalTask ? 'Completed' : getDuePeriodLabel(task.text) || '+ Date') : '⏰' }}
+            {{ clockOnly ? '◷' : inPlanningWorkspace ? getDuePeriodLabel(task.text) || '◷' : '⏰' }}
           </button>
 
           <!-- Notes button -->
           <button
-              v-if="!isOnIce"
+              v-if="!inPlanningWorkspace && !isOnIce"
               class="task-icon-btn notes-btn"
               :class="{ 'has-notes': hasNote(task.text) }"
               @click.stop="handleNotesClick"
@@ -187,7 +193,7 @@
 
           <!-- Edit button -->
           <button
-            v-if="!isOnIce"
+            v-if="!inPlanningWorkspace && !isOnIce"
             class="task-icon-btn edit-btn"
             @click="handleEditClick"
             title="Edit task (Shift+click for simple edit)"
@@ -196,7 +202,13 @@
           </button>
 
           <!-- Delete button -->
-          <template v-if="taskPendingDelete">
+          <PlanningTaskActions v-if="inPlanningWorkspace" :title="task.displayText || task.text"
+                              :source="`${column} › ${section.name || column}`"
+                              :note="extractNoteFromText(task.text)" :priority="taskPriority(task)"
+                              :frozen="isOnIce" :has-subtasks="task.children?.some(child => child.type === 'subtask')"
+                              @edit="handleEditClick" @notes="handleNotesClick"
+                              @priority="toggleTaskPriority" @delete="confirmDeleteTask" />
+          <template v-else-if="taskPendingDelete">
             <button class="confirm-delete-btn" @click.stop="confirmDeleteTask" :title="'Delete: ' + task.text">
               Delete "{{ (task.displayText || task.text).substring(0, 10) + ((task.displayText || task.text).length > 10 ? '...' : '') }}"?
             </button>
@@ -219,7 +231,8 @@
     </div>
     
     <!-- Hover preview container (non-edit mode) -->
-    <div v-if="!isEditing && !isRawText && (isLongTitle || hasDueDate(task.text) || hasNote(task.text))" class="hover-preview-container">
+    <div v-if="!inPlanningWorkspace && !isEditing && !isRawText &&
+               (isLongTitle || hasDueDate(task.text) || hasNote(task.text))" class="hover-preview-container">
       <!-- Full title display -->
       <div v-if="isLongTitle" class="full-title-preview">
         <div class="preview-display-label">Full Title</div>
@@ -271,9 +284,10 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, onUnmounted, computed, inject } from 'vue';
+import { ref, nextTick, onMounted, onUnmounted, computed, inject, watch } from 'vue';
 import CompactDatePicker from './CompactDatePicker.vue';
 import PriorityToggle from './PriorityToggle.vue';
+import PlanningTaskActions from './PlanningTaskActions.vue';
 import SubtaskEditor from './SubtaskEditor.vue';
 import SubtaskIndicator from './SubtaskIndicator.vue';
 import SubtaskStatusGrid from './SubtaskStatusGrid.vue';
@@ -288,6 +302,8 @@ import {
   getDueDateTooltip,
   extractDuePeriod,
   formatDuePeriodValue,
+  removeDueDate,
+  setDuePeriod,
   getMonthYear,
   getDayNumber,
   getWeekday
@@ -315,8 +331,12 @@ import { nextTaskStatus } from '../utils/statusHelpers';
 import { getDuePeriodLabel } from '../utils/dateHelpers';
 
 const inPlanningWorkspace = inject('planningWorkspace', false);
+const planningStatusChanges = inject('planningStatusChanges', null);
 
 const props = defineProps({
+  beforeTitleEdit: { type: Function, default: null },
+  quickSchedule: { type: Boolean, default: false },
+  clockOnly: { type: Boolean, default: false },
   task: {
     type: Object,
     required: true
@@ -339,7 +359,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['task-updated', 'task-click', 'task-context-menu']);
+const emit = defineEmits(['task-updated', 'task-click', 'task-context-menu', 'request-date', 'edit-cancelled']);
 
 // Computed properties
 const isRawText = computed(() => props.task.type === 'raw-text');
@@ -363,6 +383,14 @@ const isSimpleEdit = ref(false);
 const editTaskText = ref('');
 const editChildren = ref([]);
 const editSubtasksExpanded = ref(false);
+// Another Plan projection can append a child while this card has an unsaved parent draft.
+watch(() => props.task.children, children => {
+  if (!isEditing.value || isSimpleEdit.value) return;
+  const draftIds = new Set(editChildren.value.map(child => child.id));
+  for (const child of children || []) {
+    if (!draftIds.has(child.id)) editChildren.value.push({ ...child });
+  }
+});
 const persistSubtaskEdits = change => {
   if (saveSubtaskEdits(props.task, change)) emit('task-updated');
 };
@@ -373,9 +401,14 @@ const editNoteText = ref('');
 const editDateValue = ref('');
 const isPendingSort = ref(false);
 const sortTimeout = ref(null);
-const isPendingCompletion = ref(false);
+const localPendingCompletion = ref(false);
+const isPendingCompletion = computed({
+  get: () => localPendingCompletion.value || Boolean(planningStatusChanges?.pending.has(props.task.id)),
+  set: value => { localPendingCompletion.value = value; }
+});
 const completionTimeout = ref(null);
 const statusCycleStart = ref(null);
+let statusCycleText = null;
 const isTerminalTask = computed(() => props.task.statusChar === 'x' || props.task.statusChar === '-');
 const completionDateMenuOpen = ref(false);
 const completionCustomDateOpen = ref(false);
@@ -464,7 +497,18 @@ const toggleTaskStatus = () => {
     return;
   }
 
-  if (statusCycleStart.value === null) statusCycleStart.value = props.task.statusChar;
+  if (planningStatusChanges) {
+    clearTimeout(sortTimeout.value);
+    sortTimeout.value = null;
+    isPendingSort.value = false;
+    planningStatusChanges.cycle(props.task, props.section);
+    return;
+  }
+
+  if (statusCycleStart.value === null) {
+    statusCycleStart.value = props.task.statusChar;
+    statusCycleText = props.task.text;
+  }
 
   // Clear any existing timeouts
   if (sortTimeout.value) {
@@ -482,19 +526,34 @@ const toggleTaskStatus = () => {
   const oldStatus = props.task.statusChar;
   props.task.statusChar = nextTaskStatus(props.task.statusChar, statusCycleStart.value);
 
-  // Convert the one lifecycle date only after the same debounce used for
-  // sorting, so rapid status cycling does not repeatedly rewrite it.
+  // Plan cards can unmount when switching views. Persist the date immediately,
+  // but retain the original lifecycle date for rapid cycling back to open work.
+  if (inPlanningWorkspace || props.quickSchedule) {
+    const completion = extractCompletionDateValue(statusCycleText);
+    const period = extractDuePeriod(statusCycleText) || (completion ? { kind: 'day', start: completion } : null);
+    const base = removeCompletionDate(removeDueDate(props.task.text));
+    props.task.text = ['x', '-'].includes(props.task.statusChar)
+      ? reconcileLifecycleDateForStatus(base, props.task.statusChar, completion || new Date())
+      : setDuePeriod(base, period ? formatDuePeriodValue(period) : '');
+    props.task.displayText = getStrippedDisplayText(props.task.text);
+  }
+
+  // Settle layout and source sorting together; legacy cards also stamp their date here.
   isPendingCompletion.value = true;
   completionTimeout.value = setTimeout(() => {
     statusCycleStart.value = null;
     isPendingCompletion.value = false;
-    props.task.text = reconcileLifecycleDateForStatus(props.task.text, props.task.statusChar);
+    statusCycleText = null;
+    if (!inPlanningWorkspace && !props.quickSchedule) {
+      props.task.text = reconcileLifecycleDateForStatus(props.task.text, props.task.statusChar);
+    }
     props.task.displayText = getStrippedDisplayText(props.task.text);
-    emit('task-updated');
+    if (props.quickSchedule) sortTaskAfterStatusChange();
+    emit('task-updated', { statusSettled: true });
   }, 1500);
 
   // Semi auto-sort: trigger when any status change occurs
-  if (oldStatus !== props.task.statusChar) {
+  if (oldStatus !== props.task.statusChar && !props.quickSchedule) {
     // Start pulsing animation
     isPendingSort.value = true;
     
@@ -505,7 +564,7 @@ const toggleTaskStatus = () => {
     }, 1500);
   }
 
-  emit('task-updated');
+  emit('task-updated', { pendingStatus: true });
 };
 
 const priorityConfirmation = ref(null);
@@ -532,7 +591,16 @@ const sortTaskAfterStatusChange = () => {
   sortTaskToCorrectPosition(props.section.items, props.task, emit, { getPriority: getBoardTaskSortPriority });
 };
 
-// Handle edit button click (check for shift key)
+// Modifier clicks continue bubbling to card selection instead of opening the editor.
+const handleTitleEdit = event => {
+  if (!inPlanningWorkspace || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.stopPropagation();
+  if (props.beforeTitleEdit?.()) return;
+  if (props.isOnIce) return;
+  startEditingAll();
+};
+
+// Handle edit button click (check for shift key).
 const handleEditClick = (event) => {
   if (event.shiftKey) {
     startSimpleEdit();
@@ -544,6 +612,7 @@ const handleEditClick = (event) => {
 // Handle date click - start edit mode with focus on date
 const handleDateClick = (event) => {
   if (isTerminalTask.value) toggleCompletionDateMenu(event);
+  else if (props.quickSchedule) emit('request-date', event);
   else startEditingAll('date');
 };
 
@@ -633,7 +702,7 @@ const saveAllEdits = () => {
     newText = editTaskText.value.trim();
     
     // Auto-status change: if task has a note and current status is empty, set to in-progress
-    if (hasNote(newText) && props.task.statusChar === ' ') {
+    if (hasNote(newText) && !hasNote(props.task.text) && props.task.statusChar === ' ') {
       props.task.statusChar = '~';
       statusChangedDueToNote = true;
     }
@@ -648,7 +717,7 @@ const saveAllEdits = () => {
     }
     
     // Auto-status change: if note was added and current status is empty, set to in-progress
-    if (editNoteText.value.trim() && props.task.statusChar === ' ') {
+    if (editNoteText.value.trim() && !hasNote(props.task.text) && props.task.statusChar === ' ') {
       props.task.statusChar = '~';
       statusChangedDueToNote = true;
     }
@@ -701,6 +770,7 @@ const cancelAllEdits = () => {
   editTaskText.value = '';
   editNoteText.value = '';
   editDateValue.value = '';
+  emit('edit-cancelled');
 };
 
 // Handle keydown in task edit
@@ -795,7 +865,7 @@ const handleTaskCardClick = (event) => {
 // Handle right-click context menu
 const handleContextMenu = (event) => {
   // Don't show context menu in edit mode or for raw text
-  if (isEditing.value || isRawText.value) return;
+  if (isEditing.value || isRawText.value || (props.quickSchedule && isPendingCompletion.value)) return;
   
   emit('task-context-menu', {
     taskId: props.task.id,
@@ -821,6 +891,7 @@ onUnmounted(() => {
     clearTimeout(completionTimeout.value);
   }
 });
+defineExpose({ startEditingAll });
 </script>
 
 <style scoped>
@@ -861,18 +932,10 @@ onUnmounted(() => {
 }
 
 .task-card.low-priority-task-card {
-  --low-priority-left-trim: 3px;
-  margin-left: var(--low-priority-left-trim);
-  margin-right: var(--low-priority-left-trim);
-  padding: 0 8px;
+  padding-top: 0;
+  padding-bottom: 0;
   background-color: #fafafa;
   border-color: #dedede;
-}
-
-.task-card.low-priority-task-card .task-content-wrapper {
-  position: relative;
-  left: calc(-1 * var(--low-priority-left-trim));
-  width: calc(100% + var(--low-priority-left-trim) + var(--low-priority-left-trim));
 }
 
 .task-card.low-priority-task-card .task-content-wrapper,
@@ -881,8 +944,6 @@ onUnmounted(() => {
 }
 
 .task-card.low-priority-task-card .checkbox-wrapper {
-  width: 17px;
-  height: 14px;
   margin-top: 0;
 }
 
@@ -901,7 +962,6 @@ onUnmounted(() => {
 
 .task-card.low-priority-task-card .task-content-area {
   margin-top: 0;
-  margin-left: 6px;
   gap: 6px;
   line-height: 1.15;
 }
@@ -992,6 +1052,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 20px;
   width: 20px;
   height: 16px;
   margin-top: 3px;

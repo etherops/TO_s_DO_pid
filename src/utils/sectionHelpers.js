@@ -17,11 +17,11 @@ export const extractAllSections = (todoData) => {
     if (columnStack?.sections) {
       columnStack.sections.forEach((section, index) => {
         sections.push({
-          sectionName: section.name,
+          sectionName: section.headerStyle === 'NONE' ? 'Directly in column' : section.name,
           sectionIndex: index,
           columnName: columnName,
           stackType: columnStack.name, // TODO/WIP/DONE
-          path: `${columnName} → ${section.name}`,
+          path: section.headerStyle === 'NONE' ? columnName : `${columnName} → ${section.name}`,
           section: section // Include full section object for reference
         });
       });

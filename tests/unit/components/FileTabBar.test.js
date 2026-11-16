@@ -98,7 +98,7 @@ describe('FileTabBar', () => {
     const wrapper = mount(FileTabBar, { props: { viewMode: 'normal' } });
     const modeButtons = wrapper.findAll('.view-mode-btn');
 
-    expect(modeButtons).toHaveLength(4);
+    expect(modeButtons.map(button => button.text())).toEqual(['Plan', 'Focus', 'Calendar', 'Raw']);
     expect(modeButtons.map(button => button.classes())).toEqual([
       ['view-mode-btn'],
       ['view-mode-btn'],

@@ -30,10 +30,10 @@ describe('Focus status movement', () => {
     } finally { wrapper.unmount(); }
   });
 
-  it('retains departure animation when completing parked work into NOW', async () => {
+  it('retains departure animation when completing scheduled work into NOW', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 9, 1));
-    const data = reactive(parseTodoMdFile('# WIP\n### Current\n* [~] Parked'));
+    const data = reactive(parseTodoMdFile('# WIP\n### Current\n* [~] Parked ! Oct 2 2026'));
     const wrapper = mount(FocusMode, { props: { todoData: data } });
     try {
       await wrapper.get('.panel-in-progress-queued .focus-row-check').trigger('click');
@@ -49,7 +49,8 @@ for (const surface of ['board', 'focus']) {
   describe(`${surface} status click sequence`, () => {
     it('anchors rapid clicks and resets the anchor once settled', async () => {
       vi.useFakeTimers();
-      const data = parseTodoMdFile('# WIP\n### Current\n* [~] Cycle task\n');
+      vi.setSystemTime(new Date(2026, 9, 1));
+      const data = parseTodoMdFile('# WIP\n### Current\n* [~] Cycle task ! Oct 1 2026\n');
       const section = data.columnStacks.WIP.sections[0];
       const task = section.items[0];
       const wrapper = surface === 'board'

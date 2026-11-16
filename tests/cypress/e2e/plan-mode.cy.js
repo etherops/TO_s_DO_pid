@@ -20,7 +20,7 @@ describe('Unified Plan navigation', () => {
     cy.get('.planning-layout-switch, .drawer-toggle-btn').should('not.exist');
   });
 
-  for (const oldMode of ['normal', 'triage', 'plan']) {
+  for (const oldMode of ['normal', 'triage', 'plan', 'archive']) {
     it(`opens old ${oldMode} preferences in the outline workspace`, () => {
       cy.window().then(win => {
         win.localStorage.setItem('viewMode', oldMode);
@@ -28,35 +28,39 @@ describe('Unified Plan navigation', () => {
       });
       cy.reload();
       cy.get('.planning-workspace').should('be.visible');
-      cy.get('.planning-columns .selected-stack').should('be.visible');
-      cy.get('.planning-columns .wip-stack').should('be.visible');
+      cy.get('.planning-backlog').should('be.visible');
+      cy.get('.planning-scheduled').should('be.visible');
       cy.contains('.view-mode-btn', 'Plan').should('have.class', 'active');
     });
   }
 
-  it('opens backlog groups and archive from the outline without changing the file', () => {
-    cy.contains('.planning-overview', 'Todo + Projects').click();
-    cy.get('.planning-columns .todo-stack').should('be.visible');
-    cy.get('.planning-columns .projects-stack').should('be.visible');
-    cy.contains('.planning-heading-link', 'ARCHIVE').click();
-    cy.get('.planning-columns .done-stack').should('be.visible');
-    cy.contains('.planning-overview', 'Selected + WIP').click();
+  it('opens archive and returns to the backlog without changing the file', () => {
+    cy.contains('.planning-backlog .task-card', 'Backlog task').should('be.visible');
+    cy.contains('[data-planning-lane="PROJECTS"] .task-card', 'Project task').should('be.visible');
+    cy.get('.planning-open-archive').click();
+    cy.get('.done-stack').should('be.visible');
+    cy.reload();
+    cy.get('.planning-archive-drawer').should('not.exist');
+    cy.get('.planning-open-archive').click();
+    cy.contains('.done-stack .task-card', 'Old task').should('be.visible');
+    cy.get('[aria-label="Close archive"]').click();
     cy.get('@file').then(file => cy.readFile(file.filePath).should('equal', content));
   });
 
   it('adds and completes a task using the existing controls', () => {
-    cy.contains('.planning-columns .section', 'Current').find('.add-task-btn').click();
-    cy.get('.new-task-input').type('New outline task{enter}');
+    cy.get('.planning-add-task').click();
+    cy.get('[aria-label="Task title"]').type('New outline task{enter}');
     cy.contains('.planning-columns .task-card', 'New outline task').find('.custom-checkbox').click();
-    cy.get('@file').then(file => cy.readFile(file.filePath).should('contain', '[x] New outline task'));
+    cy.get('@file').then(file => cy.readFile(file.filePath).should('match', /\[x\] New outline task \|/));
   });
 
   it('keeps low-priority controls and compact rows', () => {
     cy.contains('.planning-columns .task-card', 'Low planning task')
-      .find('.low-priority-badge').click();
+      .find('.planning-actions-trigger').click();
+    cy.contains('.planning-task-actions button', 'Priority: low → high').click();
     cy.contains('.planning-columns .task-card', 'Low planning task')
       .should('not.have.class', 'low-priority-task-card');
-    cy.get('.planning-columns .task-card').each($card => {
+    cy.get('.planning-columns .task-card:visible').each($card => {
       expect($card[0].getBoundingClientRect().height).to.be.lessThan(40);
     });
   });

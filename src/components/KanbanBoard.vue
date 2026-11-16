@@ -28,12 +28,21 @@
         @move-to-section="handleMoveToSection"
     />
 
-    <PlanningWorkspace :todo-data="todoData">
-      <template #column="{ column, showArchiveWeeks, showArchive }">
+    <PlanningWorkspace :todo-data="todoData" :is-task-selected="isTaskSelected"
+                       @set-view-mode="emit('set-view-mode', $event)"
+                       @update="emit('update')" @task-click="handleTaskClick"
+                       @task-context-menu="handleTaskContextMenu" @add-section="createNewSection">
+      <template #archive-weeks="{ showArchive }">
+        <PlanningArchiveWeeks :todo-data="todoData" :sections="planningArchiveSections(todoData)"
+                              @archive-week="archiveWipWeek" @view-archive="showArchive" />
+      </template>
+      <template #column="{ column, headingLabel }">
         <KanbanColumn
             :column-type="column.name"
             :title="column.key"
+            :heading-label="headingLabel"
             :sections="column.sections"
+            :hide-projects="column.name === 'SELECTED'"
             :can-add-section="column.name !== 'DONE'"
             :column="column.key"
             :column-data="getColumnDataWithIce(column.key)"
@@ -46,12 +55,7 @@
             @task-click="handleTaskClick"
             @task-context-menu="handleTaskContextMenu"
             @multi-drag-complete="handleMultiDragComplete"
-        >
-          <template #before-sections>
-            <PlanningArchiveWeeks v-if="showArchiveWeeks" :todo-data="todoData"
-                                  @archive-week="archiveWipWeek" @view-archive="showArchive" />
-          </template>
-        </KanbanColumn>
+        />
       </template>
     </PlanningWorkspace>
   </div>
@@ -65,8 +69,9 @@ import ArchiveConfirmationModal from './ArchiveConfirmationModal.vue';
 import ContextMenu from './ContextMenu.vue';
 import PlanningWorkspace from './PlanningWorkspace.vue';
 import PlanningArchiveWeeks from './PlanningArchiveWeeks.vue';
+import { planningArchiveSections } from '../utils/planningHelpers';
 import '../styles/planning-workspace.css';
-import { archiveTaskGroups, groupTasksForArchive, wipArchiveSections } from '../utils/archiveHelpers.js';
+import { archiveTaskGroups, groupTasksForArchive } from '../utils/archiveHelpers.js';
 import { useTaskSelection } from '../composables/useTaskSelection.js';
 import { getBoardTaskSortPriority, sortTaskToCorrectPosition } from '../utils/sortHelpers.js';
 
@@ -77,7 +82,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update']);
+const emit = defineEmits(['update', 'set-view-mode']);
 
 // Archive confirmation state
 const archiveConfirmation = ref(null);
@@ -155,7 +160,7 @@ const createNewSection = (columnStack, column = null) => {
 
   // Add to nested structure
   if (!props.todoData.columnStacks[column]) {
-    const nameMap = { TODO: 'TODO', PROJECTS: 'PROJECTS', SELECTED: 'SELECTED', WIP: 'WIP', DONE: 'DONE' };
+    const nameMap = { TODO: 'TODO', SELECTED: 'SELECTED', WIP: 'WIP', DONE: 'DONE' };
     props.todoData.columnStacks[column] = {
       name: nameMap[columnStack] || 'TODO',
       sections: []
@@ -163,8 +168,8 @@ const createNewSection = (columnStack, column = null) => {
     props.todoData.columnOrder.push(column);
   }
 
-  // Insert at beginning for TODO/PROJECTS columnStacks, end for SELECTED/WIP columnStacks
-  if (columnStack === 'TODO' || columnStack === 'PROJECTS') {
+  // Insert at beginning for backlog, end for SELECTED/WIP.
+  if (columnStack === 'TODO') {
     props.todoData.columnStacks[column].sections.unshift(newSection);
   } else {
     props.todoData.columnStacks[column].sections.push(newSection);
@@ -440,7 +445,7 @@ const cancelArchiveConfirmation = () => {
 // Confirm archive - execute the enhanced archive process
 const archiveWipWeek = weekName => {
   if (archiveConfirmation.value) return;
-  const sections = wipArchiveSections(props.todoData);
+  const sections = planningArchiveSections(props.todoData);
   const fallbackDate = new Date();
   const group = groupTasksForArchive(sections.flatMap(section => section.items || []), fallbackDate)
     .find(candidate => candidate.name === weekName);
@@ -448,7 +453,7 @@ const archiveWipWeek = weekName => {
   const doneColumns = getDoneFileColumns();
   const availableColumns = doneColumns.length ? doneColumns : ['ARCHIVE'];
   archiveConfirmation.value = {
-    sectionName: 'WIP', sectionItems: group.tasks, sections, fallbackDate,
+    sectionName: 'Selected / WIP', sectionItems: group.tasks, sections, fallbackDate,
     initialWeeks: [weekName], availableColumns
   };
 };

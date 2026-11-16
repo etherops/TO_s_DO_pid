@@ -1,11 +1,17 @@
 describe('Subtask completion badges', () => {
+  const openParent = mode => {
+    if (mode === 'Focus') cy.get('#focus-tab-projects').click();
+    cy.get(mode === 'Focus' ? '.focus-initiatives .subtask-indicator'
+      : '[data-planning-lane="PROJECTS"] .subtask-indicator').click();
+  };
   for (const mode of ['Focus', 'Plan']) {
     it(`edits historical completion dates and saves without parent drafts in ${mode}`, () => {
       cy.writeTestFileContent('# WIP\n### Work\n+ [~] Parent\n'
         + '  - [x] Finished (keep note) | Sep 20 2026\n  - [-] Cancelled\n')
         .then(() => cy.reload());
       cy.contains('.view-mode-btn', mode).click();
-      cy.get('.subtask-indicator').click();
+      openParent(mode);
+      if (mode === 'Focus') cy.get('.focus-expanded-project-title').click();
       cy.get(mode === 'Focus' ? '.focus-edit-name' : '.task-text-edit').clear().type('Unsaved title');
       cy.get('[aria-label="Edit subtask completion date"]').first().click();
       cy.get('[aria-label="Subtask completed on"]').should('have.value', '2026-09-20');
@@ -23,7 +29,7 @@ describe('Subtask completion badges', () => {
       cy.wait('@completionSave').its('request.body.content').should('contain', '  - [x] Finished (keep note)\n');
       cy.get(mode === 'Focus' ? '.focus-edit-cancel' : '.task-card .cancel-edit-btn').click();
       cy.reload();
-      cy.get('.subtask-indicator').click();
+      openParent(mode);
       cy.get('.subtask-completion-date').eq(0).should('have.text', 'Done · no date');
       cy.get('.subtask-completion-date').eq(1).should('have.text', 'Will not do Sep 17 2026');
     });
@@ -31,7 +37,8 @@ describe('Subtask completion badges', () => {
       cy.writeTestFileContent('# WIP\n### Work\n+ [~] Parent\n  - [ ] Child (keep note) ! Oct 2026\n')
         .then(() => cy.reload());
       cy.contains('.view-mode-btn', mode).click();
-      cy.get('.subtask-indicator').click();
+      openParent(mode);
+      if (mode === 'Focus') cy.get('.focus-expanded-project-title').click();
       cy.get(mode === 'Focus' ? '.focus-edit-name' : '.task-text-edit').clear().type('Unsaved title');
       cy.intercept('POST', '**/api/todos').as('statusSave');
       cy.get('.subtask-status').first().click();
@@ -42,7 +49,7 @@ describe('Subtask completion badges', () => {
       cy.get('.subtask-completion-date').should('contain', 'Done');
       cy.get(mode === 'Focus' ? '.focus-edit-cancel' : '.task-card .cancel-edit-btn').click();
       cy.reload();
-      cy.get('.subtask-indicator').click();
+      openParent(mode);
       cy.get('input[aria-label="Subtask title"]').first().should('have.value', 'Child');
       cy.get('.subtask-completion-date').should('contain', 'Done');
     });
@@ -59,16 +66,16 @@ describe('Subtask completion badges', () => {
       cy.get('button[aria-label="Edit subtask due date"]').should('have.length', 1).and('contain', 'Oct');
     };
     cy.contains('.view-mode-btn', 'Focus').click();
-    cy.get('.subtask-indicator').click();
+    openParent('Focus');
     checkDates();
     cy.get('.subtask-completion-date').first().should('be.visible');
     cy.get('.focus-edit-cancel').click();
     cy.contains('.view-mode-btn', 'Plan').click();
-    cy.get('.subtask-indicator').click();
+    openParent('Plan');
     checkDates();
     cy.get('.task-card .confirm-edit-btn').click();
     cy.reload();
-    cy.get('.subtask-indicator').click();
+    openParent('Plan');
     checkDates();
   });
 });

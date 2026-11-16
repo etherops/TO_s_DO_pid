@@ -18,6 +18,41 @@ const open = async () => {
 };
 
 describe('Raw source safety', () => {
+  it('matches source and ToC colors without interpreting HTML or changing source bytes', async () => {
+    const source = '# TODO\n### Inbox\n* [ ] <img src=x onerror=alert(1)>\n'
+      + '# WIP\n### Active\n* [ ] Work\n';
+    axios.get.mockResolvedValue({ data: { content: source } });
+    await open();
+    expect(wrapper.get('textarea').element.value).toBe(source);
+    expect(wrapper.findAll('.raw-outline-link').map(item => item.classes().find(name => name.startsWith('raw-tone-'))))
+      .toEqual(['raw-tone-TODO', 'raw-tone-TODO', 'raw-tone-WIP', 'raw-tone-WIP']);
+    expect(wrapper.findAll('.raw-source-heading').map(item => item.classes().find(name => name.startsWith('raw-tone-'))))
+      .toEqual(['raw-tone-TODO', 'raw-tone-TODO', 'raw-tone-WIP', 'raw-tone-WIP']);
+    expect(wrapper.find('.raw-source-highlight img').exists()).toBe(false);
+    expect(wrapper.get('.raw-source-highlight').text()).toContain('<img src=x onerror=alert(1)>');
+    await wrapper.get('.raw-actions button').trigger('click');
+    await wrapper.get('textarea').setValue(source.replace('# WIP', '# PROJECTS'));
+    expect(wrapper.findAll('.raw-source-heading.raw-tone-SELECTED')).toHaveLength(2);
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+  it('navigates the exact source and follows draft headings without saving', async () => {
+    await open();
+    expect(wrapper.get('.raw-outline').isVisible()).toBe(true);
+    await wrapper.get('.raw-outline-link').trigger('click');
+    const editor = wrapper.get('textarea').element;
+    expect(editor.selectionStart).toBe(0);
+    expect(editor.selectionEnd).toBe(5);
+    expect(editor.readOnly).toBe(true);
+    expect(editor.value).toBe(original);
+    await wrapper.get('.raw-actions button').trigger('click');
+    const edited = original + '### New section\n';
+    await wrapper.get('textarea').setValue(edited);
+    expect(wrapper.findAll('.raw-outline-link')).toHaveLength(2);
+    await wrapper.findAll('.raw-outline-link')[1].trigger('click');
+    expect(editor.selectionStart).toBe(original.length);
+    expect(editor.value).toBe(edited);
+    expect(axios.post).not.toHaveBeenCalled();
+  });
   it('shows exact source read-only, then saves an explicitly edited draft with its original precondition', async () => {
     await open();
     expect(wrapper.get('textarea').element.readOnly).toBe(true);

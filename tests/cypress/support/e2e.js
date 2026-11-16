@@ -26,7 +26,7 @@ beforeEach(() => {
     cy.wait(500);
     
     // Visit the app and switch to our test file
-    cy.visit('/');
+    cy.visit('/', { onBeforeLoad: win => win.localStorage.clear() });
     cy.contains('TO_s_DO_pid').should('be.visible');
     cy.switchToFile(fileInfo.fileName);
   });
