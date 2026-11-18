@@ -299,7 +299,29 @@
                 <span class="day-name">{{ day.label }}</span>
                 <span class="day-count">{{ day.count ?? day.entries.length }}</span>
               </div>
-              <div v-for="entry in day.entries" :key="entry.task.id" class="focus-task-row"
+              <div v-for="group in day.groups" :key="group.key"
+                   :class="group.parentTask ? 'focus-project-day-group' : 'focus-ungrouped-task'">
+                <button v-if="group.parentTask" type="button" class="focus-project-day-toggle"
+                        :aria-expanded="!collapsedNowProjects.has(group.key)"
+                        :aria-controls="`focus-children-${group.key}`"
+                        @click.stop="toggleNowProject(group.key)">
+                  <span class="focus-project-day-status" :class="group.statusClass"
+                        role="img" :aria-label="group.statusLabel"></span>
+                  <span class="focus-project-day-title" :title="getStrippedDisplayText(group.parentTask.text)">{{ getStrippedDisplayText(group.parentTask.text) }}</span>
+                  <span v-if="group.entries[0].dueGroup === 'overdue'" class="focus-project-day-date">{{ dueBadge(group.entries[0])?.label }}</span>
+                  <span class="focus-project-day-bar" role="img" :aria-label="group.progressLabel"
+                        :title="group.progressLabel">
+                    <span v-for="share in group.statusShares" :key="share.status" :class="share.kind"
+                          :style="{ width: `${share.percent}%` }"></span>
+                  </span>
+                  <span class="focus-project-day-progress"
+                        :title="`${group.completed} of ${group.entries.length} tasks completed in this group`">{{ group.percentDone }}%</span>
+                  <span class="focus-project-day-count">{{ group.entries.length }} {{ group.entries.length === 1 ? 'task' : 'tasks' }}</span>
+                  <span class="focus-project-day-caret" aria-hidden="true">{{ collapsedNowProjects.has(group.key) ? '▸' : '▾' }}</span>
+                </button>
+                <div v-show="!collapsedNowProjects.has(group.key)" :id="`focus-children-${group.key}`"
+                     class="focus-project-day-children">
+              <div v-for="entry in group.entries" :key="entry.task.id" class="focus-task-row"
                    :class="[rowClasses(entry), {
                      'overdue-row': entry.dueGroup === 'overdue',
                      'this-week-row': entry.dueGroup === 'this-week'
@@ -343,8 +365,6 @@
                           :aria-label="`Task note: ${entryNote(entry)}`" @click.stop="startNoteEdit(entry)"
                           @mouseenter="showNoteTooltip(entry, $event)" @mouseleave="finishNoteHover"
                           @focus="showNoteTooltip(entry, $event)" @blur="hideNoteTooltip">{{ entryNote(entry) }}</button>
-                  <span v-if="entry.parentTask" class="focus-subtask-parent"
-                        :title="`Subtask of ${getStrippedDisplayText(entry.parentTask.text)}`">↳ {{ getStrippedDisplayText(entry.parentTask.text) }}</span>
                   <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                     {{ entry.sectionName }}
                   </span>
@@ -361,6 +381,8 @@
                   <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
                   <span class="focus-due-clock" aria-hidden="true">◷</span>
                 </button>
+              </div>
+                </div>
               </div>
             </section>
           </div>
@@ -1184,7 +1206,44 @@ const isScheduledThisWeek = (entry) => {
 const immediateNow = computed(() => now.value.filter(entry =>
   !isScheduledThisWeek(entry)
 ));
-const nowSections = computed(() => prioritySections(immediateNow.value));
+const collapsedNowProjects = ref(new Set());
+const toggleNowProject = (key) => {
+  if (collapsedNowProjects.value.has(key)) collapsedNowProjects.value.delete(key);
+  else collapsedNowProjects.value.add(key);
+};
+// These are presentation-only groups, never the editable project or its complete child list.
+const nowSections = computed(() => prioritySections(immediateNow.value).map(section => {
+  const groups = new Map();
+  section.entries.forEach(entry => {
+    const completed = extractCompletionDateValue(entry.task.text);
+    const date = completed ? formatDateInputValue(completed)
+      : formatDuePeriodValue(extractDuePeriod(entry.task.text));
+    const identity = entry.parentTask ? `project-${entry.parentTask.id}` : `task-${entry.task.id}`;
+    const key = `${focusDateValue.value}-${section.key}-${identity}-${date}`;
+    if (!groups.has(key)) groups.set(key, { key, parentTask: entry.parentTask, entries: [] });
+    groups.get(key).entries.push(entry);
+  });
+  const displayGroups = [...groups.values()].map(group => {
+    const children = group.entries.map(entry => entry.task);
+    const completed = children.filter(task => task.statusChar === 'x').length;
+    const allCompleted = completed === children.length;
+    const started = children.some(task => task.statusChar !== ' ');
+    const statusShares = [
+      ['x', 'done', 'completed'], ['~', 'active', 'in progress'],
+      ['!', 'blocked', 'blocked'], ['-', 'cancelled', 'will not do'], [' ', 'unstarted', 'not started']
+    ].map(([status, kind, label]) => {
+      const count = children.filter(task => task.statusChar === status).length;
+      return { status, kind, label, count, percent: count * 100 / children.length };
+    }).filter(share => share.count);
+    return { ...group, completed,
+      statusShares, progressLabel: statusShares.map(share => `${share.count} ${share.label}`).join(', '),
+      statusClass: allCompleted ? 'checked' : started ? 'inflight' : 'unchecked',
+      statusLabel: allCompleted ? 'Completed' : started ? 'In progress' : 'Not started',
+      percentDone: Math.round(completed * 100 / children.length) };
+  });
+  displayGroups.sort((a, b) => Number(Boolean(b.parentTask)) - Number(Boolean(a.parentTask)));
+  return { ...section, groups: displayGroups };
+}));
 const startOfThisWeek = () => {
   const start = new Date(focusDate.value);
   start.setHours(0, 0, 0, 0);
@@ -3357,7 +3416,7 @@ button.focus-week-clock:hover::after {
   display: inline-flex;
 }
 
-.focus-row-check {
+.focus-row-check, .focus-project-day-status {
   width: 18px;
   height: 16px;
   min-width: 18px;
@@ -3383,12 +3442,12 @@ button.focus-row-check.preview-done:hover {
   50% { transform: scale(1.1); box-shadow: 0 0 0 7px rgba(255, 152, 0, 0); }
 }
 
-.focus-row-check.inflight {
+.focus-row-check.inflight, .focus-project-day-status.inflight {
   border-color: #ff9800;
   background: rgba(255, 152, 0, 0.12);
 }
 
-.focus-row-check.inflight:after {
+.focus-row-check.inflight:after, .focus-project-day-status.inflight:after {
   content: '';
   position: absolute;
   top: 50%;
@@ -3400,12 +3459,12 @@ button.focus-row-check.preview-done:hover {
   transform: translate(-50%, -50%);
 }
 
-.focus-row-check.checked {
+.focus-row-check.checked, .focus-project-day-status.checked {
   border-color: #4caf50;
   background: rgba(76, 175, 80, 0.2);
 }
 
-.focus-row-check.checked:after {
+.focus-row-check.checked:after, .focus-project-day-status.checked:after {
   content: '';
   position: absolute;
   top: 1px;
@@ -3661,6 +3720,77 @@ button.focus-row-check.preview-empty:hover {
 .focus-priority-section { flex: 0 0 auto; min-width: 0; }
 .focus-priority-section + .focus-priority-section { margin-top: 12px; }
 .focus-priority-section .focus-day-header.day-blocked-waiting { color: var(--ui-red, #e05b55); }
+
+.focus-ungrouped-task { display: contents; }
+.focus-project-day-group {
+  min-width: 0;
+  margin-block: 3px;
+  margin-right: 6px;
+  border: 1px solid var(--ui-border, #334056);
+  border-radius: 8px;
+  background: var(--ui-surface-soft, #20262f);
+}
+.focus-project-day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--ui-blue-soft, #27384b);
+  color: var(--ui-blue, #4d8fd6);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+.focus-project-day-toggle:hover { background: var(--ui-blue-soft, #27384b); }
+.focus-project-day-toggle[aria-expanded="true"] {
+  border-radius: 7px 7px 0 0;
+  box-shadow: inset 0 -1px 0 var(--ui-border-strong, #465365);
+}
+.focus-project-day-toggle:focus-visible { outline: 2px solid var(--ui-blue, #4d8fd6); }
+.focus-project-day-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focus-project-day-caret { margin-left: auto; width: 14px; flex: 0 0 14px; color: var(--ui-blue, #4d8fd6); }
+.focus-project-day-status {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 18px;
+}
+.focus-project-day-bar {
+  position: relative;
+  display: flex;
+  flex: 0 0 64px;
+  height: 9px;
+  overflow: hidden;
+  border: 1px solid var(--ui-border-strong, #a5b0bb);
+  border-radius: 2px;
+}
+.focus-project-day-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 1px),
+    var(--ui-surface, #fff) calc(10% - 1px), var(--ui-surface, #fff) 10%);
+  opacity: .5;
+}
+.focus-project-day-bar .done { background: #4caf50; }
+.focus-project-day-bar .active { background: #ffb347; }
+.focus-project-day-bar .blocked { background: var(--ui-blocked, #dc4545); }
+.focus-project-day-bar .cancelled { background: #8b96a2; }
+.focus-project-day-bar .unstarted { background: var(--ui-surface-muted, #edf0f3); }
+.focus-project-day-progress { font-size: 11px; color: var(--ui-blue, #4d8fd6); font-variant-numeric: tabular-nums; }
+.focus-project-day-count, .focus-project-day-date { flex-shrink: 0; font-size: 10px; font-weight: 500; opacity: .7; }
+.focus-mode .focus-project-day-group > .focus-project-day-children > .focus-task-row {
+  margin-right: 0;
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+}
 
 /* Late work sits in Today, wearing the urgency on its sleeve */
 .focus-task-row.overdue-row {
@@ -4728,7 +4858,7 @@ button.focus-row-check.preview-empty:hover {
   border-color: #e3e3e3;
 }
 
-.theme-light .focus-row-check {
+.theme-light .focus-row-check, .theme-light .focus-project-day-status {
   border-color: #aaa;
 }
 
@@ -4737,12 +4867,12 @@ button.focus-row-check.preview-empty:hover {
   background: var(--ui-green-soft, #e8f5e9);
 }
 
-.theme-light .focus-row-check.inflight {
+.theme-light .focus-row-check.inflight, .theme-light .focus-project-day-status.inflight {
   border-color: #ff9800;
   background: #fff3d6;
 }
 
-.theme-light .focus-row-check.checked {
+.theme-light .focus-row-check.checked, .theme-light .focus-project-day-status.checked {
   border-color: #4caf50;
   background: #e8f5e9;
 }

@@ -213,4 +213,97 @@ describe('Focus weekly execution', () => {
     cy.get(main).should('not.contain', 'Main active');
     cy.get('.panel-now .focus-task-row').should('have.length', 6);
   });
+
+  it('collapses day-specific project groups while keeping child editing, status and scheduling usable', () => {
+    const source = '# SELECTED\n+ [ ] Trip\n'
+      + '  - [ ] Book ride (airport) ! Nov 10 2026\n  - [ ] Pack ! Nov 10 2026\n'
+      + '  - [ ] Tomorrow child ! Nov 11 2026\n  - [ ] Unscheduled child\n'
+      + '+ [ ] Ski\n  - [ ] Buy boots ! Nov 10 2026\n'
+      + '# WIP\n* [ ] Standalone ! Nov 10 2026\n';
+    cy.writeTestFileContent(source).then(file => {
+      cy.reload();
+      cy.get('[aria-label="Focus date"]').invoke('val', '2026-11-10').trigger('change', { force: true });
+      cy.tick(1);
+      const trip = '.panel-now .focus-project-day-group';
+      cy.get(trip).should('have.length', 2);
+      cy.contains(trip, 'Trip').as('trip');
+      cy.get('@trip').find('.focus-project-day-count').should('have.text', '2 tasks');
+      cy.get('@trip').find('.focus-project-day-status').should('have.class', 'unchecked');
+      cy.get('@trip').find('.subtask-status-grid').should('not.exist');
+      cy.get('@trip').find('.focus-project-day-bar').should('have.attr', 'aria-label', '2 not started');
+      cy.get('@trip').should('not.contain', 'Tomorrow child').and('not.contain', 'Unscheduled child');
+      cy.get('@trip').find('.focus-subtask-parent').should('not.exist');
+      cy.get('@trip').find('.focus-project-day-toggle').then($header => {
+        cy.wrap($header.css('background-color')).as('groupHeaderColor');
+      });
+      cy.get('@trip').find('.focus-project-day-toggle').click().should('have.attr', 'aria-expanded', 'false');
+      cy.get('@groupHeaderColor').then(color => {
+        cy.get('@trip').find('.focus-project-day-toggle').should('have.css', 'background-color', color);
+      });
+      cy.get('@trip').find('.focus-task-row').should('not.be.visible');
+      cy.get('.panel-now .panel-count').should('have.text', '4');
+      cy.get('@save.all').should('have.length', 0);
+      cy.readFile(file.filePath).should('equal', source);
+      cy.get('@trip').find('.focus-project-day-toggle').focus().type('{enter}')
+        .should('have.attr', 'aria-expanded', 'true');
+      cy.get('@trip').find('.focus-task-row').should('be.visible');
+      cy.get('.panel-now').then($panel => {
+        const panel = $panel[0];
+        const summary = panel.querySelector('.focus-project-day-status').getBoundingClientRect();
+        const checks = [...panel.querySelectorAll('.focus-row-check')].map(node => node.getBoundingClientRect());
+        checks.forEach(check => {
+          expect(Math.abs(check.x - summary.x), 'checkbox left alignment').to.be.lessThan(1);
+          expect(Math.abs(check.width - summary.width), 'checkbox width').to.be.lessThan(1);
+        });
+        const section = panel.querySelector('[data-now-section="main"]');
+        expect(section.children[1].classList.contains('focus-project-day-group')).to.equal(true);
+        const title = panel.querySelector('.focus-project-day-title').getBoundingClientRect();
+        const bar = panel.querySelector('.focus-project-day-bar').getBoundingClientRect();
+        const percent = panel.querySelector('.focus-project-day-progress').getBoundingClientRect();
+        const count = panel.querySelector('.focus-project-day-count').getBoundingClientRect();
+        expect(bar.left - title.right, 'bar directly beside title').to.be.within(0, 10);
+        expect(percent.left - bar.right, 'percentage beside bar').to.be.within(0, 10);
+        expect(count.left - percent.right, 'count beside percentage').to.be.within(0, 10);
+        const view = panel.ownerDocument.defaultView;
+        const headerStyle = view.getComputedStyle(panel.querySelector('.focus-project-day-toggle'));
+        const childStyle = view.getComputedStyle(panel.querySelector('.focus-project-day-group .focus-task-row'));
+        expect(headerStyle.backgroundColor, 'distinct expanded header background').not.to.equal(childStyle.backgroundColor);
+        expect(headerStyle.boxShadow, 'expanded header divider').not.to.equal('none');
+        const groupRect = panel.querySelector('.focus-project-day-group').getBoundingClientRect();
+        const regularRect = panel.querySelector('.focus-ungrouped-task .focus-task-row').getBoundingClientRect();
+        expect(Math.abs(groupRect.left - regularRect.left), 'group left edge').to.be.lessThan(1);
+        expect(Math.abs(groupRect.right - regularRect.right), 'group right edge').to.be.lessThan(1);
+        const childRect = panel.querySelector('.focus-project-day-group .focus-task-row').getBoundingClientRect();
+        expect(groupRect.right - childRect.right, 'no extra inner drag-handle gutter').to.be.within(0, 2);
+      });
+      cy.screenshot('focus-project-day-groups', { capture: 'viewport' });
+      cy.contains('.panel-now .focus-row-title', 'Book ride').click();
+      cy.get('.focus-edit-name').clear().type('Book airport ride');
+      cy.get('.focus-edit-save').click();
+      cy.wait('@save');
+      cy.contains('.panel-now .focus-task-row', 'Book airport ride').find('.focus-row-check').click();
+      cy.wait('@save');
+      cy.contains(trip, 'Trip').find('.focus-project-day-count').should('have.text', '2 tasks');
+      cy.contains(trip, 'Trip').find('.focus-project-day-status').should('have.class', 'inflight');
+      cy.contains(trip, 'Trip').find('.focus-project-day-bar .done').should('have.attr', 'style', 'width: 50%;');
+      cy.contains(trip, 'Trip').find('.focus-project-day-progress').should('have.text', '50%');
+      cy.contains('.panel-now .focus-task-row', 'Book airport ride').find('.focus-row-check')
+        .should('have.class', 'checked');
+      cy.window().then(win => {
+        const dataTransfer = new win.DataTransfer();
+        cy.contains('.panel-now .focus-task-row', 'Pack').find('.focus-drag-handle')
+          .trigger('dragstart', { dataTransfer });
+        cy.get('[data-schedule-date="2026-11-13"]').trigger('dragover', { dataTransfer })
+          .trigger('drop', { dataTransfer });
+      });
+      cy.wait('@save');
+      cy.contains(trip, 'Trip').find('.focus-project-day-count').should('have.text', '1 task');
+      cy.contains(trip, 'Trip').find('.focus-project-day-status').should('have.class', 'checked');
+      cy.get('[data-schedule-date="2026-11-13"]').should('contain', 'Pack');
+      cy.readFile(file.filePath).should('contain', '+ [ ] Trip\n')
+        .and('contain', '  - [x] Book airport ride (airport) | Nov 10 2026')
+        .and('contain', '  - [ ] Pack ! Nov 13 2026')
+        .and('contain', '  - [ ] Unscheduled child');
+    });
+  });
 });

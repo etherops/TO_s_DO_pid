@@ -73,7 +73,8 @@ describe('Nested subtasks', () => {
     const parent = data.columnStacks.WIP.sections[0].items[0];
     const wrapper = mount(FocusMode, { props: { todoData: data }, global: { stubs: { teleport: true } } });
     try {
-      await wrapper.findAll('.panel-now .focus-task-row')[1].trigger('contextmenu', { clientX: 100, clientY: 100 });
+      await wrapper.findAll('.panel-now .focus-task-row').find(row => row.text().includes('Delete me'))
+        .trigger('contextmenu', { clientX: 100, clientY: 100 });
       expect(wrapper.find('.focus-inline-editor').exists()).toBe(false);
       expect(wrapper.find('.focus-task-context-column').exists()).toBe(false);
       expect(wrapper.find('.focus-task-context-convert').exists()).toBe(false);
@@ -201,7 +202,7 @@ describe('Nested subtasks', () => {
     const task = data.columnStacks.WIP.sections[0].items[0];
     const wrapper = mount(FocusMode, { props: { todoData: data } });
     try {
-      expect(wrapper.get('.focus-subtask-parent').text()).toContain('Parent');
+      expect(wrapper.get('.focus-project-day-title').text()).toBe('Parent');
       expect(wrapper.findAll('.panel-now .focus-day-header').map(header => header.text()))
         .toContain('MAIN2');
       const childTitle = wrapper.findAll('.focus-row-title').find(button => button.text() === 'Child');

@@ -18,6 +18,24 @@ Its three upper panels retain the original layout, with Today / Overdue centered
   Child bullet markers do not make subtasks low priority. All three headers show counts even when empty,
   without reserving blank vertical space. Dates stay on cards. Status regrouping waits for the existing
   1.5-second debounce; priority regrouping waits for the existing priority save delay.
+  Within each section, surfaced subtasks sharing a parent and due/completion day are collected in one
+  compact, expandable project-name group, initially expanded and placed above standalone tasks.
+  A normal read-only checkbox is empty when all children are unstarted, yellow when any work has
+  started, and green/checkmarked only when every child is completed. It is not the project's grid
+  checkbox and never changes parent status. It shares the task checkbox's left alignment and size;
+  the expand arrow is at the far right. Beside the title, a compact segmented bar shows each child
+  status proportion (green completed, yellow active, red blocked, gray cancelled, pale unstarted),
+  with a numeric completion percentage counting completed children only. The bar, percentage and
+  task count sit directly after the title, left-aligned rather than pushed to the card's right edge.
+  Headers always use a blue-tinted background and blue title, whether collapsed or expanded.
+  Expanded headers also have a bottom divider, distinct from neutral child rows without changing checkbox alignment.
+  Group cards share the regular task cards' left and right edges, reserving the same drag-handle
+  gutter once at the group boundary rather than again inside each child row.
+  Its count covers only those visible
+  children, not the whole project. Overdue dates stay separate. The header only expands/collapses;
+  it is not the real project card and has no project status, editor or scheduling actions. Expanded
+  children retain their status, note, editing, date, drag and context-menu controls without repeated
+  parent badges. Collapse and navigation never modify Markdown or reveal unscheduled/future siblings.
 - Right, **THIS WEEK - SCHEDULED**: exact-day assignments later in the week, under weekday/date headings.
 
 The right panel always shows all seven weekday/date drop targets, including empty days.
