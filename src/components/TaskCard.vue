@@ -58,18 +58,19 @@
       <div v-else class="task-edit-wrapper">
         <!-- Title editing row -->
         <div class="task-edit-row">
-          <textarea
+          <input type="text"
               class="task-text-edit"
               v-model="editTaskText"
               @keydown="handleTaskEditKeydown"
               ref="taskTextInput"
               placeholder="Enter task text..."
-          ></textarea>
+          />
         </div>
         
         <!-- Subtasks and notes share the editor width. -->
         <div class="note-date-row">
           <SubtaskEditor v-if="showSubtaskEditor" v-model="editChildren"
+                         :compact-dates="inPlanningWorkspace"
                          :allow-add="taskPriority(task) !== 'low'" @commit="persistSubtaskEdits" />
           <!-- Note editing section -->
           <div class="note-edit-section">
@@ -1544,6 +1545,7 @@ defineExpose({ startEditingAll });
 }
 
 .task-text-edit {
+  box-sizing: border-box;
   width: 100%;
   padding: 5px;
   font-size: inherit;
@@ -1551,12 +1553,11 @@ defineExpose({ startEditingAll });
   border-radius: 3px;
   background-color: white;
   outline: none;
-  resize: vertical;
   min-height: 30px;
   max-height: 100px;
   overflow-y: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .note-date-row {

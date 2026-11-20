@@ -272,7 +272,7 @@ describe('Backlog and scheduled planning', () => {
       const row = $rows[0];
       expect(getComputedStyle(row).borderWidth).to.equal('0px');
       expect(row.getBoundingClientRect().height).to.be.at.most(26);
-      expect(getComputedStyle(row.querySelector('.planning-child-title')).whiteSpace).to.equal('normal');
+      expect(getComputedStyle(row.querySelector('.planning-child-title')).whiteSpace).to.equal('nowrap');
     });
     cy.get('.planning-project-children').should('not.contain', 'Unsupported child stays');
     cy.get('[aria-label="Collapse Future initiative"]').should('have.attr', 'aria-expanded', 'true');
@@ -284,11 +284,12 @@ describe('Backlog and scheduled planning', () => {
     cy.get('.planning-project-children').should('not.exist');
     cy.get('[aria-label="Expand Future initiative"]').click();
     cy.get('.planning-project-children [aria-label="Schedule Dated child"]').click();
-    cy.contains('.planning-dialog', 'Dated child').should('be.visible');
-    cy.get('.planning-dialog [aria-label="Close"]').click();
+    cy.get('.planning-project-children .subtask-date-picker').should('be.visible');
+    cy.get('.planning-project-children [aria-label="Close date picker"]').click();
     cy.contains('.planning-project-children .planning-child-title', 'Dated child').click();
-    cy.get('.planning-parent-dialog .task-text-edit').should('have.value', 'Future initiative');
-    cy.get('.planning-parent-dialog [aria-label="Close"]').click();
+    cy.get('.planning-child-editor input').should('have.value', 'Dated child');
+    cy.contains('.planning-child-editor button', 'Cancel').click();
+    cy.get('.planning-parent-dialog').should('not.exist');
     cy.get('@save.all').should('have.length', 0);
     cy.get('@file').then(file => cy.readFile(file.filePath).should('equal', expandedSource));
   });
@@ -461,9 +462,9 @@ describe('Backlog and scheduled planning', () => {
   });
 
   it('reschedules WIP with precise dates and preserves attached child data', () => {
-    cy.contains('.planning-schedule-title', 'Active parent').click();
-    cy.get('.planning-parent-dialog .task-text-edit').should('have.value', 'Active parent');
-    cy.get('.planning-parent-dialog [aria-label="Close"]').click();
+    cy.contains('.planning-scheduled .task-title', 'Active parent').click();
+    cy.get('.planning-scheduled .task-text-edit').should('have.value', 'Active parent');
+    cy.get('.planning-scheduled .cancel-edit-btn').click();
     cy.contains('[data-planning-lane="PROJECTS"] .task-card', 'Active parent').find('.clock-btn').click();
     cy.contains('.planning-date-popover .shortcuts button', /^Today$/).click();
     cy.contains('[data-schedule-group="today"] .task-card', 'Active parent').should('be.visible');

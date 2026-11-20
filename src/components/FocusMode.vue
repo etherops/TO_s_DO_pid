@@ -88,18 +88,30 @@
                  @pointerdown.capture="handleMainPaneInteraction($event)"
                  @click="magnifyMainPaneOnClick(0, $event)">
           <header class="panel-header">
-            <span class="panel-kicker">THIS WEEK - UNSCHEDULED</span>
-            <span class="panel-count">{{ upNextDisplayCount }}</span>
+            <span class="panel-kicker">{{ leftTab === 'tasks' ? 'THIS WEEK - UNSCHEDULED' : 'SELECTED PROJECTS' }}</span>
+            <span class="panel-count">{{ leftTab === 'tasks' ? upNextDisplayCount : selectedProjects.length }}</span>
           </header>
+          <div class="focus-left-tabs" role="tablist" aria-label="Tasks and selected projects">
+            <button v-for="tab in ['tasks', 'projects']" :key="tab" :id="`focus-left-tab-${tab}`"
+                    role="tab" :aria-selected="leftTab === tab" aria-controls="focus-left-content"
+                    :tabindex="leftTab === tab ? 0 : -1"
+                    @keydown.right.prevent="selectLeftTab(tab === 'tasks' ? 'projects' : 'tasks', true)"
+                    @keydown.left.prevent="selectLeftTab(tab === 'tasks' ? 'projects' : 'tasks', true)"
+                    @click="selectLeftTab(tab)">
+              {{ tab === 'tasks' ? 'Tasks' : 'Projects' }}
+              <span v-if="leftTab !== tab" class="focus-tab-count">{{ tab === 'tasks'
+                ? upNextDisplayCount : selectedProjects.length }}</span>
+            </button>
+          </div>
           <div class="focus-upnext-content">
-          <div class="panel-body">
-            <div class="focus-day-header upnext-group-header day-upcoming">
+          <div id="focus-left-content" class="panel-body" role="tabpanel" :aria-labelledby="`focus-left-tab-${leftTab}`">
+            <div v-if="leftTab === 'tasks'" class="focus-day-header upnext-group-header day-upcoming">
               <span class="day-name">{{ formatWeekPeriodLabel(startOfThisWeek()) }}</span>
               <span class="day-count">{{ upNextDisplayCount }}</span>
             </div>
-            <section v-for="group in upNextDisplayGroups" :key="group.key" class="focus-priority-section"
+            <section v-for="group in leftDisplayGroups" :key="group.key" class="focus-priority-section"
                      :data-week-section="group.key" :aria-label="group.label">
-              <div class="focus-day-header upnext-group-header"
+              <div v-if="leftTab === 'tasks'" class="focus-day-header upnext-group-header"
                    :class="dayHeaderClass(group.key)">
                 <span class="day-name">{{ group.label }}</span>
                 <span class="day-count">{{ group.count ?? group.entries.length }}</span>
@@ -157,13 +169,16 @@
                               :high="displayedPriority(entry) === 'high'"
                               @toggle="toggleEntryPriority(entry)" @set-priority="toggleEntryPriority(entry, false, $event)" />
               <button v-if="!isEditingEntry(entry)" class="focus-badge focus-due-edit"
-                      :class="dueBadge(entry)?.kind || 'no-due-date'" :title="dateButtonTitle(entry)"
+                      :class="[dueBadge(entry)?.kind || 'no-due-date', { 'clock-only': leftTab === 'tasks' }]"
+                      :title="dateButtonTitle(entry)"
                       @click.stop="startDueDateEdit(entry, $event)">
-                <span v-if="dueBadge(entry)" class="focus-due-label">{{ dueBadge(entry).label }}</span>
+                <span v-if="dueBadge(entry)" class="focus-due-label">{{ leftTab === 'projects'
+                  ? getDuePeriodLabel(entry.task.text) || dueBadge(entry).label : dueBadge(entry).label }}</span>
                 <span class="focus-due-clock" aria-hidden="true">◷</span>
               </button>
               </div>
             </section>
+            <p v-if="leftTab === 'projects' && !selectedProjects.length" class="focus-projects-empty">No projects due this day, week or month.</p>
           </div>
           </div>
         </section>
@@ -319,7 +334,7 @@
                   <span class="focus-project-day-count">{{ group.entries.length }} {{ group.entries.length === 1 ? 'task' : 'tasks' }}</span>
                   <span class="focus-project-day-caret" aria-hidden="true">{{ collapsedNowProjects.has(group.key) ? '▸' : '▾' }}</span>
                 </button>
-                <div v-show="!collapsedNowProjects.has(group.key)" :id="`focus-children-${group.key}`"
+                <div v-show="!group.parentTask || !collapsedNowProjects.has(group.key)" :id="`focus-children-${group.key}`"
                      class="focus-project-day-children">
               <div v-for="entry in group.entries" :key="entry.task.id" class="focus-task-row"
                    :class="[rowClasses(entry), {
@@ -368,6 +383,8 @@
                   <span class="focus-section-badge" :title="`${entry.columnName} · ${entry.sectionName}`">
                     {{ entry.sectionName }}
                   </span>
+                  <span v-if="entry.parentTask && !group.parentTask" class="focus-subtask-parent"
+                        :title="getStrippedDisplayText(entry.parentTask.text)">↳ {{ getStrippedDisplayText(entry.parentTask.text) }}</span>
                 </div>
                 <SubtaskIndicator v-if="!isEditingEntry(entry)" :task="entry.task"
                                   @edit="startNameEdit(entry)" />
@@ -693,6 +710,7 @@ import {
 } from '../utils/completionDateHelpers';
 import { getStatusPriority, sortTaskToCorrectPosition } from '../utils/sortHelpers';
 import { nextTaskStatus } from '../utils/statusHelpers';
+import { derivePlanningModel } from '../utils/planningHelpers';
 
 const props = defineProps({
   todoData: {
@@ -1130,7 +1148,30 @@ const finishScheduleDrop = (target, event) => {
   clearFocusSort();
   setEntryDueDate(entry, dateValue);
 };
-const upNextDisplayGroups = computed(() => prioritySections(upNext.value));
+const upNextDisplayGroups = computed(() => prioritySections(upNext.value.filter(entry =>
+  entry.task.type === 'subtask' || entry.task.listMarker !== '+'
+)));
+const leftTab = ref('tasks');
+const selectedProjects = computed(() => derivePlanningModel(props.todoData, focusDate.value).projects
+  .filter(entry => entry.columnType === 'SELECTED' && !entry.frozen)
+  .filter(entry => {
+    if (!entry.period) return false;
+    const day = new Date(focusDate.value);
+    day.setHours(0, 0, 0, 0);
+    return entry.period.start <= day && day <= entry.period.end;
+  })
+  .map(entry => ({ task: entry.task, section: entry.section, columnName: entry.columnKey,
+    stackName: entry.columnType, sectionName: entry.section.name, sourceBucket: 'upNext' })));
+const leftDisplayGroups = computed(() => leftTab.value === 'tasks' ? upNextDisplayGroups.value
+  : [{ key: 'selected-projects', label: 'PROJECTS', entries: selectedProjects.value }]);
+const selectLeftTab = async (tab, focus = false) => {
+  cancelEntryEdit();
+  leftTab.value = tab;
+  if (focus) {
+    await nextTick();
+    focusRoot.value?.querySelector(`#focus-left-tab-${tab}`)?.focus();
+  }
+};
 const upNextDisplayCount = computed(() =>
   upNextDisplayGroups.value.reduce((total, group) => total + group.entries.length, 0)
 );
@@ -1224,6 +1265,7 @@ const nowSections = computed(() => prioritySections(immediateNow.value).map(sect
     groups.get(key).entries.push(entry);
   });
   const displayGroups = [...groups.values()].map(group => {
+    if (group.entries.length === 1) return { ...group, parentTask: null };
     const children = group.entries.map(entry => entry.task);
     const completed = children.filter(task => task.statusChar === 'x').length;
     const allCompleted = completed === children.length;
@@ -1241,7 +1283,9 @@ const nowSections = computed(() => prioritySections(immediateNow.value).map(sect
       statusLabel: allCompleted ? 'Completed' : started ? 'In progress' : 'Not started',
       percentDone: Math.round(completed * 100 / children.length) };
   });
-  displayGroups.sort((a, b) => Number(Boolean(b.parentTask)) - Number(Boolean(a.parentTask)));
+  // Singleton rows still belong to a project even though they have no summary header.
+  displayGroups.sort((a, b) =>
+    Number(Boolean(b.entries[0].parentTask)) - Number(Boolean(a.entries[0].parentTask)));
   return { ...section, groups: displayGroups };
 }));
 const startOfThisWeek = () => {
@@ -2540,6 +2584,16 @@ const toggleQuickAdd = async () => {
   overflow: hidden;
   border-radius: inherit;
 }
+.focus-left-tabs { display: flex; flex: none; border-bottom: 1px solid var(--ui-border); }
+.focus-left-tabs button { flex: 1; min-width: 0; padding: 7px 8px; border: 0;
+  border-bottom: 3px solid transparent; background: var(--ui-surface-soft); color: var(--ui-muted);
+  font: 700 13px var(--ui-font); cursor: pointer; }
+.focus-left-tabs button[aria-selected="true"] { color: var(--ui-blue);
+  border-bottom-color: var(--ui-blue); background: var(--ui-blue-soft); }
+.focus-left-tabs button:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: -3px; }
+.focus-tab-count { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 9px;
+  background: var(--ui-border); font-size: 11px; line-height: 16px; font-variant-numeric: tabular-nums; }
+.focus-projects-empty { color: var(--ui-muted); font-size: 13px; }
 .panel-upnext { container-type: inline-size; }
 .initiative-list {
   --initiative-row-height: 28px;
@@ -3602,8 +3656,9 @@ button.focus-row-check.preview-empty:hover {
 .focus-inline-editor > .focus-expanded-project-title {
   grid-column: 1 / -1;
   min-height: 24px;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-align: left;
 }
 
@@ -3720,6 +3775,8 @@ button.focus-row-check.preview-empty:hover {
 .focus-priority-section { flex: 0 0 auto; min-width: 0; }
 .focus-priority-section + .focus-priority-section { margin-top: 12px; }
 .focus-priority-section .focus-day-header.day-blocked-waiting { color: var(--ui-red, #e05b55); }
+.focus-priority-section > .focus-task-row,
+.focus-ungrouped-task > .focus-project-day-children { margin-bottom: 4px; }
 
 .focus-ungrouped-task { display: contents; }
 .focus-project-day-group {
@@ -5193,15 +5250,15 @@ button.focus-row-check.preview-empty:hover {
 .focus-weekly-layout .focus-schedule-group .focus-task-row { margin-bottom: 3px; }
 .focus-weekly-layout .is-schedule-target { outline: 2px solid var(--ui-blue); outline-offset: -2px; }
 .focus-weekly-layout .focus-section-badge,
-.focus-weekly-layout .panel-upnext .focus-due-label { display: none; }
-.focus-weekly-layout .panel-upnext .focus-due-edit {
+.focus-weekly-layout .panel-upnext .clock-only .focus-due-label { display: none; }
+.focus-weekly-layout .panel-upnext .focus-due-edit.clock-only {
   width: 20px;
   min-width: 20px;
   padding: 0;
   background: transparent;
   border-color: transparent;
 }
-.focus-weekly-layout .panel-upnext .focus-due-clock {
+.focus-weekly-layout .panel-upnext .clock-only .focus-due-clock {
   position: static;
   display: inline;
   background: transparent;

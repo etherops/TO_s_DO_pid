@@ -1,11 +1,11 @@
 describe('Focus weekly execution', () => {
   beforeEach(() => {
     cy.viewport(1600, 1000);
-    cy.writeTestFileContent('# WIP\n### Work\n'
+    cy.writeTestFileContent('# SELECTED\n'
       + '+ [ ] Weekly project ! Nov Week #2 2026\n'
       + '  - [ ] Weekly child ! Nov Week #2 2026\n'
       + '  - [!] Wednesday child ! Nov 11 2026\n'
-      + '* [!] Late blocked ! Nov 9 2026\n'
+      + '# WIP\n### Work\n* [!] Late blocked ! Nov 9 2026\n'
       + '* [ ] Today task ! Nov 10 2026\n'
       + '* [ ] Thursday task ! Nov 12 2026\n'
       + '* [ ] Future task ! Nov 16 2026\n').then(() => cy.reload());
@@ -18,6 +18,8 @@ describe('Focus weekly execution', () => {
     cy.get('.panel-upnext .panel-kicker').should('have.text', 'THIS WEEK - UNSCHEDULED');
     cy.get('.panel-in-progress-queued .panel-kicker').should('have.text', 'THIS WEEK - SCHEDULED');
     cy.get('.panel-upnext').should('contain', 'Weekly project').and('contain', 'Weekly child');
+    cy.get('.panel-upnext .focus-row-title').should('have.length', 1).and('have.text', 'Weekly child');
+    cy.get('.panel-upnext .focus-project-day-group').should('not.exist');
     cy.get('.panel-now').should('contain', 'Today task').and('contain', 'Late blocked');
     cy.get('.panel-in-progress-queued').should('contain', 'Wednesday, Nov 11').and('contain', 'Thursday, Nov 12');
     cy.get('.focus-queue-tabs, .focus-initiatives').should('not.exist');
@@ -56,6 +58,7 @@ describe('Focus weekly execution', () => {
   });
 
   it('edits titles and dates and debounces completion without losing project children', () => {
+    cy.get('#focus-left-tab-projects').click();
     cy.contains('.panel-upnext .focus-row-title', 'Weekly project').click();
     cy.get('.focus-edit-name').clear().type('Renamed weekly project');
     cy.get('.focus-edit-save').click();
@@ -71,6 +74,67 @@ describe('Focus weekly execution', () => {
     cy.readFile('fixture-focus-weekly.todo.md').should('contain', '+ [ ] Renamed weekly project ! Nov Week #2 2026')
       .and('contain', '  - [ ] Weekly child ! Nov Week #2 2026')
       .and('contain', '* [x] Today task | Nov 10 2026');
+  });
+
+  it('defaults to Tasks and shows selected projects in an equal-width tab with in-place editing', () => {
+    cy.contains('.view-mode-btn', 'Plan').click();
+    const source = '# SELECTED\n+ [ ] Today project ! Nov 10 2026\n  - [ ] Child (keep note)\n'
+      + '+ [ ] Week project ! Nov Week #2 2026\n+ [ ] Month project ! Nov 2026\n'
+      + '+ [ ] Tomorrow project ! Nov 11 2026\n+ [ ] Undated project\n'
+      + '+ [x] Finished project | Nov 1 2026\n* [ ] Weekly task ! Nov Week #2 2026\n'
+      + '# TODO\n+ [ ] Backlog project\n# ARCHIVE\n+ [ ] Archived project\n';
+    cy.writeTestFileContent(source).then(file => {
+      cy.wrap(file).as('tabsFile'); cy.reload(); cy.switchToFile(file.fileName);
+    });
+    cy.contains('.view-mode-btn', /\bFocus\b/).click();
+    cy.tick(1);
+    cy.get('#focus-left-tab-tasks').should('have.attr', 'aria-selected', 'true');
+    cy.get('.panel-upnext').should('contain', 'Weekly task').and('not.contain', 'Undated project');
+    cy.get('#focus-left-tab-projects .focus-tab-count').should('be.visible').and('have.text', '3');
+    cy.get('#focus-left-tab-tasks .focus-tab-count').should('not.exist');
+    cy.get('.panel-upnext').screenshot('focus-inactive-projects-count');
+    cy.get('#focus-left-tab-projects').click();
+    cy.get('#focus-left-tab-tasks .focus-tab-count').should('be.visible').and('have.text', '1');
+    cy.get('#focus-left-tab-projects .focus-tab-count').should('not.exist');
+    cy.get('.panel-upnext > .panel-header .panel-count').should('have.text', '3');
+    cy.get('.panel-upnext .focus-row-title').should('have.length', 3);
+    [['Today project', 'Nov 10'], ['Week project', 'Nov Week #2'], ['Month project', 'Nov']]
+      .forEach(([title, date]) => {
+        cy.contains('.panel-upnext .focus-task-row', title).find('.focus-due-label')
+          .should('be.visible').and('have.text', date);
+      });
+    cy.contains('.panel-upnext .focus-task-row', 'Week project').find('.focus-due-edit').click();
+    cy.get('.focus-date-menu').should('be.visible');
+    cy.get('#focus-left-tab-tasks').click();
+    cy.get('.panel-upnext .focus-due-label').should('not.be.visible');
+    cy.get('#focus-left-tab-projects').click();
+    cy.get('.panel-upnext').should('contain', 'Today project').and('contain', 'Week project')
+      .and('contain', 'Month project').and('not.contain', 'Undated project').and('not.contain', 'Finished project')
+      .and('not.contain', 'Tomorrow project')
+      .and('not.contain', 'Backlog project').and('not.contain', 'Archived project');
+    cy.get('.focus-left-tabs button').should($tabs => {
+      expect($tabs[0].offsetWidth).to.be.closeTo($tabs[1].offsetWidth, 1);
+    });
+    cy.get('@save.all').should('have.length', 0);
+    cy.get('@tabsFile').then(file => cy.readFile(file.filePath).should('equal', source));
+    cy.get('[aria-label="Preview next day"]').click();
+    cy.get('.panel-upnext').should('contain', 'Tomorrow project').and('not.contain', 'Today project');
+    cy.get('[aria-label="Preview previous day"]').click();
+    cy.contains('.panel-upnext .focus-row-title', 'Today project').click();
+    cy.get('.panel-upnext .focus-edit-name').clear().type('Renamed project');
+    cy.get('.panel-upnext .subtask-editor').should('be.visible');
+    cy.get('.panel-upnext .focus-edit-save').click();
+    cy.wait('@save');
+    cy.get('@tabsFile').then(file => cy.readFile(file.filePath).should('contain',
+      '+ [ ] Renamed project ! Nov 10 2026\n  - [ ] Child (keep note)'));
+    cy.screenshot('focus-selected-projects-tab');
+    cy.get('[aria-label="Focus date"]').invoke('val', '2026-12-01').trigger('change', { force: true });
+    cy.get('#focus-left-tab-tasks .focus-tab-count').should('be.visible').and('have.text', '0');
+    cy.get('#focus-left-tab-tasks').click();
+    cy.get('#focus-left-tab-projects .focus-tab-count').should('be.visible').and('have.text', '0');
+    cy.contains('.view-mode-btn', 'Plan').click();
+    cy.contains('.view-mode-btn', /\bFocus\b/).click();
+    cy.get('#focus-left-tab-tasks').should('have.attr', 'aria-selected', 'true');
   });
 
   it('drags a subtask across week, today and empty day targets without changing its parent', () => {
@@ -219,13 +283,21 @@ describe('Focus weekly execution', () => {
       + '  - [ ] Book ride (airport) ! Nov 10 2026\n  - [ ] Pack ! Nov 10 2026\n'
       + '  - [ ] Tomorrow child ! Nov 11 2026\n  - [ ] Unscheduled child\n'
       + '+ [ ] Ski\n  - [ ] Buy boots ! Nov 10 2026\n'
-      + '# WIP\n* [ ] Standalone ! Nov 10 2026\n';
+      + '# WIP\n* [ ] Standalone ! Nov 10 2026\n* [ ] Another standalone ! Nov 10 2026\n'
+      + '* [ ] Weekly first ! Nov Week #2 2026\n* [ ] Weekly second ! Nov Week #2 2026\n';
     cy.writeTestFileContent(source).then(file => {
       cy.reload();
       cy.get('[aria-label="Focus date"]').invoke('val', '2026-11-10').trigger('change', { force: true });
       cy.tick(1);
       const trip = '.panel-now .focus-project-day-group';
-      cy.get(trip).should('have.length', 2);
+      cy.get(trip).should('have.length', 1);
+      cy.contains('.panel-now .focus-ungrouped-task .focus-task-row', 'Buy boots')
+        .find('.focus-subtask-parent').should('contain', 'Ski');
+      cy.get('[data-now-section="main"]').children().not('.focus-day-header').should($cards => {
+        const titles = [...$cards].map(card =>
+          card.querySelector('.focus-project-day-title, .focus-row-title').textContent);
+        expect(titles).to.deep.equal(['Trip', 'Buy boots', 'Standalone', 'Another standalone']);
+      });
       cy.contains(trip, 'Trip').as('trip');
       cy.get('@trip').find('.focus-project-day-count').should('have.text', '2 tasks');
       cy.get('@trip').find('.focus-project-day-status').should('have.class', 'unchecked');
@@ -241,7 +313,7 @@ describe('Focus weekly execution', () => {
         cy.get('@trip').find('.focus-project-day-toggle').should('have.css', 'background-color', color);
       });
       cy.get('@trip').find('.focus-task-row').should('not.be.visible');
-      cy.get('.panel-now .panel-count').should('have.text', '4');
+      cy.get('.panel-now .panel-count').should('have.text', '5');
       cy.get('@save.all').should('have.length', 0);
       cy.readFile(file.filePath).should('equal', source);
       cy.get('@trip').find('.focus-project-day-toggle').focus().type('{enter}')
@@ -275,7 +347,18 @@ describe('Focus weekly execution', () => {
         expect(Math.abs(groupRect.right - regularRect.right), 'group right edge').to.be.lessThan(1);
         const childRect = panel.querySelector('.focus-project-day-group .focus-task-row').getBoundingClientRect();
         expect(groupRect.right - childRect.right, 'no extra inner drag-handle gutter').to.be.within(0, 2);
+        const regularRows = [...panel.querySelectorAll('.focus-ungrouped-task .focus-task-row')]
+          .map(row => row.getBoundingClientRect());
+        expect(regularRows[1].top - regularRows[0].bottom, 'standalone cards retain a visible gap')
+          .to.be.at.least(3);
       });
+      cy.get('.panel-upnext [data-week-section="main"] .focus-task-row').should('have.length', 2)
+        .should($rows => {
+          // The side pane is tilted in 3D; axis-aligned screen bounds include its perspective skew.
+          const [first, second] = $rows;
+          expect(second.offsetTop - first.offsetTop - first.offsetHeight, 'weekly standalone card gap')
+            .to.be.at.least(4);
+        });
       cy.screenshot('focus-project-day-groups', { capture: 'viewport' });
       cy.contains('.panel-now .focus-row-title', 'Book ride').click();
       cy.get('.focus-edit-name').clear().type('Book airport ride');
@@ -297,8 +380,11 @@ describe('Focus weekly execution', () => {
           .trigger('drop', { dataTransfer });
       });
       cy.wait('@save');
-      cy.contains(trip, 'Trip').find('.focus-project-day-count').should('have.text', '1 task');
-      cy.contains(trip, 'Trip').find('.focus-project-day-status').should('have.class', 'checked');
+      cy.get(trip).should('not.exist');
+      cy.contains('.panel-now .focus-ungrouped-task .focus-task-row', 'Book airport ride')
+        .find('.focus-row-check').should('have.class', 'checked');
+      cy.contains('.panel-now .focus-ungrouped-task .focus-task-row', 'Book airport ride')
+        .find('.focus-subtask-parent').should('contain', 'Trip');
       cy.get('[data-schedule-date="2026-11-13"]').should('contain', 'Pack');
       cy.readFile(file.filePath).should('contain', '+ [ ] Trip\n')
         .and('contain', '  - [x] Book airport ride (airport) | Nov 10 2026')

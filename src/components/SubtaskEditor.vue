@@ -19,6 +19,7 @@
                           'is-cancelled': child.statusChar === '-', 'status-blocked': child.statusChar === '!' }"
                 @click="toggleStatus(index, child)"></button>
         <input :value="titleDrafts.get(child.id) ?? getStrippedDisplayText(child.text)" aria-label="Subtask title" placeholder="Subtask…"
+               :title="getStrippedDisplayText(child.text)"
                @keydown.enter.prevent.stop="advance(index)"
                @blur="commit()"
                @input="updateTitle(index, child, $event.target.value)" />
@@ -26,12 +27,13 @@
               class="subtask-date subtask-completion-date" aria-label="Edit subtask completion date"
               :title="completionLabel(child)" @pointerdown.stop.prevent="toggleDate(index)"
               @click.stop="!$event.detail && toggleDate(index)">
-          {{ completionLabel(child) }}
+          {{ compactDates ? '◷' : completionLabel(child) }}
         </button>
         <button v-else-if="child.text.trim()" type="button" class="subtask-date"
+                :title="dueLabel(child) || 'Add due date'"
                 aria-label="Edit subtask due date" @pointerdown.stop.prevent="toggleDate(index)"
                 @click.stop="!$event.detail && toggleDate(index)">
-          {{ dueLabel(child) || '◷' }}
+          {{ compactDates ? '◷' : dueLabel(child) || '◷' }}
         </button>
         <button v-if="index < modelValue.length" type="button" class="subtask-remove"
                 aria-label="Remove subtask" @click="remove(index)">×</button>
@@ -59,7 +61,8 @@ import SubtaskDeleteMenu from './SubtaskDeleteMenu.vue';
 import { getStrippedDisplayText } from '../utils/taskTextHelpers';
 import { createSubtask, updateSubtaskTitle } from '../utils/subtaskHelpers';
 import { extractDuePeriod, formatDuePeriodValue, getDuePeriodLabel, setDuePeriod } from '../utils/dateHelpers';
-const props = defineProps({ modelValue: { type: Array, default: () => [] }, allowAdd: { type: Boolean, default: true } });
+const props = defineProps({ modelValue: { type: Array, default: () => [] },
+  allowAdd: { type: Boolean, default: true }, compactDates: Boolean });
 const emit = defineEmits(['update:modelValue', 'commit']);
 const commit = (rows = props.modelValue) => emit('commit', rows);
 const editorRoot = ref(null);
@@ -211,7 +214,8 @@ const advance = async (index) => {
   padding: 2px 5px; border: 1px solid var(--subtask-border); border-radius: 6px;
   background: var(--subtask-fill); }
 .subtask-edit-row input { flex: 1; min-width: 0; height: 16px; box-sizing: border-box;
-  color: inherit; background: transparent; border: 0; padding: 0; font: inherit; font-size: 12px; }
+  color: inherit; background: transparent; border: 0; padding: 0; font: inherit; font-size: 12px;
+  text-overflow: ellipsis; }
 .subtask-edit-row:focus-within { border-color: var(--ui-blue, #4d8fd6); }
 .subtask-edit-row input:focus { outline: none; }
 .subtask-edit-row.drop-before { box-shadow: 0 -2px var(--ui-blue); }

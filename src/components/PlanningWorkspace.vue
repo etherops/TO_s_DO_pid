@@ -69,7 +69,7 @@
                    :id="`project-children-${project.entry.task.id}`" class="planning-project-children"
                    role="group" :aria-label="`Subtasks of ${project.entry.title}`">
                 <PlanningTaskRow v-for="child in project.children" :key="child.task.id" :entry="child" nested
-                                 @open-parent="openParent" @request-date="openSchedule"
+                                 @update="updateEntry" @refresh="refresh" @request-date="openSchedule"
                                  @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
                 <PlanningSubtaskAdd :entry="project.entry" @update="refresh(); $emit('update')" />
               </div>
@@ -109,7 +109,7 @@
             <PlanningEntryList :entries="lane.projects" :is-task-selected="isTaskSelected"
                 @update="updateEntry" @refresh="refresh" @request-date="openSchedule"
                 @task-click="$emit('task-click', $event)" @task-context-menu="$emit('task-context-menu', $event)"
-                @open-parent="openParent" @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
+                @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
           </section>
           <slot v-if="lane.id === 'WIP'" name="archive-weeks" :show-archive="showArchive" />
           <p v-if="lane.id !== 'WIP' && !lane.count" class="planning-empty">Nothing scheduled.</p>
@@ -134,7 +134,7 @@
               <PlanningEntryList :entries="subgroup.entries" :is-task-selected="isTaskSelected" clock-only
                 @update="updateEntry" @refresh="refresh" @request-date="openSchedule"
                 @task-click="$emit('task-click', $event)" @task-context-menu="$emit('task-context-menu', $event)"
-                @open-parent="openParent" @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
+                @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
             </div>
           </section>
           <section v-if="lane.needsDate.length" class="planning-date-group planning-needs-date">
@@ -142,7 +142,7 @@
             <PlanningEntryList :entries="lane.needsDate" :is-task-selected="isTaskSelected" clock-only
                 @update="updateEntry" @refresh="refresh" @request-date="openSchedule"
                 @task-click="$emit('task-click', $event)" @task-context-menu="$emit('task-context-menu', $event)"
-                @open-parent="openParent" @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
+                @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
           </section>
           <section v-for="group in lane.id === 'WIP' ? wipSourceExtras : []" :key="group.key" class="planning-date-group">
             <header class="planning-section-heading"><h3>{{ group.section.name || group.columnKey }}</h3></header>
@@ -150,7 +150,7 @@
             <PlanningEntryList :entries="group.entries" :is-task-selected="isTaskSelected" clock-only
                 @update="updateEntry" @refresh="refresh" @request-date="openSchedule"
                 @task-click="$emit('task-click', $event)" @task-context-menu="$emit('task-context-menu', $event)"
-                @open-parent="openParent" @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
+                @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
             <p v-for="(line, index) in group.raw" :key="index" class="planning-raw">{{ line.text }}</p>
           </section>
           <section v-if="lane.id === 'WIP' && wipCompleted.length" class="planning-completed">
@@ -163,7 +163,7 @@
               <PlanningEntryList :entries="group.entries" :is-task-selected="isTaskSelected" clock-only
                 @update="updateEntry" @refresh="refresh" @request-date="openSchedule"
                 @task-click="$emit('task-click', $event)" @task-context-menu="$emit('task-context-menu', $event)"
-                @open-parent="openParent" @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
+                @drag-start="dragEntry = $event" @drag-end="dragEntry = null" />
             </section>
           </section>
         </div>
@@ -185,7 +185,7 @@
       </aside>
     </Transition>
 
-    <Teleport v-if="scheduleEntry || parentEntry || addingTask" to=".todo-app">
+    <Teleport v-if="scheduleEntry || addingTask" to=".todo-app">
       <div v-if="addingTask" class="planning-modal-backdrop" @click.self="closeAdd" @keydown.esc.stop="closeAdd">
         <form ref="addDialog" class="planning-dialog planning-add-dialog" role="dialog" aria-modal="true"
               aria-labelledby="planning-add-title" @submit.prevent="saveAddedTask" @keydown.tab="trapDialogFocus">
@@ -217,15 +217,6 @@
             : 'Saves immediately. Clear date returns the task to SELECTED.' }}</p>
         </section>
       </div>
-      <div v-if="parentEntry" class="planning-modal-backdrop" @click.self="closeParent" @keydown.esc="closeParent">
-        <section ref="parentDialog" class="planning-dialog planning-parent-dialog"
-                 role="dialog" aria-modal="true" aria-label="Edit parent task"
-                 @keydown.tab="trapDialogFocus">
-          <header><h2>Edit parent & subtasks</h2><button aria-label="Close" @click="closeParent">×</button></header>
-          <TaskCard :ref="editParentCard" :task="parentEntry.task" :section="parentEntry.section" :column="parentEntry.columnKey"
-                    @task-updated="updateEntry(parentEntry, $event)" />
-        </section>
-      </div>
     </Teleport>
   </div>
 </template>
@@ -236,7 +227,6 @@ import PlanningTaskRow from './PlanningTaskRow.vue';
 import PlanningEntryList from './PlanningEntryList.vue';
 import PlanningSubtaskAdd from './PlanningSubtaskAdd.vue';
 import OutlineDrawer from './OutlineDrawer.vue';
-import TaskCard from './TaskCard.vue';
 import SubtaskDatePicker from './SubtaskDatePicker.vue';
 import {
   addPlanningTask, planningColumns, derivePlanningModel, reconcilePlanningDate,
@@ -310,7 +300,6 @@ const statusChanges = usePlanningStatusChanges(() => {
   emit('update');
   if (!pendingStatuses.size) {
     if (archiveRequested) showArchive();
-    if (parentCloseRequested) closeParent();
   }
 });
 const pendingStatuses = statusChanges.pending;
@@ -375,10 +364,8 @@ const scheduleTarget = ref(null);
 const scheduleValue = ref('');
 const scheduleDialog = ref(null);
 const schedulePosition = ref({});
-const parentEntry = shallowRef(null);
 let returnFocus = null;
 let archiveRequested = false;
-let parentCloseRequested = false;
 const refresh = () => {
   const liveIds = new Set(Object.values(props.todoData.columnStacks)
     .flatMap(column => (column.sections || []).flatMap(section => (section.items || [])
@@ -390,9 +377,9 @@ watch(() => props.todoData, (data, old) => {
   if (data !== old) {
     expandedProjects.value.clear();
     projectDrop.value = null;
-    statusChanges.reset(); scheduleEntry.value = null; parentEntry.value = null;
+    statusChanges.reset(); scheduleEntry.value = null;
     dragEntry.value = null; addingTask.value = false; archiveOpen.value = false;
-    archiveRequested = false; parentCloseRequested = false;
+    archiveRequested = false;
   }
   refresh();
 }, { deep: true });
@@ -458,14 +445,12 @@ const updateEntry = (entry, payload) => {
   if (payload?.statusSettled) pendingStatuses.delete(entry.task.id);
   if (!entry.section.items.includes(entry.task)) pendingStatuses.delete(entry.task.id);
   if (!pendingStatuses.has(entry.task.id) && !payload?.statusSettled) {
-    const moved = reconcilePlanningDate(props.todoData, entry);
-    if (moved && parentEntry.value?.task === entry.task) parentEntry.value = null;
+    reconcilePlanningDate(props.todoData, entry);
   }
   refresh();
   emit('update');
   if (!pendingStatuses.size) {
     if (archiveRequested) showArchive();
-    if (parentCloseRequested) closeParent();
   }
 };
 const openSchedule = async (entry, targetCategory = null, event = null) => {
@@ -503,30 +488,6 @@ const dropScheduled = (group, targetCategory) => {
   if (!group.value) { openSchedule(entry, targetCategory); return; }
   if (schedulePlanningEntry(props.todoData, entry, group.value, targetCategory)) emit('update');
   refresh();
-};
-const openParent = entry => {
-  parentCloseRequested = false;
-  const task = entry.parent || entry.task;
-  parentEntry.value = { ...entry, task, parent: null, layoutStatus: task.statusChar,
-    period: extractDuePeriod(task.text), editChildId: entry.parent ? entry.task.id : null };
-};
-const closeParent = () => {
-  if (parentEntry.value && pendingStatuses.has(parentEntry.value.task.id)) { parentCloseRequested = true; return; }
-  parentCloseRequested = false;
-  parentEntry.value = null;
-};
-const parentDialog = ref(null);
-let parentCard = null;
-const editParentCard = card => {
-  if (card && card !== parentCard) nextTick(async () => {
-    card.startEditingAll();
-    await nextTick();
-    const childId = parentEntry.value?.editChildId;
-    if (childId === null || childId === undefined) return;
-    const rows = parentDialog.value?.querySelectorAll('[data-subtask-id]') || [];
-    [...rows].find(row => row.dataset.subtaskId === String(childId))?.querySelector('input')?.focus();
-  });
-  parentCard = card;
 };
 const trapDialogFocus = event => {
   const controls = [...event.currentTarget.querySelectorAll('button, input, textarea, select, [tabindex="0"]')]
@@ -636,6 +597,7 @@ defineExpose({ refresh });
 .planning-scheduled:not(.is-active) :deep(.completion-date-trigger),
 .planning-scheduled:not(.is-active) :deep(.subtask-indicator),
 .planning-scheduled:not(.is-active) :deep(.planning-source-badge),
+.planning-scheduled:not(.is-active) :deep(.planning-child-actions),
 .planning-scheduled:not(.is-active) :deep(.planning-child-date) { display: none; }
 .planning-scheduled:not(.is-active) :deep(.planning-task-row) { padding-left: 0; }
 .planning-scheduled:not(.is-active) :deep(.task-card),
@@ -680,6 +642,25 @@ h2, h3, p { margin: 0; }
 .planning-lane-body { overflow-y: auto; min-height: 0; padding: 4px 8px 8px; scrollbar-color: var(--ui-border-strong) transparent; }
 .planning-project-heading { display: flex; align-items: flex-start; min-width: 0; }
 .planning-project-heading > .planning-task-row { flex: 1; min-width: 0; }
+.projects-stack :deep(.note-date-row) { grid-template-columns: minmax(0, 1fr); }
+.projects-stack :deep(.note-date-row > *) { grid-column: 1; }
+.planning-project-heading:has(.task-edit-wrapper) { display: block; }
+.planning-project-heading:has(.task-edit-wrapper) > .planning-task-row { padding-left: 0; }
+.planning-project-heading:has(.task-edit-wrapper) .planning-task-grip { display: none; }
+.projects-stack :deep(.task-card:has(.task-edit-wrapper)) { padding: 6px; }
+.planning-project-heading:has(.task-edit-wrapper) > .planning-project-close,
+.planning-project:has(.task-edit-wrapper) > .planning-project-children { display: none; }
+.projects-stack :deep(.task-content-wrapper:has(> .task-edit-wrapper)) {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px 6px; }
+.projects-stack :deep(.task-edit-wrapper) { display: contents; }
+.projects-stack :deep(.task-edit-row) { grid-column: 2; min-width: 0; }
+.projects-stack :deep(.note-date-row), .projects-stack :deep(.edit-actions-row) { grid-column: 1 / -1; }
+.planning-workspace .projects-stack :deep(.edit-actions-row) { gap: 4px; flex-wrap: nowrap; }
+.projects-stack :deep(.edit-actions-row > button) {
+  padding: 4px 6px; font-size: 11px; min-width: 0; margin: 0; white-space: nowrap; transform: none;
+}
+.projects-stack :deep(.subtask-date) { width: 22px; padding: 1px 3px; box-sizing: border-box; }
+.projects-stack :deep(.subtask-edit-row) { gap: 4px; padding: 2px 3px; }
 .planning-project-close { flex: none; margin: 5px 0 0 3px; padding: 3px;
   color: var(--ui-muted); border: 0; border-radius: 4px; background: transparent; font-size: 11px; cursor: pointer; }
 .planning-projects-toggle { border: 0; border-radius: 4px; background: transparent; color: var(--ui-muted);
@@ -746,7 +727,6 @@ h2, h3, p { margin: 0; }
 .planning-date-popover .planning-dialog-title { margin: 6px 0; font-size: 12px; }
 .planning-date-popover :deep(.subtask-date-picker) { width: auto; margin: 0 0 6px; }
 .planning-date-popover .planning-hint { padding: 0; font-size: 10px; }
-.planning-parent-dialog { width: min(800px, calc(100vw - 40px)); }
 @media (max-width: 800px) {
   .planning-area-title { font-size: 18px; letter-spacing: 2px; }
   .planning-backlog-workspace { grid-template-columns: 120px minmax(0, 1fr); }

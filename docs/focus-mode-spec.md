@@ -11,7 +11,18 @@ Paper placement follows [the paper workflow contract](paper-workflow.md): projec
 and child projections always retain their parent. A project's own deadline can still be displayed.
 Its three upper panels retain the original layout, with Today / Overdue centered and slightly larger:
 
-- Left, **THIS WEEK - UNSCHEDULED**: whole-week assignments for the Sunday–Saturday week containing the displayed date.
+- Left: equal-width **Tasks** / **Projects** tabs, with Tasks selected on each opening of Focus.
+  The inactive tab shows its current filtered item count beside its name, including zero. The active tab's
+  count stays in the panel header without a duplicate badge on its tab. Counts update with data and date navigation.
+  Tasks retains **THIS WEEK - UNSCHEDULED**, showing whole-week assignments for the displayed Sunday–Saturday week.
+  Projects shows non-frozen `+` projects in SELECTED whose due period contains the displayed date:
+  that exact day, that whole week, or that whole month. Undated projects, other periods and archives are excluded.
+  Tasks excludes real project cards but retains individually scheduled subtasks and their parent badges.
+  Display-only expandable project summaries belong exclusively to Today / Overdue, never the Tasks tab.
+  These are real project rows with the existing inline editor, children, status and date controls.
+  Each project shows its recorded due day, week or month beside the clickable clock; only the Tasks tab hides
+  repeated due labels beneath its shared week heading.
+  Switching tabs only changes the view and cancels unsaved parent drafts; it never changes Markdown.
 - Center, **Today / Overdue**: three compact stacked sections, MAIN, LOW PRIO, BLOCKED/WAITING,
   including work completed or cancelled on that date. Blocked `[!]` takes precedence over low priority;
   other low-priority top-level tasks go in LOW PRIO, and remaining tasks/subtasks go in MAIN.
@@ -20,6 +31,10 @@ Its three upper panels retain the original layout, with Today / Overdue centered
   1.5-second debounce; priority regrouping waits for the existing priority save delay.
   Within each section, surfaced subtasks sharing a parent and due/completion day are collected in one
   compact, expandable project-name group, initially expanded and placed above standalone tasks.
+  Only groups with two or more visible subtasks receive a summary header. A lone subtask renders as
+  a regular row with its parent badge and normal controls, including when a former group shrinks to one.
+  Both summary groups and lone project subtasks sort together above standalone tasks within each section;
+  hiding a singleton's summary header does not change its project-first ordering.
   A normal read-only checkbox is empty when all children are unstarted, yellow when any work has
   started, and green/checkmarked only when every child is completed. It is not the project's grid
   checkbox and never changes parent status. It shares the task checkbox's left alignment and size;
@@ -31,6 +46,8 @@ Its three upper panels retain the original layout, with Today / Overdue centered
   Expanded headers also have a bottom divider, distinct from neutral child rows without changing checkbox alignment.
   Group cards share the regular task cards' left and right edges, reserving the same drag-handle
   gutter once at the group boundary rather than again inside each child row.
+  Standalone cards retain a small vertical gap in the center and weekly-unscheduled sections;
+  project child rows remain compact inside their shared group.
   Its count covers only those visible
   children, not the whole project. Overdue dates stay separate. The header only expands/collapses;
   it is not the real project card and has no project status, editor or scheduling actions. Expanded
@@ -41,14 +58,17 @@ Its three upper panels retain the original layout, with Today / Overdue centered
 The right panel always shows all seven weekday/date drop targets, including empty days.
 Each day group keeps its content height, including expanded editors; when space runs out the panel
 scrolls rather than shrinking day groups and allowing their cards to overlap subsequent headings.
-Priority, source section and blocked status never override date routing. There are no Projects, Up Next,
-Parked or Done panels. Undated work, current whole-month commitments and later-week work stay in Plan.
+Priority, source section and blocked status never override task date routing. There are no separate Projects, Up Next,
+Parked or Done panels. Undated tasks, current whole-month commitments and later-week tasks stay in Plan;
+selected projects are additionally accessible through the left Projects tab.
 Terminal work appears in upper panels only on its recorded completion day. Missing completion dates
 are not invented. Periods become overdue only after their final day. Weeks are named for the month
 containing at least four of their days and numbered within that owning month.
 
-Cards omit file-section labels. The left pane shows its shared due week once in its heading;
-each row retains a compact clock for date editing. Cards remain compact editable rows, not tiles.
+All displayed card titles, including expanded project children, stay on one line with ellipsis; editors remain in place.
+Cards omit file-section labels. The left Tasks tab shows its shared due week once in its heading;
+each task row retains a compact clock for date editing. Project rows show their own recorded due labels.
+Cards remain compact editable rows, not tiles.
 The left pane uses the same MAIN, LOW PRIO and BLOCKED/WAITING sections and precedence as the center,
 including status debounce, counts and compact empty headers. The shared week header remains above
 the three sections, and its count includes all of them. Grouping never detaches or copies subtasks.

@@ -45,10 +45,9 @@ describe('Shared subtask right-click actions', () => {
   });
 
   it('detaches from the editor without saving parent drafts or resurrecting the child on Save', () => {
-    cy.get('[aria-label="Expand Source project"]').click();
-    cy.contains('.planning-project-children .planning-child-title', 'Finished child').click();
-    cy.focused().should('have.attr', 'aria-label', 'Subtask title').and('have.value', 'Finished child');
-    cy.get('.planning-parent-dialog .task-text-edit').clear().type('Parent draft');
+    cy.contains('.projects-stack .task-title', 'Source project').click();
+    cy.contains('.projects-stack .task-title', 'Source project').click();
+    cy.get('.projects-stack .task-text-edit').clear().type('Parent draft');
     cy.contains('.subtask-edit-row', 'Done Nov 1').rightclick();
     cy.contains(`${menu} button`, 'Detach as regular task').click();
     cy.wait('@save');
@@ -57,7 +56,7 @@ describe('Shared subtask right-click actions', () => {
     cy.get('.subtask-edit-row input').should($inputs => {
       expect([...$inputs].map(input => input.value)).not.to.include('Finished child');
     });
-    cy.get('.planning-parent-dialog .confirm-edit-btn').click();
+    cy.get('.projects-stack .confirm-edit-btn').click();
     cy.wait('@save');
     readSource().should('contain', '+ [~] Parent draft (parent note)')
       .and('not.contain', '  - [x] Finished child');

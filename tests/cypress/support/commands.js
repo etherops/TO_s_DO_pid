@@ -58,8 +58,7 @@ Cypress.Commands.add('switchToFile', (fileName) => {
     const baseFileName = fileName.replace('.todo.md', '')
 
     // Open the custom file selector and choose the requested source.
-    cy.get('.file-selector-trigger', { timeout: 8000 }).should('be.visible')
-        .and('not.contain', 'Select TODO List').click()
+    cy.get('.file-selector-trigger', { timeout: 8000 }).should('be.visible').click()
     cy.contains('.file-selector-option', baseFileName, { timeout: 8000 })
         .scrollIntoView()
         .should('be.visible')

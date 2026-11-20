@@ -151,7 +151,7 @@ describe('Unified planning workspace', () => {
   });
 
   it('edits backlog and Tasks titles while retaining their paper headings and metadata', () => {
-    cy.get('.outline-drawer-grip').click();
+    cy.get('.outline-drawer-grip').realHover({ scrollBehavior: false });
     cy.get('.planning-toc .outline-drawer-panel').should('have.css', 'transform', 'matrix(1, 0, 0, 1, 0, 0)');
     cy.contains('.planning-backlog .task-title', 'Backlog task').click({ scrollBehavior: false });
     cy.get('.planning-backlog .task-text-edit').clear().type('Revised backlog');
@@ -198,7 +198,8 @@ describe('Unified planning workspace', () => {
   });
 
   it('keeps LOW PRIO below main cards in source sections and every scheduled date without saving the grouping', () => {
-    cy.get('.outline-drawer-grip').click();
+    cy.get('.outline-drawer-grip').realHover({ scrollBehavior: false });
+    cy.get('.planning-toc .outline-drawer-panel').should('have.css', 'transform', 'matrix(1, 0, 0, 1, 0, 0)');
     cy.get('.planning-backlog .planning-low-priority-heading').should('contain', 'LOW PRIO');
     cy.get('.planning-backlog .task-title').first().should('contain', 'Backlog task');
     cy.get('[aria-label="Close backlog"]').click();

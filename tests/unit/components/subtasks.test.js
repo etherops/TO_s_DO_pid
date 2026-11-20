@@ -13,6 +13,18 @@ const source = '# WIP\n### Work\n+ [~] Parent ! Sep 21 2026\n  - [ ] Child\n  * 
   + '  + [~] Keep plus\n  unrecognized content\n  - Plain child\n* [ ] Separate';
 
 describe('Nested subtasks', () => {
+  it('uses compact date clocks without hiding the title or losing completion-date editing', async () => {
+    const wrapper = mount(SubtaskEditor, { props: { compactDates: true, modelValue: [
+      { id: 'done', type: 'subtask', statusChar: 'x', text: 'Completed child | Nov 17 2026' },
+      { id: 'open', type: 'subtask', statusChar: ' ', text: 'Open child ! Nov 18 2026' }
+    ] } });
+    expect(wrapper.findAll('.subtask-date').map(button => button.text())).toEqual(['◷', '◷']);
+    expect(wrapper.get('.subtask-completion-date').attributes('title')).toBe('Done Nov 17 2026');
+    expect(wrapper.get('input').element.value).toBe('Completed child');
+    await wrapper.get('.subtask-completion-date').trigger('pointerdown');
+    expect(wrapper.findComponent(SubtaskDatePicker).props('modelValue')).toBe('2026-11-17');
+    wrapper.unmount();
+  });
   beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 21)); });
   afterEach(() => vi.useRealTimers());
   it.each([
@@ -202,7 +214,8 @@ describe('Nested subtasks', () => {
     const task = data.columnStacks.WIP.sections[0].items[0];
     const wrapper = mount(FocusMode, { props: { todoData: data } });
     try {
-      expect(wrapper.get('.focus-project-day-title').text()).toBe('Parent');
+      expect(wrapper.get('.focus-subtask-parent').text()).toContain('Parent');
+      expect(wrapper.find('.focus-project-day-title').exists()).toBe(false);
       expect(wrapper.findAll('.panel-now .focus-day-header').map(header => header.text()))
         .toContain('MAIN2');
       const childTitle = wrapper.findAll('.focus-row-title').find(button => button.text() === 'Child');

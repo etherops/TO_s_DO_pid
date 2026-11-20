@@ -89,12 +89,19 @@ There is no Sort button or automatic project sorting; completed projects can als
 Expanded rows show all supported
 subtasks in source order, including undated and completed tasks, with their status and due/completion date.
 Expanded subtasks use a compact, borderless checklist rather than nested cards: smaller status marks,
-wrapping titles, quiet inline dates, and a row highlight only on hover or keyboard focus.
-Subtask titles open the parent editor; dates on open, unfrozen subtasks open scheduling. Expanded subtask status buttons
+single-line ellipsized titles, visible date clocks and action menus, and a row highlight on hover or keyboard focus.
+Subtask titles edit directly in that row with Save/Enter and Cancel/Escape; they never open a parent-edit modal.
+Date clocks open an in-place picker below the row for due or completion dates, including missing dates.
+The action button exposes the same edit, date, move, detach and deletion commands as right-click.
+Title and date changes preserve notes, siblings and source nesting. Expanded subtask status buttons
 cycle and save immediately, including completion dates. Their scheduled copies retain their original group through
 the shared 1.5-second status pause, and reopening restores the original due precision during that cycle.
 Frozen subtasks remain read-only. Disclosure state is view-only
 and resets when switching files. Unsupported child syntax remains untouched in the source.
+The full Plan project editor also stays in place: its single-line title sits above full-width child rows.
+Due and completion controls use compact clocks with full dates in tooltips and pickers, reserving readable
+space for every child title. Notes and dates stack below; Save/Cancel stay together. The duplicate read-only
+checklist and project drag/Close controls are hidden while that full editor is open.
 Legacy PROJECTS headings are read as SELECTED-category sources until explicitly migrated.
 User-facing high-priority terminology is Project, not Initiative; the `+` marker and Focus routing stay unchanged.
 Explicit project-section migration creates one plus-marked parent per populated PROJECTS section and indents its

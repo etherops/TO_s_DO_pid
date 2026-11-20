@@ -45,17 +45,20 @@ describe('Projects in date-oriented Focus', () => {
     expect(task.statusChar).toBe('~');
   });
 
-  it('routes high-priority projects by date without an exclusive panel', async () => {
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Project ! Sep Week #4 2026\n'
+  it('shows selected weekly projects only in the Projects tab and moves normal tasks back to Tasks', async () => {
+    const data = parseTodoMdFile('# SELECTED\n### Work\n+ [~] Project ! Sep Week #4 2026\n'
       + '+ [x] Finished | Sep 20 2026\n# TODO\n### Other\n+ [ ] Outside scope ! Sep 21 2026');
     const wrapper = mount(FocusMode, { props: { todoData: data } });
+    expect(wrapper.find('.panel-upnext .focus-task-row').exists()).toBe(false);
+    await wrapper.get('#focus-left-tab-projects').trigger('click');
     expect(wrapper.get('.panel-upnext').text()).toContain('Project');
     expect(wrapper.find('.focus-initiatives').exists()).toBe(false);
     expect(wrapper.get('.focus-carousel').text()).not.toContain('Finished');
     expect(wrapper.get('.panel-now').text()).toContain('Outside scope');
     await wrapper.get('.panel-upnext .priority-toggle').trigger('click');
     await vi.advanceTimersByTimeAsync(700);
-    expect(data.columnStacks.WIP.sections[0].items[0].listMarker).toBe('*');
+    expect(data.columnStacks.SELECTED.sections[0].items[0].listMarker).toBe('*');
+    await wrapper.get('#focus-left-tab-tasks').trigger('click');
     expect(wrapper.get('.panel-upnext').text()).toContain('Project');
     wrapper.unmount();
   });
@@ -98,8 +101,9 @@ describe('Projects in date-oriented Focus', () => {
 
   it('holds completed initiatives through the status debounce', async () => {
     vi.useFakeTimers();
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Initiative ! Sep Week #4 2026\n');
+    const data = parseTodoMdFile('# SELECTED\n### Work\n+ [~] Initiative ! Sep Week #4 2026\n');
     const wrapper = mount(FocusMode, { props: { todoData: data } });
+    await wrapper.get('#focus-left-tab-projects').trigger('click');
     await wrapper.get('.panel-upnext .focus-row-check').trigger('click');
     expect(wrapper.get('.panel-upnext').text()).toContain('Initiative');
     await vi.advanceTimersByTimeAsync(1499);
@@ -111,9 +115,10 @@ describe('Projects in date-oriented Focus', () => {
   });
 
   it('sorts initiatives within their source section without moving other tasks', async () => {
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] First ! Sep Week #4 2026\n* [ ] Other\n+ [~] Second ! Sep Week #4 2026\n');
-    const section = data.columnStacks.WIP.sections[0];
+    const data = parseTodoMdFile('# SELECTED\n### Work\n+ [~] First ! Sep Week #4 2026\n* [ ] Other\n+ [~] Second ! Sep Week #4 2026\n');
+    const section = data.columnStacks.SELECTED.sections[0];
     const wrapper = mount(FocusMode, { props: { todoData: data } });
+    await wrapper.get('#focus-left-tab-projects').trigger('click');
     const rows = wrapper.findAll('.panel-upnext .focus-task-row');
     expect(rows[0].attributes('draggable')).toBeUndefined();
     expect(rows[0].get('.focus-drag-handle').attributes('draggable')).toBe('true');
@@ -127,9 +132,10 @@ describe('Projects in date-oriented Focus', () => {
   });
 
   it('saves project dates immediately and moves the card to its new date panel', async () => {
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Initiative ! Sep Week #4 2026\n');
-    const task = data.columnStacks.WIP.sections[0].items[0];
+    const data = parseTodoMdFile('# SELECTED\n### Work\n+ [~] Initiative ! Sep Week #4 2026\n');
+    const task = data.columnStacks.SELECTED.sections[0].items[0];
     const wrapper = mount(FocusMode, { props: { todoData: data }, global: { stubs: { teleport: true } } });
+    await wrapper.get('#focus-left-tab-projects').trigger('click');
     await wrapper.get('.panel-upnext .focus-due-edit').trigger('click');
     const today = wrapper.findAll('.focus-date-option').find(button => button.text() === 'Today');
     await today.trigger('click');

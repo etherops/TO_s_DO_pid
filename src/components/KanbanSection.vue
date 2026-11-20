@@ -393,6 +393,8 @@ const getContiguousCompletedTasks = computed(() => {
 
 // Get contiguous in-progress tasks that come after the completed tasks
 const getContiguousInProgressTasks = computed(() => {
+  // Plan's partial collapse only condenses finished work; active cards must remain readable.
+  if (inPlanningWorkspace) return [];
   const items = collapsibleItems.value;
   const completedCount = getContiguousCompletedTasks.value.length;
   const inProgressTasks = [];
