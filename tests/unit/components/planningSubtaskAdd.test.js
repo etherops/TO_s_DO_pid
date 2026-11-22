@@ -7,7 +7,7 @@ import { parseTodoMdFile, renderTodoMdFile } from '../../../src/utils/TodoMdPars
 
 describe('Plan expanded subtask addition', () => {
   it('saves on Enter and blur exactly once, clears the row, and preserves all existing metadata', async () => {
-    const data = parseTodoMdFile('# WIP\n### Original\n+ [~] Parent (Note) ! Dec 2026\n'
+    const data = parseTodoMdFile('# SELECTED\n### Original\n+ [~] Parent (Note) ! Dec 2026\n'
       + '  - [x] Old (Hidden) | Nov 1 2026\n  * Keep raw\n');
     const wrapper = mount(PlanningWorkspace, { props: { todoData: data } });
     await wrapper.get('.projects-stack .task-title').trigger('click');
@@ -20,7 +20,7 @@ describe('Plan expanded subtask addition', () => {
     await input.setValue('Second child');
     await input.trigger('blur');
     expect(wrapper.emitted('update')).toHaveLength(2);
-    expect(renderTodoMdFile(data)).toContain('# WIP\n### Original\n+ [~] Parent (Note) ! Dec 2026\n'
+    expect(renderTodoMdFile(data)).toContain('# SELECTED\n### Original\n+ [~] Parent (Note) ! Dec 2026\n'
       + '  - [x] Old (Hidden) | Nov 1 2026\n  * Keep raw\n  - [ ] First new child\n  - [ ] Second child');
     expect(wrapper.findAll('.planning-project-children .planning-child-title').map(title => title.text()))
       .toEqual(['Old', 'First new child', 'Second child']);
@@ -35,7 +35,7 @@ describe('Plan expanded subtask addition', () => {
   });
 
   it('keeps an externally added child when an already-open parent editor saves', async () => {
-    const data = reactive(parseTodoMdFile('# WIP\n### Original\n+ [~] Parent\n  - [ ] Existing\n'));
+    const data = reactive(parseTodoMdFile('# SELECTED\n### Original\n+ [~] Parent\n  - [ ] Existing\n'));
     const wrapper = mount(PlanningWorkspace, { props: { todoData: data } });
     await wrapper.get('.projects-stack .task-title').trigger('click');
     await wrapper.get('.projects-stack .subtask-indicator').trigger('click');

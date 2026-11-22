@@ -1,7 +1,7 @@
 describe('Subtask right-click deletion', () => {
   for (const mode of ['Focus', 'Plan']) {
     it(`deletes only the selected child and autosaves in the ${mode} editor`, () => {
-      cy.writeTestFileContent('# WIP\n### Work\n+ [~] Parent\n'
+      cy.writeTestFileContent(`# ${mode === 'Plan' ? 'SELECTED' : 'WIP'}\n### Work\n+ [~] Parent\n`
         + '  - [ ] Delete me (note)\n  * Keep raw\n  - [x] Keep child | Sep 20 2026\n')
         .then(() => cy.reload());
       cy.contains('.view-mode-btn', mode).click();

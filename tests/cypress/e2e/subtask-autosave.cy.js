@@ -1,6 +1,6 @@
 describe('Subtask autosave', () => {
   it('adds subtasks directly in an expanded Plan project on Enter and blur', () => {
-    const source = '# WIP\n### Original section\n+ [~] Parent (note) ! Dec 2026\n'
+    const source = '# SELECTED\n### Original section\n+ [~] Parent (note) ! Dec 2026\n'
       + '  - [x] Existing (hidden) | Nov 1 2026\n  * Preserve raw\n';
     cy.writeTestFileContent(source).then(() => cy.reload());
     cy.contains('.view-mode-btn', 'Plan').click();
@@ -23,7 +23,8 @@ describe('Subtask autosave', () => {
   };
   for (const mode of ['Focus', 'Plan']) {
     it(`saves titles, additions, dates, order and removal without parent Save in ${mode}`, () => {
-      cy.writeTestFileContent('# WIP\n### Work\n+ [~] Parent\n  - [ ] Original (keep note)\n  * Keep raw\n')
+      cy.writeTestFileContent(`# ${mode === 'Plan' ? 'SELECTED' : 'WIP'}\n### Work\n+ [~] Parent\n`
+        + '  - [ ] Original (keep note)\n  * Keep raw\n')
         .then(() => cy.reload());
       cy.contains('.view-mode-btn', mode).click();
       openParent(mode);

@@ -6,7 +6,7 @@ describe('Subtask completion badges', () => {
   };
   for (const mode of ['Focus', 'Plan']) {
     it(`edits historical completion dates and saves without parent drafts in ${mode}`, () => {
-      cy.writeTestFileContent('# WIP\n### Work\n+ [~] Parent\n'
+      cy.writeTestFileContent(`# ${mode === 'Plan' ? 'SELECTED' : 'WIP'}\n### Work\n+ [~] Parent\n`
         + '  - [x] Finished (keep note) | Sep 20 2026\n  - [-] Cancelled\n')
         .then(() => cy.reload());
       cy.contains('.view-mode-btn', mode).click();
@@ -34,7 +34,8 @@ describe('Subtask completion badges', () => {
       cy.get('.subtask-completion-date').eq(1).should('have.text', 'Will not do Sep 17 2026');
     });
     it(`saves status and completion immediately in ${mode} without saving parent title drafts`, () => {
-      cy.writeTestFileContent('# WIP\n### Work\n+ [~] Parent\n  - [ ] Child (keep note) ! Oct 2026\n')
+      cy.writeTestFileContent(`# ${mode === 'Plan' ? 'SELECTED' : 'WIP'}\n### Work\n+ [~] Parent\n`
+        + '  - [ ] Child (keep note) ! Oct 2026\n')
         .then(() => cy.reload());
       cy.contains('.view-mode-btn', mode).click();
       openParent(mode);
@@ -55,7 +56,7 @@ describe('Subtask completion badges', () => {
     });
   }
   it('shows completion dates in Focus and Plan editors without changing stored dates', () => {
-    cy.writeTestFileContent('# WIP\n### Work\n+ [~] Parent\n'
+    cy.writeTestFileContent('# SELECTED\n### Work\n+ [~] Parent\n'
       + '  - [x] Finished | Sep 20 2026\n  - [-] Cancelled | Sep 21 2026\n'
       + '  - [x] Legacy\n  - [ ] Open child ! Oct 2026\n').then(() => cy.reload());
     const checkDates = () => {

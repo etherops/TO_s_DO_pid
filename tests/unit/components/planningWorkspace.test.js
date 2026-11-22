@@ -69,7 +69,7 @@ describe('Date-oriented Plan', () => {
 
   it('shares a single cycle between Projects and scheduled copies and retains children until it settles', async () => {
     vi.useFakeTimers(); vi.setSystemTime(today);
-    const data = parseTodoMdFile('# WIP\n### Work\n+ [~] Parent ! Nov 2 2026\n'
+    const data = parseTodoMdFile('# SELECTED\n### Work\n+ [~] Parent ! Nov 2 2026\n'
       + '  - [ ] Child ! Nov 3 2026\n');
     const wrapper = mountPlan(data, true);
     try {
@@ -78,7 +78,7 @@ describe('Date-oriented Plan', () => {
       expect(wrapper.find('[data-schedule-day="2026-11-03"]').exists()).toBe(true);
       await vi.advanceTimersByTimeAsync(1000);
       await wrapper.get('.planning-scheduled-projects .custom-checkbox').trigger('click');
-      expect(data.columnStacks.WIP.sections[0].items[0].statusChar).toBe('!');
+      expect(data.columnStacks.SELECTED.sections[0].items[0].statusChar).toBe('!');
       await vi.advanceTimersByTimeAsync(1000);
       expect(wrapper.get('[data-planning-lane="PROJECTS"] .custom-checkbox').classes())
         .toContain('pending-completion');
@@ -239,7 +239,7 @@ describe('Date-oriented Plan', () => {
   });
 
   it('expands projects individually or together without changing Markdown, and resets for another file', async () => {
-    const data = parseTodoMdFile(source.replace('  - [ ] Child ! Nov 3 2026',
+    const data = parseTodoMdFile((source + '# SELECTED EXTRA\n+ [ ] Second selection\n').replace('  - [ ] Child ! Nov 3 2026',
       '  - [ ] Child ! Nov 3 2026\n  - [x] Finished child | Nov 1 2026\n  - [~] Undated child'));
     const before = renderTodoMdFile(data);
     const wrapper = mountPlan(data, true);
@@ -276,6 +276,34 @@ describe('Date-oriented Plan', () => {
     expect(model.projects.every(entry => entry.section.items.includes(entry.task))).toBe(true);
     expect(new Set(model.projects.map(entry => entry.task.id)).size).toBe(model.projects.length);
     expect(renderTodoMdFile(data)).toBe(before);
+  });
+
+  it('shows only SELECTED-category projects in the selected pane without changing schedule projections', async () => {
+    const data = parseTodoMdFile('# TODO\n+ [ ] Backlog project ! Nov 3 2026\n'
+      + '  - [ ] Backlog child ! Nov 3 2026\n# SELECTED\n+ [ ] Chosen\n  - [ ] Chosen child\n'
+      + '# HOLD\n+ [x] Completed selection | Nov 1 2026\n'
+      + '# PROJECTS\n+ [ ] Legacy selection\n# WIP\n+ [ ] WIP project ! Nov 3 2026\n'
+      + '# ICE\n+ [ ] Frozen backlog\n# ARCHIVE\n+ [ ] Archived project\n');
+    const before = renderTodoMdFile(data);
+    const wrapper = mountPlan(data, true);
+    try {
+      const pane = wrapper.get('.projects-stack');
+      expect(pane.findAll('.task-title').map(title => title.text()))
+        .toEqual(['Chosen', 'Completed selection', 'Legacy selection']);
+      expect(pane.get('.planning-lane-header h2 span').text()).toBe('3');
+      await pane.get('.planning-projects-toggle').trigger('click');
+      expect(pane.findAll('.planning-project-children')).toHaveLength(3);
+      expect(pane.text()).not.toContain('Backlog child');
+      const scheduled = derivePlanningModel(data, today).schedule.flatMap(group => group.entries);
+      expect(scheduled.map(entry => entry.title)).toEqual(['Backlog project', 'Backlog child', 'WIP project']);
+      expect(renderTodoMdFile(data)).toBe(before);
+      expect(wrapper.emitted('update')).toBeUndefined();
+      await wrapper.setProps({ todoData: parseTodoMdFile('# TODO\n+ [ ] Only backlog project\n') });
+      expect(pane.findAll('.planning-project')).toHaveLength(0);
+      expect(pane.get('.planning-lane-header h2 span').text()).toBe('0');
+      expect(pane.find('.planning-projects-toggle').exists()).toBe(false);
+      expect(pane.text()).toContain('No projects yet.');
+    } finally { wrapper.unmount(); }
   });
 
   it('splits current week, rest of month and after while leaving source data unchanged', () => {
@@ -569,7 +597,7 @@ describe('Date-oriented Plan', () => {
     expect(wrapper.get('.planning-completed').text()).toContain('Completed / will not do');
     const matches = wrapper.findAllComponents({ name: 'PlanningTaskRow' })
       .filter(candidate => candidate.props('entry').task.id === entry.task.id);
-    expect(matches).toHaveLength(2); // Project index and the source's completed group share the same task.
+    expect(matches).toHaveLength(1); // A WIP project appears only in the completed group, not SELECTED.
     expect(matches[0].props('entry').layoutStatus).toBe('x');
     wrapper.unmount();
   });

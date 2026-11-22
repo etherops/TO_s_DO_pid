@@ -38,6 +38,8 @@ Completed items retain their completion-day groups. This display-only grouping d
 change column totals or rewrite the file.
 Compact source headers keep actions inline, truncate long section labels with a title tooltip, and retain
 section collapse controls. Each main column scrolls independently.
+PROJECTS, TASKS and SCHEDULED header dividers align at the same 32px height. The TASKS title, counts,
+Add Task, Add Section and collapse control stay on one line; controls do not wrap below the title.
 SCHEDULED uses three independently scrolling columns in the existing editable card layout:
 This week (archive-ready weeks, Overdue, Today and Rest of this week), Rest of this month, and After.
 Only one schedule column is active at a time, initially This week. Clicking a column or activating its header
@@ -79,7 +81,10 @@ No completion date group for undated terminal tasks; merely viewing these groups
 The first SCHEDULED column also retains Needs a date, closed-week archive previews and completed groups.
 The columns keep usable minimum widths; smaller screens scroll horizontally with their headers aligned.
 The Markdown WIP heading is not renamed; scheduled projections remain independent of source buckets.
-PROJECTS indexes every plus-marked parent outside the archive, regardless of its source column or status.
+SELECTED's PROJECTS pane shows plus-marked parents only from SELECTED-category source headings, regardless of status.
+TODO/BACKLOG, ICE, WIP and archived projects do not appear in this pane. Legacy PROJECTS headings still map to SELECTED.
+Its count, Expand all and drag-sort targets use that same selected-only list, including the final drop target.
+Backlog projects remain in the backlog drawer; their eligible dates and child dates still appear in Scheduled.
 This index shares original task objects with source panes; merely viewing it never moves or copies tasks in Markdown.
 Projects start collapsed. The column's Expand all / Collapse all control opens or closes every project;
 mixed state offers Expand all. Dragging a project's dot handle above or below another project reorders the original
@@ -111,7 +116,7 @@ content and non-normal child priorities are rejected rather than flattened or di
 | Application view | Markdown relationship |
 | --- | --- |
 | Backlog | Live tasks in TODO and other backlog headings, in source section/order, including already dated work; frozen work stays here unchanged |
-| PROJECTS | A derived index of live `+` parents, using original objects and source metadata; not a column type |
+| PROJECTS (SELECTED) | Only `+` parents from SELECTED-category sources, using original objects and metadata; not a column type |
 | TASKS (SELECTED) | Original source sections and individual tasks, including completed and undated work |
 | Scheduled | Open dated tasks and subtasks from any non-frozen, non-archived source; children stay attached |
 | Needs a date | Undated WIP commitments, retained visibly without guessing dates |

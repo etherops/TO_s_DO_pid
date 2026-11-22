@@ -44,7 +44,7 @@
       </OutlineDrawer>
       <main class="planning-columns" aria-label="Planning columns">
         <section id="planning-projects" class="planning-lane projects-stack" data-planning-lane="PROJECTS" aria-label="PROJECTS">
-          <header class="planning-lane-header"><h2>PROJECTS <span>{{ model.projects.length }}</span></h2>
+          <header class="planning-lane-header"><h2>PROJECTS <span>{{ selectedProjects.length }}</span></h2>
             <button v-if="expandableProjects.length" class="planning-projects-toggle" @click="toggleAllProjects">
               {{ allProjectsExpanded ? 'Collapse all' : 'Expand all' }}
             </button>
@@ -74,7 +74,7 @@
                 <PlanningSubtaskAdd :entry="project.entry" @update="refresh(); $emit('update')" />
               </div>
             </div>
-            <p v-if="!model.projects.length" class="planning-empty">No projects yet.</p>
+            <p v-if="!selectedProjects.length" class="planning-empty">No projects yet.</p>
           </div>
         </section>
         <section id="planning-selected" class="planning-source-lane planning-selected"
@@ -247,6 +247,7 @@ const workspace = ref(null);
 const tocDrawer = ref(null);
 const closeToc = () => tocDrawer.value?.close();
 const model = shallowRef(derivePlanningModel(props.todoData));
+const selectedProjects = computed(() => model.value.projects.filter(entry => entry.columnType === 'SELECTED'));
 const expandedProjects = ref(new Set());
 const projectDrop = ref(null);
 const canDropProject = target => dragEntry.value && !dragEntry.value.parent && !dragEntry.value.frozen
@@ -263,16 +264,16 @@ const dropProject = (event, target, after = projectDrop.value?.after ?? false) =
   if (!canDropProject(target)) return;
   event.preventDefault();
   // Resolve fresh entries in case the file changed while dragging.
-  const source = model.value.projects.find(entry => entry.task.id === dragEntry.value.task.id);
-  const destination = model.value.projects.find(entry => entry.task.id === target.task.id);
+  const source = selectedProjects.value.find(entry => entry.task.id === dragEntry.value.task.id);
+  const destination = selectedProjects.value.find(entry => entry.task.id === target.task.id);
   endProjectDrag();
   if (!moveProjectRelativeTo(source, destination, after)) return;
   refresh();
   emit('update');
 };
-const previewProjectEnd = event => previewProjectDrop(event, model.value.projects.at(-1), true);
-const dropProjectEnd = event => dropProject(event, model.value.projects.at(-1), true);
-const projectRows = computed(() => model.value.projects.map(entry => ({ entry,
+const previewProjectEnd = event => previewProjectDrop(event, selectedProjects.value.at(-1), true);
+const dropProjectEnd = event => dropProject(event, selectedProjects.value.at(-1), true);
+const projectRows = computed(() => selectedProjects.value.map(entry => ({ entry,
   children: (entry.task.children || []).filter(child => child.type === 'subtask').map(task => ({
     ...entry, task, parent: entry.task, title: getStrippedDisplayText(task.text),
     period: extractDuePeriod(task.text), layoutStatus: task.statusChar,
@@ -634,7 +635,8 @@ defineExpose({ refresh });
 .planning-lane { display: flex; flex-direction: column; min-height: 0; min-width: 0;
   border: 1px solid var(--ui-border); border-radius: 12px; background: var(--ui-surface); }
 .planning-lane-header { display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 5px 10px; border-bottom: 1px solid var(--ui-border); flex: none; }
+  padding: 5px 10px; border-bottom: 1px solid var(--ui-border); flex: none;
+  height: 32px; box-sizing: border-box; }
 h2, h3, p { margin: 0; }
 .planning-lane-header h2 { font-size: 16px; font-weight: 700; }
 .planning-lane-header h2 span { margin-left: 7px; font-size: 12px; color: var(--ui-muted); font-weight: 500; }

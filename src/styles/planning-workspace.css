@@ -16,22 +16,27 @@
   border: 0;
   border-bottom: 1px solid var(--ui-border);
   border-radius: 14px 14px 0 0;
-  padding: 2px 8px;
+  padding: 2px 4px;
   min-height: 0;
-  height: auto;
-  flex-wrap: wrap;
+  height: 32px;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
   gap: 4px;
 }
 .todo-app .planning-workspace .column-title-container {
   font-size: 14px;
   letter-spacing: 1px;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 4px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: hidden;
   min-width: 0;
 }
-.todo-app .planning-workspace .column-header-buttons { gap: 2px; margin-left: auto; flex-wrap: nowrap; }
+.todo-app .planning-workspace .column-header-buttons {
+  gap: 2px; margin-left: auto; flex: 0 0 auto; flex-wrap: nowrap;
+}
 .todo-app .planning-workspace .column-counts { gap: 2px; letter-spacing: 0; }
-.todo-app .planning-workspace .count-badge { font-size: 11px; padding: 1px 4px; }
+.todo-app .planning-workspace .count-badge { font-size: 10px; padding: 1px 2px; min-width: 0; }
 .todo-app .planning-workspace .column-content { border-radius: 0 0 14px 14px; padding: 3px; }
 .todo-app .planning-workspace .section-list { min-height: 0; }
 .todo-app .planning-workspace .section:not(.on-ice-section) {
@@ -60,6 +65,10 @@
 .todo-app .planning-workspace .section-header-actions .collapse-controls { display: none; }
 .todo-app .planning-workspace .section-header-actions button,
 .todo-app .planning-workspace .column-header-buttons button { font-size: 12px; padding: 3px 6px; min-width: 0; }
+.todo-app .planning-workspace .column-header-buttons button {
+  font-size: 11px; padding: 2px 3px; margin: 0; height: 24px; box-sizing: border-box; white-space: nowrap;
+}
+.todo-app .planning-workspace .column-header-buttons .add-icon { font-size: 11px; margin-right: 2px; }
 .todo-app .planning-workspace .section-header-actions button {
   margin: 0; height: 22px; box-sizing: border-box; padding: 1px 4px;
   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
