@@ -322,8 +322,46 @@ The archive destination remains selectable when more than one DONE/ARCHIVE file 
 
 ## Calendar mode
 
-Calendar (formerly Review) is a read-only, full-screen calendar of scheduled and completed work. It reads
-every column in the file, including ARCHIVE, and never mutates tasks.
+Calendar (formerly Review) is a full-screen calendar of scheduled and completed work. It reads
+every column in the file, including ARCHIVE, and includes individually dated subtasks without detaching them.
+It uses compact single-line rows and status markers consistent with Plan/Focus, within one connected calendar surface.
+The page has four distinct surfaces in two rows: Month/monthly totals at upper left, Annual at upper right,
+Selected at lower left, Calendar at lower right. The month section has a large month-and-year heading
+(for example, November 2026) in a bordered, tinted header with five small centered statistic cards in one row below.
+Best day is omitted. The month and annual surfaces share a compact 96px top row.
+Selected contains one Projects tile section and one Tasks section with collapsed pseudo-project groups followed by
+standalone tasks. The upper-right month
+picker keeps its compact original styling. There is no page-wide month heading. Month statistics use smaller,
+muted text without individual colored cards. Day cells share straight
+borders with no gaps or separate shadows. Weekly unfinished lists form a muted gutter attached to their week,
+with smaller secondary text; outer corners alone are rounded.
+The Projects panel above Tasks shows square tiles in three equal-width columns filling the panel for unfinished
+SELECTED-category projects due in
+the viewed month (day/week/month precision). Each tile vertically stacks a centered status icon, a single-line
+ellipsized title with its full text on hover, and the due date. Tiles pack across the panel without stretching into rows.
+Beneath it, the far-left column shows whole-month selected tasks
+with no specific week, sorted in progress, blocked, then not started, retaining source order within each status.
+Month tasks belonging to projects appear in collapsible display-only project groups above standalone tasks.
+Groups start collapsed, contain only matching month tasks (not other siblings), retain status sorting within each
+group, and leave task counts, source nesting and per-task date dragging unchanged.
+Beside it, a compact unfinished-work list shares each
+Sunday–Saturday calendar row, containing whole-week SELECTED/WIP work including dated subtasks.
+The weekly lists and their seven days always line up vertically. All four surfaces are separated by space;
+weekly lists remain attached to the calendar as a secondary gutter. The Annual and Selected panels and the connected
+Calendar grid have matching rounded outer borders. The year graph spans the weekly gutter and calendar days,
+without a monthly totals row underneath; those totals appear only in the upper-left month section.
+The week containing today is taller by default. Clicking a week heading makes that week prominent instead,
+compressing other weeks while keeping every date reachable and the weekly gutter aligned. Changing months resets
+this display-only selection. Weekly task rows remain tightly spaced rather than stretching with the emphasized week.
+There is no separate Projects section for pseudo-project task groups; they belong inside Tasks.
+Backlog, frozen, archived and terminal projects are excluded from the selected-project list.
+The right-side peeking drawer is closed by default, with a vertical Completed in Month grip like Plan's Backlog.
+It overlays the calendar without changing column widths, closes by its Close button or Escape, and keeps hidden
+content inert. The former Where work landed and 8-week throughput sections are removed.
+The drawer is completion-only, both for the whole month and when selecting a day: only `[x]` tasks
+anchored by their completion date appear there. Open work with a stale completion marker never counts as completed.
+Cancelled tasks remain distinct on the calendar but do not appear under “Completed”. Month completions are
+grouped by week/day in ascending completion-date order, oldest first.
 The persisted `review` view key remains compatible; the visible tab and tooltip say Calendar.
 
 1. Each task is placed on the calendar by its authoritative date: the completion
@@ -332,8 +370,11 @@ The persisted `review` view key remains compatible; the visible tab and tooltip 
    Padding days render their work but are excluded from every total.
    Each day shows compact task titles and status markers below its date and counts. Busy days scroll
    inside their own bounded list without growing the week row; the date and counts remain visible.
-   Full titles are available on hover, and day selection still opens the existing detail pane.
-   Lists are keyboard-scrollable and remain read-only. Open work appears first, then completed and
+   Full titles are available on hover. Clicking a day title/number opens Focus on that exact local date.
+   Task cards and unused cell space do not navigate. The small day status meter opens completed-day details;
+   the completed drawer grip still opens monthly history. Keyboard date placement takes precedence over navigation
+   while a task is picked up for rescheduling. None of this navigation writes task data.
+   Lists are keyboard-scrollable. Open work appears first, then completed and
    will-not-do tasks, retaining source order within each group.
 3. Above the grid sits a January–December stacked bar chart of the calendar year,
    spanning exactly the grid's width. Clicking a bar moves the grid to that month
@@ -346,6 +387,12 @@ The persisted `review` view key remains compatible; the visible tab and tooltip 
 5. Tasks with no authoritative date are collected, not discarded.
 6. Overdue counts mean "past due and still open as of today", independent of the
    period being viewed.
+7. Drag unfinished work from a day or the left rail onto any visible date, including an empty or padding day,
+   to set that exact due day and autosave through the shared update/undo/history workflow. Notes, status,
+   completion markers, siblings and child nesting are preserved. Projects stay in SELECTED; dated top-level
+   tasks follow the shared WIP scheduling rule. Completed, cancelled, archived and frozen rows cannot be dragged.
+   Space picks up a focused unfinished row, Enter on a day places it, and Escape cancels without saving.
+   Navigation and day selection alone do not write data.
 
 ## Verification expectations
 

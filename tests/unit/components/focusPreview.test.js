@@ -11,6 +11,22 @@ const source = '# WIP\n### Work\n* [ ] Future day ! Sep 26 2026\n'
 afterEach(() => vi.useRealTimers());
 
 describe('Focus date navigation', () => {
+  it('starts on a date supplied by Calendar but ordinary openings still start today', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 10, 22, 12));
+    const data = parseTodoMdFile('# WIP\n* [ ] Calendar target ! Nov 24 2026\n');
+    const before = renderTodoMdFile(data);
+    const linked = mount(FocusMode, { props: { todoData: data, initialDate: '2026-11-24' } });
+    expect(linked.get('.focus-date-input').element.value).toBe('2026-11-24');
+    expect(linked.get('.panel-now').text()).toContain('Calendar target');
+    expect(linked.emitted('update')).toBeUndefined();
+    linked.unmount();
+    const ordinary = mount(FocusMode, { props: { todoData: data } });
+    expect(ordinary.get('.focus-date-input').element.value).toBe('2026-11-22');
+    expect(renderTodoMdFile(data)).toBe(before);
+    ordinary.unmount();
+  });
+
   it('hides predicted overdue days and periods only when requested for future preview', () => {
     const data = parseTodoMdFile('# WIP\n### Work\n'
       + '* [ ] Old day ! Sep 1 2026\n* [~] Old week ! Sep Week #2 2026\n'

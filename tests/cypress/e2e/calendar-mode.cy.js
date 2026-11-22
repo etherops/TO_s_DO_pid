@@ -38,8 +38,8 @@ describe('Calendar mode', () => {
       const heights = [...$days].map(el => Math.round(el.getBoundingClientRect().height));
       expect(new Set(heights).size).to.equal(1);
     });
-    cy.get(`${day} .review-day-summary`).click();
-    cy.get('.review-day-detail').should('contain', 'Scheduled 1').and('contain', 'Finished');
+    cy.get(`${day} .review-day-meter`).click();
+    cy.get('.review-day-detail').should('not.contain', 'Scheduled 1').and('contain', 'Finished');
     cy.get('@save.all').should('have.length', 0);
     cy.get('@file').then(file => cy.readFile(file.filePath).should('equal', content));
   });
@@ -50,7 +50,7 @@ describe('Calendar mode', () => {
     cy.contains('.view-mode-btn.active', 'Calendar').should('be.visible');
     cy.get('.review-step-btn[title="Next month"]').click();
     cy.get('[data-date="2026-12-03"] .calendar-day-tasks').should('contain', 'December work');
-    cy.get('.review-this-month-btn').click();
+    cy.get('[title="Jump to the current month"]').click();
     cy.get('[data-date="2026-11-02"] .calendar-day-task').should('have.length', 28);
     for (const width of [1280, 900]) {
       cy.viewport(width, 900);

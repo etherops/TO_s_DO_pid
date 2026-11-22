@@ -77,7 +77,9 @@ the three sections, and its count includes all of them. Grouping never detaches 
 
 The large header date opens a native date picker. Previous/next-day arrows stay on the same line at
 fixed horizontal positions as date text changes. Back to today restores the actual date. The displayed
-date resets when leaving and reopening Focus.
+date resets when leaving and reopening Focus through the toolbar. Clicking a Calendar day title/number instead
+opens Focus on that exact local date, including dates in adjacent-month padding cells. This navigation does not
+reschedule tasks or save Markdown, and later ordinary toolbar openings still start on today.
 
 All upper panels and the default calendar week derive from that date. Future previews suppress unfinished
 work whose due period has ended, rather than predicting future overdue tasks. Current and past previews

@@ -14,8 +14,11 @@ import {
   weekIdentity
 } from './dateHelpers';
 import { extractCompletionDateValue } from './completionDateHelpers';
+import { schedulePlanningEntry } from './planningHelpers';
+import { getStrippedDisplayText } from './taskTextHelpers';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_TASK_STATUS_ORDER = { inProgress: 0, blocked: 1, queued: 2 };
 
 export const MONTHS_IN_YEAR = 12;
 
@@ -62,7 +65,12 @@ const eachTask = (todoData, visit) => {
     (column.sections || []).forEach(section => {
       if (section.type === 'raw-text') return;
       (section.items || []).filter(isTaskItem).forEach(task => {
-        visit({ task, columnName, stackName: column.name, sectionName: section.name });
+        const source = { columnName, columnKey: columnName, columnType: column.name, stackName: column.name,
+          section, sectionName: section.name,
+          frozen: Boolean(column.on_ice || section.on_ice || columnName.toUpperCase().includes('ICE')) };
+        visit({ ...source, task, parent: null, title: getStrippedDisplayText(task.text) });
+        (task.children || []).filter(child => child.type === 'subtask').forEach(child =>
+          visit({ ...source, task: child, parent: task, title: getStrippedDisplayText(child.text) }));
       });
     });
   });
@@ -164,11 +172,32 @@ export const deriveReviewModel = (todoData, { anchor = new Date(), today = new D
   const undated = { completed: [], cancelled: [], open: [] };
   const sectionCounts = new Map();
   const overdueOpen = [];
+  const selectedProjects = [];
+  const selectedWeeks = Array.from({ length: days.length / 7 }, (_, index) => {
+    const start = days[index * 7].date;
+    return { key: dayKey(start), start, label: formatWeekPeriodLabel(start), entries: [] };
+  });
+  const monthTasks = [];
 
   eachTask(todoData, (entry) => {
     const bucket = statusBucket(entry.task.statusChar);
     const taskAnchor = anchorForTask(entry.task);
     const enriched = { ...entry, bucket, anchor: taskAnchor };
+
+    if (taskAnchor && !isTerminalBucket(bucket) && !entry.frozen) {
+      const owner = owningMonth(taskAnchor);
+      const inMonth = owner.year === anchorDate.getFullYear() && owner.monthIndex === anchorDate.getMonth();
+      if (!entry.parent && entry.task.listMarker === '+' && entry.columnType === 'SELECTED' && inMonth) {
+        selectedProjects.push(enriched);
+      }
+      if (['SELECTED', 'WIP'].includes(entry.columnType)) {
+        if (taskAnchor.kind === 'week') {
+          selectedWeeks.find(week => week.key === dayKey(taskAnchor.start))?.entries.push(enriched);
+        } else if (taskAnchor.kind === 'month' && inMonth && entry.task.listMarker !== '+') {
+          monthTasks.push(enriched);
+        }
+      }
+    }
 
     if (!taskAnchor) {
       if (bucket === 'completed') undated.completed.push(enriched);
@@ -225,6 +254,9 @@ export const deriveReviewModel = (todoData, { anchor = new Date(), today = new D
     weeks: Array.from({ length: days.length / 7 }, (_, week) => days.slice(week * 7, week * 7 + 7)),
     weekdayLabels: DAY_NAMES,
     spanning,
+    selectedProjects,
+    selectedWeeks,
+    monthTasks: monthTasks.sort((a, b) => MONTH_TASK_STATUS_ORDER[a.bucket] - MONTH_TASK_STATUS_ORDER[b.bucket]),
     undated,
     overdueOpen,
     totals: {
@@ -252,6 +284,40 @@ export const deriveReviewModel = (todoData, { anchor = new Date(), today = new D
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
       .slice(0, 5)
   };
+};
+
+// Presentation-only groups contain just the entries in this list, never a project's other children.
+export const groupCalendarProjectTasks = entries => {
+  const projects = new Map();
+  const standalone = [];
+  entries.forEach(entry => {
+    if (entry.parent?.listMarker !== '+') {
+      standalone.push({ key: `task-${entry.task.id}`, parent: null, entries: [entry] });
+      return;
+    }
+    const parent = entry.parent;
+    if (!projects.has(parent.id)) {
+      projects.set(parent.id, {
+        key: `project-${parent.id}`, parent, title: getStrippedDisplayText(parent.text), entries: []
+      });
+    }
+    projects.get(parent.id).entries.push(entry);
+  });
+  return [...projects.values(), ...standalone];
+};
+
+// Resolve the original object at drop time: stale, terminal, archived or frozen entries cannot be moved.
+export const rescheduleCalendarTask = (todoData, taskId, dateKey) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  if (dayKey(date) !== dateKey) return false;
+  let found;
+  eachTask(todoData, entry => { if (entry.task.id === taskId) found = entry; });
+  if (!found || found.frozen || found.columnType === 'DONE' || isTerminalBucket(statusBucket(found.task.statusChar))) {
+    return false;
+  }
+  return schedulePlanningEntry(todoData, { ...found, period: extractDuePeriod(found.task.text) }, dateKey);
 };
 
 /**

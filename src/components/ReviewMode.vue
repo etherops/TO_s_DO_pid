@@ -2,9 +2,60 @@
 <!-- Full-screen retrospective view: what got done, what slipped, and what is
      landing - laid out on a Sunday-Saturday week strip or a month calendar,
      with a clickable calendar-year bar chart above the month grid.
-     Read-only by design; Focus and the board own task mutation. -->
+     Unfinished work can be rescheduled directly; history stays read-only. -->
 <template>
-  <div class="review-mode" :class="`theme-${theme}`">
+  <div class="review-mode" :class="`theme-${theme}`" @keydown.esc="handleEscape">
+    <section class="review-card calendar-month-summary" aria-label="Month statistics">
+      <h1 class="calendar-month-heading">{{ model.label }}</h1>
+      <div class="review-metrics">
+        <div v-for="tile in statTiles" :key="tile.key" class="review-stat" :class="`stat-${tile.key}`"
+             :title="`${tile.label}: ${tile.hint}`">
+          <div class="review-stat-value">{{ tile.value }}</div>
+          <div class="review-stat-label">{{ tile.shortLabel || tile.label }}</div>
+        </div>
+      </div>
+    </section>
+    <aside class="calendar-selection-pane">
+      <div class="calendar-selected-heading">SELECTED</div>
+    <section class="review-card calendar-selected-projects">
+      <div class="review-card-head"><h2>Projects</h2>
+        <span class="calendar-count">{{ model.selectedProjects.length }}</span></div>
+      <div class="calendar-month-scroll">
+        <ul class="review-entry-list calendar-project-tiles">
+          <CalendarTaskRow v-for="entry in model.selectedProjects" :key="entry.task.id" :entry="entry" show-date tile
+                           @move-start="startMove" @move-end="cancelMove" />
+        </ul>
+        <p v-if="!model.selectedProjects.length" class="review-empty">No selected projects due this month.</p>
+      </div>
+    </section>
+    <section class="review-card calendar-month-tasks">
+      <div class="calendar-month-task-scroll">
+      <div class="review-card-head"><h2>Tasks</h2>
+        <span class="calendar-count">{{ model.monthTasks.length }}</span></div>
+      <ul class="review-entry-list calendar-month-project-groups">
+          <li v-for="group in monthProjectGroups" :key="group.key" class="calendar-project-group">
+            <button class="calendar-project-group-toggle" :aria-expanded="expandedMonthProjects.has(group.key)"
+                    :aria-controls="`calendar-project-children-${group.parent.id}`"
+                    @click="toggleMonthProject(group.key)">
+              <span class="calendar-project-group-title" :title="group.title">{{ group.title }}</span>
+              <span class="calendar-project-group-count">{{ group.entries.length }}</span>
+              <span aria-hidden="true">{{ expandedMonthProjects.has(group.key) ? '▾' : '▸' }}</span>
+            </button>
+            <ul v-if="expandedMonthProjects.has(group.key)" :id="`calendar-project-children-${group.parent.id}`"
+                class="review-entry-list calendar-project-group-children">
+              <CalendarTaskRow v-for="entry in group.entries" :key="entry.task.id" :entry="entry"
+                               @move-start="startMove" @move-end="cancelMove" />
+            </ul>
+          </li>
+      </ul>
+      <ul class="review-entry-list calendar-month-standalone">
+        <CalendarTaskRow v-for="group in monthStandaloneTasks" :key="group.key" :entry="group.entries[0]"
+                         @move-start="startMove" @move-end="cancelMove" />
+      </ul>
+      <p v-if="!model.monthTasks.length" class="review-empty">No tasks selected for this month.</p>
+      </div>
+    </section>
+    </aside>
     <header class="review-header">
       <div class="review-chart-pane">
         <div class="review-year-chart">
@@ -62,113 +113,81 @@
     </header>
 
     <div class="review-body">
-      <!-- Stats and the calendar share the left column so the rail runs the full
-           height beside both, with no dead space above its first card. -->
-      <div class="review-main">
-        <section class="review-strip">
-          <div class="review-side-label">Stats</div>
-          <div class="review-metrics">
-            <div v-for="tile in statTiles" :key="tile.key" class="review-stat" :class="`stat-${tile.key}`">
-              <div class="review-stat-value">{{ tile.value }}</div>
-              <div class="review-stat-label">{{ tile.label }}</div>
-              <div class="review-stat-hint">{{ tile.hint }}</div>
-            </div>
-          </div>
-        </section>
-
         <section class="review-grid-pane">
-          <div class="review-side-label month">{{ monthName }}</div>
 
         <div class="review-grid-body">
           <div class="review-weekday-row">
+            <div class="review-weekday calendar-week-label">Not yet complete</div>
             <div v-for="label in model.weekdayLabels" :key="label" class="review-weekday">{{ label }}</div>
           </div>
 
           <div class="review-weeks">
-          <div v-for="(week, weekIndex) in model.weeks" :key="weekIndex" class="review-week-row">
+          <div v-for="(week, weekIndex) in model.weeks" :key="weekIndex" class="review-week-row"
+               :class="{ 'is-prominent-week': model.selectedWeeks[weekIndex].key === prominentWeekKey }">
+            <section class="calendar-week-selection" :data-week="model.selectedWeeks[weekIndex].key">
+              <button class="calendar-section-label calendar-week-toggle"
+                      :aria-pressed="model.selectedWeeks[weekIndex].key === prominentWeekKey"
+                      title="Make this week taller" @click="selectedWeekKey = model.selectedWeeks[weekIndex].key">
+                {{ model.selectedWeeks[weekIndex].label }}
+                <span>{{ model.selectedWeeks[weekIndex].entries.length }}</span></button>
+              <ul class="review-entry-list">
+                <CalendarTaskRow v-for="entry in model.selectedWeeks[weekIndex].entries" :key="entry.task.id"
+                                 :entry="entry" @move-start="startMove" @move-end="cancelMove" />
+              </ul>
+              <p v-if="!model.selectedWeeks[weekIndex].entries.length" class="review-empty">Nothing selected.</p>
+            </section>
             <article
                 v-for="day in week"
                 :key="day.key"
                 class="review-day"
                 :class="dayClasses(day)"
                 :data-date="day.key"
-                @click="selectBucket(day)"
+                @dragover="previewMove($event, day)"
+                @dragleave="leaveDay($event, day)"
+                @drop.prevent.stop="dropOnDay(day)"
             >
               <button
                   type="button"
                   class="review-day-summary"
-                  :aria-label="`${day.label}: ${day.completed.length} completed, ${day.cancelled.length} will not do, ${day.due.length} due`"
-                  :aria-pressed="day.key === selectedBucketKey"
-                  @click.stop="selectBucket(day)"
+                  :aria-label="`Open Focus for ${day.label}`"
+                  :title="`Open Focus for ${day.label}`"
+                  @click.stop="openFocusDay(day)"
               >
               <div class="review-day-head">
                 <span class="review-day-number">{{ day.dayOfMonth }}</span>
                 <span v-if="bucketTotal(day)" class="review-day-total">{{ bucketTotal(day) }}</span>
               </div>
-
-              <div class="review-day-meter" aria-hidden="true">
+              </button>
+              <button class="review-day-meter" :aria-label="`Show completed work for ${day.label}`"
+                      :aria-pressed="day.key === selectedBucketKey" @click.stop="selectBucket(day)">
                 <span class="meter-fill done" :style="{ width: meterWidth(day.completed.length) }"></span>
                 <span class="meter-fill dropped" :style="{ width: meterWidth(day.cancelled.length) }"></span>
                 <span class="meter-fill open" :style="{ width: meterWidth(day.due.length) }"></span>
-              </div>
-
-              <div class="review-day-chips">
-                <span v-if="day.completed.length" class="review-chip done">{{ day.completed.length }}</span>
-                <span v-if="day.cancelled.length" class="review-chip dropped">{{ day.cancelled.length }}</span>
-                <span v-if="day.due.length" class="review-chip open">{{ day.due.length }}</span>
-              </div>
               </button>
               <ul v-if="bucketTotal(day)" class="calendar-day-tasks" tabindex="0"
-                  :aria-label="`Tasks for ${formatDateForTooltip(day.date)}`" @keydown.stop>
-                <li v-for="entry in dayEntries(day)" :key="entry.task.id" class="calendar-day-task"
-                    :title="`${taskStatusLabel(entry)}: ${entry.task.displayText}`">
-                  <span class="calendar-task-status" :class="`status-${entry.bucket}`"
-                        role="img" :aria-label="taskStatusLabel(entry)">{{ taskStatusSymbol(entry) }}</span>
-                  <span class="calendar-task-title">{{ entry.task.displayText }}</span>
-                </li>
+                  :aria-label="`Tasks for ${formatDateForTooltip(day.date)}`"
+                  @keydown.esc.stop="cancelMove" @keydown.stop>
+                <CalendarTaskRow v-for="entry in dayEntries(day)" :key="entry.task.id" :entry="entry"
+                                 @move-start="startMove" @move-end="cancelMove" />
               </ul>
             </article>
               </div>
             </div>
           </div>
         </section>
-      </div>
-
-      <aside class="review-rail">
-        <section class="review-card">
-          <div class="review-card-head">
-            <h2>Throughput</h2><span class="review-card-note out-of-scope">last 8 weeks</span>
-          </div>
-          <div class="review-trend">
-            <div v-for="week in trend.buckets" :key="week.label" class="review-trend-col"
-                 :title="`${week.label}: ${week.completed} done, ${week.cancelled} dropped`">
-              <div class="review-trend-bars">
-                <span class="review-trend-bar dropped" :style="{ height: trendHeight(week.cancelled) }"></span>
-                <span class="review-trend-bar done" :style="{ height: trendHeight(week.completed) }"></span>
-              </div>
-              <div class="review-trend-label">{{ week.completed + week.cancelled }}</div>
-            </div>
-          </div>
-        </section>
-
-        <section v-if="model.topSections.length" class="review-card">
-          <div class="review-card-head">
-            <h2>Where work landed</h2><span class="review-card-note">this month</span>
-          </div>
-          <ul class="review-bar-list">
-            <li v-for="section in model.topSections" :key="section.label" class="review-bar-row">
-              <span class="review-bar-label" :title="section.label">{{ section.label }}</span>
-              <span class="review-bar-track">
-                <span class="review-bar-fill" :style="{ width: sectionBarWidth(section.count) }"></span>
-              </span>
-              <span class="review-bar-count">{{ section.count }}</span>
-            </li>
-          </ul>
-        </section>
-
-        <!-- Last in the rail: opening or closing a day must not shove the
-             standing cards around. With no day picked, the same pane answers
-             the month-level version of the question. -->
+    </div>
+    <div class="calendar-drawer-track">
+      <aside class="review-rail" :class="{ 'is-open': completedOpen }" aria-label="Completed work">
+        <button ref="completedGrip" class="calendar-completed-toggle" :aria-expanded="completedOpen"
+                aria-controls="calendar-completed-drawer" :aria-label="`Completed in ${monthName}: ${monthCompletedCount}`"
+                @click="toggleCompleted">
+          <span aria-hidden="true">{{ completedOpen ? '›' : '‹' }}</span>
+          <span class="calendar-drawer-edge-label" aria-hidden="true">COMPLETED IN {{ monthName }}</span>
+          <span class="calendar-count">{{ monthCompletedCount }}</span>
+        </button>
+        <div id="calendar-completed-drawer" class="calendar-completed-content"
+             :inert="!completedOpen" :aria-hidden="!completedOpen">
+        <button class="review-this-month-btn calendar-drawer-close" @click="closeCompleted">Close ›</button>
         <section v-if="!selectedBucket" class="review-card review-day-detail">
           <div class="review-card-head">
             <h2>Completed in {{ monthName }}</h2>
@@ -182,7 +201,7 @@
               <ul class="review-entry-list">
                 <li v-for="entry in day.entries" :key="entry.task.id" class="review-entry">
                   <span class="review-item-dot bucket-completed" aria-hidden="true"></span>
-                  <span class="review-entry-text">{{ entry.task.displayText }}</span>
+                  <span class="review-entry-text" :title="entry.title">{{ entry.title }}</span>
                 </li>
               </ul>
             </div>
@@ -191,25 +210,27 @@
 
         <section v-else class="review-card review-day-detail">
           <div class="review-card-head">
-            <h2>{{ selectedBucketHeading }}</h2>
+            <h2>Completed · {{ selectedBucketHeading }}</h2>
             <button class="review-card-close" title="Close detail" @click="selectedBucketKey = null">✕</button>
           </div>
-          <div v-if="!bucketTotal(selectedBucket)" class="review-empty">Nothing recorded on this day.</div>
+          <div v-if="!selectedBucket.completed.length" class="review-empty">Nothing completed on this day.</div>
           <div v-for="group in selectedBucketGroups" :key="group.key" class="review-group">
             <div class="review-group-title" :class="`bucket-${group.key}`">{{ group.label }} · {{ group.entries.length }}</div>
             <ul class="review-entry-list">
               <li v-for="entry in group.entries" :key="entry.task.id" class="review-entry">
                 <span class="review-item-dot" :class="`bucket-${entry.bucket}`" aria-hidden="true"></span>
                 <span class="review-entry-text">
-                  {{ entry.task.displayText }}
-                  <span class="review-entry-section">({{ entry.sectionName }})</span>
+                  {{ entry.title }}
+                  <span v-if="entry.sectionName" class="review-entry-section">({{ entry.sectionName }})</span>
                 </span>
               </li>
             </ul>
           </div>
         </section>
+        </div>
       </aside>
     </div>
+    <p class="calendar-move-feedback" role="status">{{ moveMessage }}</p>
   </div>
 </template>
 
@@ -219,10 +240,12 @@ import {
   MONTHS_IN_YEAR,
   deriveCalendarYearBars,
   deriveReviewModel,
-  deriveWeeklyTrend,
+  groupCalendarProjectTasks,
+  rescheduleCalendarTask,
   shiftAnchor
 } from '../utils/reviewModeHelpers';
 import { formatDateForTooltip, formatWeekPeriodLabel } from '../utils/dateHelpers';
+import CalendarTaskRow from './CalendarTaskRow.vue';
 
 const props = defineProps({
   todoData: { type: Object, default: () => ({ columnOrder: [], columnStacks: {} }) },
@@ -231,9 +254,79 @@ const props = defineProps({
 
 const anchor = ref(new Date());
 const selectedBucketKey = ref(null);
+const completedOpen = ref(false);
+const completedGrip = ref(null);
+const closeCompleted = () => {
+  if (!completedOpen.value) return;
+  completedOpen.value = false;
+  completedGrip.value?.focus();
+};
+const toggleCompleted = () => {
+  selectedBucketKey.value = null;
+  completedOpen.value = !completedOpen.value;
+};
+const handleEscape = () => {
+  if (movingId.value) cancelMove();
+  else closeCompleted();
+};
+const emit = defineEmits(['update', 'open-focus']);
+const movingId = ref(null);
+const dropDate = ref(null);
+const moveMessage = ref('');
+const endMove = () => { movingId.value = null; dropDate.value = null; };
+const cancelMove = () => {
+  if (!movingId.value) return;
+  endMove();
+  moveMessage.value = 'Move cancelled.';
+};
+watch(() => props.todoData, endMove);
+const startMove = (entry, event) => {
+  if (['completed', 'cancelled'].includes(entry.bucket) || entry.frozen || entry.columnType === 'DONE') {
+    event.preventDefault();
+    return;
+  }
+  movingId.value = entry.task.id;
+  moveMessage.value = `Move ${entry.title}: drop on a date, or focus a date and press Enter. Escape cancels.`;
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', entry.task.id);
+  }
+};
+const previewMove = (event, day) => {
+  if (!movingId.value) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  dropDate.value = day.key;
+};
+const leaveDay = (event, day) => {
+  if (!event.currentTarget.contains(event.relatedTarget) && dropDate.value === day.key) dropDate.value = null;
+};
+const dropOnDay = day => {
+  if (movingId.value && rescheduleCalendarTask(props.todoData, movingId.value, day.key)) {
+    emit('update');
+    moveMessage.value = `Rescheduled to ${formatDateForTooltip(day.date)}.`;
+  }
+  endMove();
+};
 
 const model = computed(() => deriveReviewModel(props.todoData, { anchor: anchor.value }));
-const trend = computed(() => deriveWeeklyTrend(props.todoData, { anchor: anchor.value }));
+const monthTaskGroups = computed(() => groupCalendarProjectTasks(model.value.monthTasks));
+const monthProjectGroups = computed(() => monthTaskGroups.value.filter(group => group.parent));
+const monthStandaloneTasks = computed(() => monthTaskGroups.value.filter(group => !group.parent));
+const expandedMonthProjects = ref(new Set());
+const selectedWeekKey = ref(null);
+const prominentWeekKey = computed(() => selectedWeekKey.value
+  ?? model.value.selectedWeeks.find((week, index) => model.value.weeks[index].some(day => day.isToday))?.key);
+const toggleMonthProject = key => {
+  const next = new Set(expandedMonthProjects.value);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
+  expandedMonthProjects.value = next;
+};
+watch(() => model.value.periodStart.getTime(), () => {
+  expandedMonthProjects.value = new Set();
+  selectedWeekKey.value = null;
+});
 
 // One anchor drives both the grid and the chart, so they can never disagree:
 // entering a month pulls the chart to its year, and changing year carries the
@@ -261,7 +354,13 @@ const stepYear = (direction) => { anchor.value = shiftAnchor(anchor.value, direc
 const goToCurrentMonth = () => { anchor.value = new Date(); };
 
 const selectBucket = (bucket) => {
+  if (movingId.value) { dropOnDay(bucket); return; }
   selectedBucketKey.value = selectedBucketKey.value === bucket.key ? null : bucket.key;
+  completedOpen.value = true;
+};
+const openFocusDay = (day) => {
+  if (movingId.value) { dropOnDay(day); return; }
+  emit('open-focus', day.key);
 };
 
 const selectedBucket = computed(() => model.value.days.find(day => day.key === selectedBucketKey.value) || null);
@@ -276,21 +375,18 @@ const selectedBucketGroups = computed(() => {
   const bucket = selectedBucket.value;
   if (!bucket) return [];
   return [
-    { key: 'completed', label: 'Completed', entries: bucket.completed },
-    { key: 'cancelled', label: 'Will not do', entries: bucket.cancelled },
-    { key: 'queued', label: 'Due / scheduled', entries: bucket.due }
+    { key: 'completed', label: 'Completed', entries: bucket.completed }
   ].filter(group => group.entries.length > 0);
 });
 
 // With no day picked, the pane answers for the whole month: everything finished
-// in it, newest first, banded by the same Sunday-Saturday week label the due
+// in it, oldest first, banded by the same Sunday-Saturday week label the due
 // dates use, so the divider names a week the rest of the app also names.
 const monthCompletionWeeks = computed(() => {
   const weeks = new Map();
 
   model.value.days
     .filter(day => !day.isOutsidePeriod && day.completed.length)
-    .reverse()
     .forEach(day => {
       const label = formatWeekPeriodLabel(day.date);
       if (!weeks.has(label)) weeks.set(label, { key: label, label, days: [] });
@@ -310,31 +406,16 @@ const monthCompletedCount = computed(() =>
 const bucketTotal = (bucket) => bucket.completed.length + bucket.cancelled.length + bucket.due.length;
 
 const dayEntries = (day) => [...day.due, ...day.completed, ...day.cancelled];
-const taskStatuses = {
-  queued: { label: 'Not started', symbol: '' },
-  inProgress: { label: 'In progress', symbol: '▪' },
-  blocked: { label: 'Blocked', symbol: '' },
-  completed: { label: 'Done', symbol: '✓' },
-  cancelled: { label: 'Will not do', symbol: '−' }
-};
-const taskStatusLabel = (entry) => taskStatuses[entry.bucket].label;
-const taskStatusSymbol = (entry) => taskStatuses[entry.bucket].symbol;
 
 const meterScale = computed(() => Math.max(1, model.value.totals.peakDayCount));
 const meterWidth = (count) => `${Math.round((count / meterScale.value) * 100)}%`;
-
-const trendHeight = (count) => `${Math.round((count / Math.max(1, trend.value.peak)) * 100)}%`;
-
-const sectionBarWidth = (count) => {
-  const top = model.value.topSections[0]?.count || 1;
-  return `${Math.max(8, Math.round((count / top) * 100))}%`;
-};
 
 const dayClasses = (day) => ({
   'is-today': day.isToday,
   'is-future': day.isFuture,
   'is-outside': day.isOutsidePeriod,
   'is-selected': day.key === selectedBucketKey.value,
+  'is-drop-target': day.key === dropDate.value,
   'is-empty': bucketTotal(day) === 0
 });
 
@@ -344,14 +425,17 @@ const statTiles = computed(() => {
     {
       key: 'completed',
       label: 'Completed',
+      shortLabel: 'Done',
       value: totals.completed,
       hint: `${totals.dailyAverage}/day · ${totals.activeDays} active days`
     },
-    { key: 'cancelled', label: 'Will not do', value: totals.cancelled, hint: totals.cancelled ? 'dropped deliberately' : 'nothing dropped' },
-    { key: 'open', label: 'Still open', value: totals.due + totals.spanningDue, hint: `${totals.inProgress} in progress` },
-    { key: 'rate', label: 'Completion', value: `${totals.completionRate}%`, hint: `${totals.completed} of ${totals.commitments} commitments` },
+    { key: 'cancelled', label: 'Will not do', shortLabel: "Won't do", value: totals.cancelled,
+      hint: totals.cancelled ? 'dropped deliberately' : 'nothing dropped' },
+    { key: 'open', label: 'Still open', shortLabel: 'Open', value: totals.due + totals.spanningDue,
+      hint: `${totals.inProgress} in progress` },
+    { key: 'rate', label: 'Completion', shortLabel: 'Done %', value: `${totals.completionRate}%`,
+      hint: `${totals.completed} of ${totals.commitments} commitments` },
     { key: 'overdue', label: 'Overdue', value: totals.overdueOpen, hint: totals.overdueOpen ? 'past due, still open' : 'nothing late' },
-    { key: 'peak', label: 'Best day', value: totals.busiestDayCount, hint: totals.busiestDayLabel }
   ];
 });
 </script>
@@ -363,17 +447,24 @@ const statTiles = computed(() => {
   --review-border: var(--ui-border, #dde3ea);
   --review-text: var(--ui-text, #1f2733);
   --review-muted: var(--ui-muted, #6b7684);
-  --review-done: #1ca41c;
-  --review-done-fill: linear-gradient(45deg, #1ca41c 0%, 18%, #b8ecb3 100%);
+  --review-done: var(--ui-green);
+  --review-done-fill: var(--ui-green);
   --review-done-text: #397a43;
   --review-chip-done: #7abc7e;
   --review-dropped: var(--ui-gray, #9aa4b2);
   --review-open: var(--ui-blue, #4d8fd6);
   --review-overdue: #e5534b;
-  --review-accent: #1ca41c;
+  --review-accent: var(--ui-blue);
 
-  display: flex;
-  flex-direction: column;
+  --calendar-week-width: clamp(160px, 15vw, 220px);
+  --calendar-month-width: clamp(180px, 18vw, 260px);
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--calendar-month-width) var(--calendar-week-width) minmax(0, 1fr);
+  grid-template-rows: 96px 12px 26px minmax(0, 1fr);
+  gap: 0;
+  column-gap: 12px;
+  padding: 10px 62px 10px 10px;
   flex: 1;
   min-height: 0;
   background: var(--review-bg);
@@ -389,22 +480,40 @@ const statTiles = computed(() => {
   --review-text: var(--ui-text, #dfe3e8);
   --review-muted: var(--ui-muted, #8d97a5);
   --review-dropped: var(--ui-gray, #6f7a88);
-  --review-done: #1ca41c;
-  --review-done-fill: linear-gradient(45deg, #147f14 0%, 18%, #91dc8b 100%);
+  --review-done: var(--ui-green);
+  --review-done-fill: var(--ui-green);
   --review-done-text: #a5d6a7;
   --review-open: var(--ui-blue, #4d8fd6);
   --review-overdue: #e5534b;
-  --review-accent: #1ca41c;
+  --review-accent: var(--ui-blue);
+}
+
+/* One outer frame around the weekday strip and all connected calendar weeks. */
+.review-mode::after {
+  content: '';
+  grid-column: 2 / -1;
+  grid-row: 3 / -1;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* --- Header: the year chart, with the date controls hard right --- */
 .review-header {
+  grid-column: 2 / -1;
+  grid-row: 1;
   display: flex;
   align-items: stretch;
-  gap: 18px;
-  height: 82px;
-  padding: 8px 20px;
-  border-bottom: 1px solid var(--review-border);
+  gap: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  margin: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 12px;
+  box-shadow: none;
+  flex: none;
   background: var(--review-surface);
 }
 
@@ -474,15 +583,15 @@ const statTiles = computed(() => {
   flex: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .review-stat {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 3px 8px;
+  padding: 2px 8px;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -509,45 +618,31 @@ const statTiles = computed(() => {
 
 /* --- Body layout --- */
 .review-body {
-  display: flex;
-  gap: 14px;
-  flex: 1;
-  min-height: 0;
-  padding: 8px 20px 14px;
-}
-
-.review-main {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: contents;
 }
 
 .review-grid-pane {
-  display: flex;
-  gap: 8px;
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
+  display: contents;
 }
 
 .review-grid-body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+  display: contents;
 }
 
 .review-weekday-row {
+  grid-column: 2 / -1;
+  grid-row: 3;
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-  padding-bottom: 6px;
+  grid-template-columns: var(--calendar-week-width) repeat(7, minmax(0, 1fr));
+  gap: 0;
+  background: var(--review-surface);
+  border-bottom: 1px solid var(--review-border);
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
 }
 
 .review-weekday {
+  padding-top: 6px;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -556,9 +651,13 @@ const statTiles = computed(() => {
 }
 
 .review-weeks {
+  grid-column: 2 / -1;
+  grid-row: 4;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  background: var(--review-surface);
+  border-radius: 0 0 12px 12px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -566,17 +665,23 @@ const statTiles = computed(() => {
 
 .review-week-row {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-  flex: 1 0 120px;
-  min-height: 120px;
+  grid-template-columns: var(--calendar-week-width) repeat(7, minmax(0, 1fr));
+  gap: 0;
+  flex: 1 0 76px;
+  min-height: 76px;
 }
+.review-week-row.is-prominent-week { flex: 2.4 0 132px; min-height: 132px; }
+.review-week-row.is-prominent-week .calendar-week-selection { background: var(--ui-blue-soft);
+  box-shadow: inset 3px 0 var(--ui-blue); }
+.review-week-row.is-prominent-week .calendar-section-label { color: var(--ui-blue); }
+.review-week-row.is-prominent-week .review-day-head { color: var(--ui-blue); }
 
 .review-strip {
   display: flex;
   align-items: stretch;
   gap: 8px;
-  flex: none;
+  flex: 1;
+  min-height: 0;
 }
 
 .review-chart-pane {
@@ -608,7 +713,8 @@ const statTiles = computed(() => {
 .review-side-label.year { letter-spacing: -1px; font-size: 11px; }
 
 /* The month names the whole grid, so it carries the most weight of the three. */
-.review-side-label.month { font-size: 15px; letter-spacing: 3px; }
+.review-side-label.month { width: auto; writing-mode: horizontal-tb; justify-content: flex-start;
+  padding: 4px 0; font-size: 14px; letter-spacing: 2px; font-weight: 700; color: var(--ui-text); }
 
 .review-year-totals { display: flex; gap: 16px; }
 
@@ -657,6 +763,7 @@ const statTiles = computed(() => {
 
 .review-year-track {
   flex: 1;
+  height: 30px;
   min-height: 0;
   display: flex;
   flex-direction: column-reverse;
@@ -687,8 +794,10 @@ const statTiles = computed(() => {
   min-width: 0;
   min-height: 0;
   padding: 6px;
-  border: 1px solid var(--review-border);
-  border-radius: 8px;
+  border: 0;
+  border-left: 1px solid var(--review-border);
+  border-bottom: 1px solid var(--review-border);
+  border-radius: 0;
   background: var(--review-surface);
   color: inherit;
   font: inherit;
@@ -697,9 +806,12 @@ const statTiles = computed(() => {
   overflow: hidden;
 }
 
-.review-day:hover { border-color: var(--review-accent); }
-.review-day.is-outside { opacity: 0.45; }
-.review-day.is-empty { background: transparent; }
+.review-day:hover { background: var(--ui-surface-soft); }
+.review-day.is-outside { background: var(--ui-surface-soft); }
+.review-day.is-outside > * { opacity: 0.45; }
+.review-day.is-empty { background: var(--ui-surface-soft); }
+.review-day.is-drop-target { background: var(--ui-blue-soft); border-color: var(--ui-blue);
+  box-shadow: inset 0 0 0 2px var(--ui-blue); opacity: 1; }
 .review-day.is-today { border-color: var(--review-open); box-shadow: inset 0 0 0 1px var(--review-open); }
 .review-day.is-selected { border-color: var(--review-accent); box-shadow: inset 0 0 0 2px var(--review-accent); }
 .review-day.is-future .review-day-number { color: var(--review-muted); }
@@ -740,54 +852,6 @@ const statTiles = computed(() => {
   list-style: none;
 }
 
-.calendar-day-task {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  padding: 2px 0;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.calendar-task-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.calendar-task-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 12px;
-  height: 12px;
-  box-sizing: border-box;
-  border: 1px solid var(--review-muted);
-  border-radius: 2px;
-  color: var(--review-muted);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.calendar-task-status.status-inProgress {
-  color: var(--ui-orange, #ff9800);
-  border-color: currentColor;
-  background: var(--ui-orange-soft, #fff6df);
-}
-.calendar-task-status.status-completed {
-  color: var(--review-done-text);
-  border-color: currentColor;
-  background: var(--ui-green-soft, #e7f4e6);
-}
-.calendar-task-status.status-blocked {
-  color: var(--ui-blocked, #df4c43);
-  border-color: currentColor;
-  background: var(--ui-blocked-soft, #fff0ee);
-}
-.calendar-task-status.status-cancelled { background: var(--ui-gray-soft, #edf0f3); }
-
 .review-day-head {
   display: flex;
   align-items: baseline;
@@ -799,11 +863,17 @@ const statTiles = computed(() => {
 
 .review-day-meter {
   display: flex;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  flex: none;
+  cursor: pointer;
   height: 4px;
   border-radius: 2px;
   background: rgba(127, 143, 165, 0.16);
   overflow: hidden;
 }
+.review-day-meter:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: 2px; }
 
 .meter-fill { height: 100%; }
 .meter-fill.done { background: var(--review-done-fill); }
@@ -841,15 +911,43 @@ const statTiles = computed(() => {
 /* --- Rail --- */
 /* Every card keeps its header on screen: the rail itself never scrolls, cards
    shrink to share the height, and long lists scroll inside their own card. */
+.calendar-drawer-track {
+  position: absolute;
+  z-index: 10;
+  inset: 10px 10px 10px auto;
+  width: min(400px, calc(100% - 40px));
+  overflow: hidden;
+  pointer-events: none;
+}
 .review-rail {
-  flex: none;
-  width: 320px;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  pointer-events: auto;
+  transform: translateX(calc(100% - 44px));
+  padding: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius);
+  background: var(--ui-surface);
+  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.15);
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  gap: 0;
   min-height: 0;
   overflow: hidden;
 }
+.review-rail.is-open { transform: translateX(0); }
+.calendar-completed-content { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 8px;
+  padding: 10px; overflow: hidden; }
+.calendar-completed-toggle { flex: 0 0 23px; width: 23px; padding: 12px 0 0; display: flex;
+  flex-direction: column; align-items: center; gap: 14px; border: 0; border-right: 1px solid var(--ui-border);
+  background: transparent; color: var(--ui-muted); font: 600 20px/1 var(--ui-font); cursor: pointer; }
+.calendar-completed-toggle:hover { color: var(--ui-text); background: var(--ui-surface-soft); }
+.calendar-completed-toggle:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: -3px; }
+.calendar-completed-toggle .calendar-count { padding: 2px; font-size: 10px; }
+.calendar-drawer-edge-label { writing-mode: vertical-rl; text-orientation: mixed;
+  font: 700 11px/1 var(--ui-font); letter-spacing: 2px; text-transform: uppercase; }
 
 .review-card-note.out-of-scope { font-style: italic; }
 
@@ -862,8 +960,9 @@ const statTiles = computed(() => {
   min-height: 0;
   padding: 8px 12px;
   border: 1px solid var(--review-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius);
   background: var(--review-surface);
+  box-shadow: var(--ui-shadow-sm);
   overflow: hidden;
 }
 
@@ -885,7 +984,9 @@ const statTiles = computed(() => {
   margin-bottom: 6px;
 }
 
-.review-card-head h2 { margin: 0; font-size: 13px; font-weight: 600; flex: 1; }
+.review-card-head h2 { margin: 0; font-size: 12px; font-weight: 700; flex: 1;
+  text-transform: uppercase; letter-spacing: 1px; }
+.review-card-head { border-bottom: 1px solid var(--ui-border); padding-bottom: 8px; }
 .review-card-note { font-size: 11px; color: var(--review-muted); }
 
 .review-card-close {
@@ -896,7 +997,7 @@ const statTiles = computed(() => {
   font-size: 12px;
 }
 
-.review-empty { font-size: 12px; color: var(--review-muted); }
+.review-empty { margin: 4px 0; font-size: 11px; color: var(--review-muted); }
 
 .review-group + .review-group { margin-top: 8px; }
 
@@ -915,7 +1016,8 @@ const statTiles = computed(() => {
 
 .review-entry { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
 .review-entry .review-item-dot { margin-top: 5px; }
-.review-entry-text { font-size: 12px; line-height: 1.35; min-width: 0; }
+.review-entry-text { font-size: 12px; line-height: 1.35; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* The old sub-label's grey and size, now inline after the title. */
 .review-entry-section { font-size: 10px; color: var(--review-muted); }
 
@@ -989,9 +1091,92 @@ const statTiles = computed(() => {
 .review-bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--review-done-fill); }
 .review-bar-count { width: 18px; text-align: right; }
 
+.calendar-selection-pane { grid-column: 1; grid-row: 3 / -1; display: flex; flex-direction: column;
+  min-height: 0; min-width: 0; background: var(--review-surface); border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--ui-border-strong); }
+.calendar-month-heading { margin: 0; padding: 6px 12px; font-size: clamp(18px, 1.7vw, 28px);
+  line-height: 28px; font-weight: 800; white-space: nowrap; color: var(--ui-blue);
+  background: var(--ui-blue-soft); border: 1px solid var(--ui-border-strong); border-radius: 12px 12px 0 0; }
+.calendar-selected-heading { margin: 12px 12px 16px; font-size: 20px; line-height: 26px; font-weight: 800;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: 4px; color: var(--review-muted); }
+.calendar-selected-projects { min-width: 0; flex: 0 1 auto; max-height: 35%; }
+.calendar-month-summary { grid-column: 1; grid-row: 1; min-width: 0; }
+.calendar-selected-projects, .calendar-month-summary, .calendar-month-tasks {
+  border: 0; border-radius: 0; box-shadow: none; }
+.calendar-month-summary { padding: 0; border-radius: 12px; }
+.calendar-month-summary .review-stat { border: 1px solid var(--ui-border); border-radius: 5px;
+  background: var(--ui-surface-soft); padding: 1px 2px; color: var(--review-muted);
+  flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0; }
+.calendar-month-summary .review-stat-value { font-size: 13px; font-weight: 700; line-height: 15px; color: var(--review-text); }
+.calendar-month-summary .review-stat-label { font-size: 9px; line-height: 10px; min-height: 20px;
+  white-space: normal; overflow-wrap: anywhere; display: flex; align-items: center; }
+.calendar-month-summary .review-metrics { padding: 6px 8px; grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px; }
+.calendar-selected-projects .review-card-head { padding-bottom: 6px; margin-bottom: 4px; }
+.calendar-selected-projects > .calendar-section-label { margin-bottom: 4px; padding-bottom: 0; border: 0; }
+.calendar-month-tasks { min-width: 0; flex: 1; margin-top: 10px; }
+.calendar-month-task-scroll { overflow-y: auto; min-height: 0; }
+.calendar-month-project-groups:not(:empty) + .calendar-month-standalone:not(:empty) { margin-top: 8px; }
+.calendar-project-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px; align-content: start; }
+.calendar-project-tiles :deep(.is-tile) { width: 100%; height: auto; aspect-ratio: 1; min-width: 0; }
+.calendar-project-group { flex: none; border: 1px solid var(--ui-border); border-radius: 6px; overflow: hidden; }
+.calendar-project-group-toggle { display: flex; align-items: center; width: 100%; gap: 6px; padding: 6px;
+  border: 0; background: var(--ui-blue-soft); color: var(--ui-blue); font: 650 11px/1.4 var(--ui-font);
+  text-align: left; cursor: pointer; }
+.calendar-project-group-title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.calendar-project-group-count { margin-left: auto; }
+.calendar-project-group-children { padding: 4px; }
+.calendar-project-group-toggle:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: -2px; }
+.calendar-month-tasks .review-entry-list, .calendar-month-scroll, .calendar-week-selection .review-entry-list {
+  scrollbar-width: thin; scrollbar-color: var(--ui-border-strong, #c4cfda) transparent;
+}
+.calendar-month-scroll { overflow-y: auto; min-height: 0; }
+.calendar-month-scroll h3 { margin-top: 8px; }
+.calendar-week-selection { display: flex; flex-direction: column; padding: 6px 8px; min-height: 0;
+  min-width: 0; border: 0; border-bottom: 1px solid var(--ui-border); border-radius: 0;
+  background: var(--ui-surface-soft); }
+.calendar-week-selection .calendar-section-label { color: var(--review-muted); font-size: 10px; }
+.calendar-week-selection :deep(.calendar-day-task) { background: transparent; border-color: transparent;
+  padding: 1px 4px; margin: 0; flex: none; }
+.calendar-week-selection :deep(.calendar-task-title) { color: var(--review-muted); font-size: 10px; line-height: 14px; }
+.calendar-week-selection > .review-entry-list { gap: 1px; }
+.calendar-week-toggle { width: 100%; border: 0; border-bottom: 1px solid var(--ui-border);
+  background: transparent; font-family: inherit; text-align: left; cursor: pointer; }
+.calendar-week-toggle:hover { color: var(--ui-blue); }
+.calendar-week-toggle:focus-visible { outline: 2px solid var(--ui-blue); outline-offset: 1px; }
+.calendar-week-selection > .review-entry-list { overflow-y: auto; min-height: 0; }
+.calendar-week-label { text-align: left; padding-left: 8px; background: var(--ui-surface-soft); font-size: 9px; }
+.calendar-drawer-close { align-self: flex-end; }
+.calendar-section-label { display: flex; align-items: center; justify-content: space-between;
+  gap: 5px; margin: 0 0 6px; font-size: 11px; color: var(--ui-blue); font-weight: 700;
+  border-bottom: 1px solid var(--ui-border); padding-bottom: 4px; }
+.calendar-count { border-radius: 10px; padding: 1px 7px; font-weight: 650;
+  background: var(--ui-surface-muted); color: var(--ui-muted); }
+.calendar-move-feedback { position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .review-day { transition: background-color 120ms, border-color 120ms; }
+  .review-rail { transition: transform 240ms ease; }
+}
 @media (max-width: 1100px) {
-  .review-rail { width: 260px; }
-  .review-header { height: 96px; }
-  .review-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .calendar-project-tiles :deep(.is-tile) { padding: 2px; gap: 1px; }
+  .calendar-selected-heading { font-size: 18px; letter-spacing: 2px; }
+  .review-header { flex-direction: column; gap: 3px; padding: 4px 8px; }
+  .review-header-side { align-self: stretch; align-items: flex-end; }
+  .review-chart-pane { min-height: 0; }
+  .review-year-track { height: 16px; }
+  .review-year-value { height: 10px; font-size: 9px; }
+  .review-year-label { font-size: 10px; }
+  .review-side-label.year { writing-mode: horizontal-tb; width: 30px; letter-spacing: 0; }
+  .review-nav { gap: 4px; }
+  .review-year-chart { gap: 1px; }
+  .review-year-col { padding: 2px 0; min-width: 0; }
+  .review-year-totals { display: none; }
+  .review-year-total { gap: 3px; }
+  .review-this-month-btn { padding: 0 5px; }
+  .review-stat { padding: 2px 4px; }
+  .review-stat-label { font-size: 10px; }
 }
 </style>

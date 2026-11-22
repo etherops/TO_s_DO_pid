@@ -41,6 +41,7 @@
 
     <FocusMode
         v-else-if="viewMode === 'focus'"
+        :initial-date="focusInitialDate"
         :todo-data="todoData"
         :theme="resolvedTheme"
         @update="handleUpdate"
@@ -51,6 +52,8 @@
         v-else-if="viewMode === 'review'"
         :todo-data="todoData"
         :theme="resolvedTheme"
+        @update="handleUpdate"
+        @open-focus="date => setViewMode('focus', date)"
     />
 
     <KanbanBoard
@@ -101,10 +104,12 @@ const normalizeViewMode = (mode) => mode === 'focus2' ? 'focus'
 const viewMode = ref(normalizeViewMode(savedViewMode));
 if (savedViewMode === 'focus2') localStorage.setItem('viewMode', 'focus');
 const rawMode = ref(null);
-const setViewMode = async (mode) => {
+const focusInitialDate = ref(null);
+const setViewMode = async (mode, date = null) => {
   const nextMode = normalizeViewMode(mode);
   if (nextMode === viewMode.value) return;
   if (rawMode.value && !await rawMode.value.confirmLeave()) return;
+  focusInitialDate.value = nextMode === 'focus' ? date : null;
   viewMode.value = nextMode;
   localStorage.setItem('viewMode', viewMode.value);
 };

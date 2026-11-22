@@ -713,6 +713,7 @@ import { nextTaskStatus } from '../utils/statusHelpers';
 import { derivePlanningModel } from '../utils/planningHelpers';
 
 const props = defineProps({
+  initialDate: { type: String, default: null },
   todoData: {
     type: Object,
     default: () => ({ columnOrder: [], columnStacks: {} })
@@ -764,7 +765,7 @@ const selectedWeekOffset = ref(0);
 const weekSlideDirection = ref('next');
 const hasNavigatedWeek = ref(false);
 const currentDate = ref(new Date());
-const previewDate = ref(null);
+const previewDate = ref(props.initialDate ? new Date(`${props.initialDate}T00:00:00`) : null);
 const focusDateInput = ref(null);
 const openFocusDatePicker = () => {
   if (focusDateInput.value?.showPicker) focusDateInput.value.showPicker();

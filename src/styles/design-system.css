@@ -162,14 +162,14 @@
   --review-border: var(--ui-border);
   --review-text: var(--ui-text);
   --review-muted: var(--ui-muted);
-  --review-done: #1ca41c;
-  --review-done-fill: linear-gradient(45deg, #1ca41c 0%, 18%, #b8ecb3 100%);
+  --review-done: var(--ui-green);
+  --review-done-fill: var(--ui-green);
   --review-done-text: #397a43;
   --review-chip-done: #7abc7e;
   --review-dropped: var(--ui-gray);
   --review-open: var(--ui-blue);
   --review-overdue: #e5534b;
-  --review-accent: #1ca41c;
+  --review-accent: var(--ui-blue);
   font-family: var(--ui-font);
 }
 
@@ -177,10 +177,7 @@
 .todo-app .review-card,
 .todo-app .review-day {
   border-color: var(--ui-border);
-  border-radius: var(--ui-radius);
-  box-shadow: var(--ui-shadow-sm);
 }
-.todo-app .review-header { background: rgba(255, 255, 255, 0.94); }
 .todo-app .review-year-col.is-anchor { border-color: var(--review-open); background: var(--ui-blue-soft); }
 .todo-app .review-day.is-today { border-color: var(--ui-blue); box-shadow: inset 0 0 0 1px var(--ui-blue); }
 .todo-app .review-day.is-selected { border-color: var(--review-accent); box-shadow: inset 0 0 0 2px var(--review-accent); }
@@ -245,10 +242,7 @@
   --ui-gray-soft: #272d36;
 }
 
-.todo-app.theme-dark.design-system-active .file-tabs-container,
-.todo-app.theme-dark.design-system-active .review-header { background: rgba(28, 33, 41, 0.96); }
-.todo-app.theme-dark .review-card,
-.todo-app.theme-dark .review-day { background: var(--ui-surface) !important; }
+.todo-app.theme-dark.design-system-active .file-tabs-container { background: rgba(28, 33, 41, 0.96); }
 
 /* One blocked glyph across task controls, read-only previews, and summaries. */
 .status-blocked {
